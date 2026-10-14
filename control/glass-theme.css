@@ -1,0 +1,81 @@
+/* Shared blue/white material for the panel, D200 setup and preview controls. */
+:root{
+  color-scheme:light;
+  --bg:#edf1f6;--card:#fff;--line:#d9dfe7;--ink:#172431;--dim:#253343;
+  --console-background:linear-gradient(145deg,#edf1f6,#dfe5ec);
+  --accent:#0068c5;--accent-hover:#005caf;--accent-pressed:#00529d;--focus:#2877bd;
+  --blue:var(--accent);--green:#557267;--red:#805761;--yellow:#6d6355;--gold:#6d6355;
+  --mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+  --control-height:44px;--field-gap:16px;--radius:14px;--radius-card:26px;--radius-pill:999px;
+  --glass-fill:rgba(255,255,255,.10);--glass-edge:rgba(255,255,255,.64);
+  --glass-tint:linear-gradient(155deg,#ffffff1f 0%,#ffffff00 48%,#ffffff09 100%);
+  --glass-blur:blur(18px) saturate(130%);
+  --glass-depth:0 4px 16px #2539570c,inset 0 1px 0 #fff,inset 0 -1px 0 #25395708;
+  --well-fill:rgba(255,255,255,.08);--well-line:rgba(255,255,255,.46);
+  --control-blur:blur(12px) saturate(125%);
+  --control-depth:0 3px 9px #2539570d,inset 0 1px 0 #ffffffe6,inset 0 -1px 0 #46678814;
+  --button-fill:rgba(255,255,255,.06);--button-hover:rgba(255,255,255,.18);
+  --selected-fill:rgba(255,255,255,.94);--selected-hover:#fff;--selected-ink:var(--accent);--selected-line:rgba(255,255,255,.90);
+  --selected-tint:linear-gradient(180deg,#ffffff33 0%,#ffffff00 80%);
+  --choice-fill:rgba(118,177,235,.18);--thumb-fill:rgba(255,255,255,.17);
+  --ease-feedback:ease;--feedback-duration:160ms;
+}
+/* The rim provides a curved highlight without washing over the label. */
+:where(button):not([role=tab]){position:relative;isolation:isolate}
+:where(button):not([role=tab])::before{
+  content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;
+  border-top:1px solid #ffffffd9;border-left:1px solid #ffffff80;
+  border-right:1px solid #8ab9e126;border-bottom:1px solid #46678821;
+  box-shadow:inset 0 2px 3px #ffffff1a;
+}
+/* Auxiliary pages share the material while keeping their existing layouts. */
+body.aux-controls{background:var(--console-background);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
+html:has(body.aux-controls){scrollbar-width:none}
+html:has(body.aux-controls)::-webkit-scrollbar{display:none}
+.aux-controls header,.aux-controls nav,.aux-controls .box{
+  background:var(--glass-fill);background-image:var(--glass-tint);border-color:var(--glass-edge);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);box-shadow:var(--glass-depth);
+}
+.aux-controls .box{border-radius:var(--radius-card)}
+.aux-controls button,.aux-controls input,.aux-controls select,.aux-controls textarea{
+  min-height:44px;border:1px solid var(--well-line);border-radius:var(--radius-pill);
+  background:var(--button-fill);background-image:var(--glass-tint);color:var(--dim);
+  -webkit-backdrop-filter:var(--control-blur);backdrop-filter:var(--control-blur);box-shadow:var(--control-depth);
+  transition:background-color var(--feedback-duration) var(--ease-feedback);
+}
+.aux-controls input,.aux-controls textarea{color:var(--ink);background-color:var(--well-fill)}
+.aux-controls textarea{border-radius:20px}
+.aux-controls button{padding:8px 14px;font-weight:550;white-space:nowrap}
+.aux-controls .actions button{white-space:normal}
+.aux-controls button:hover{background-color:var(--button-hover);border-color:#8ab9e180;filter:none}
+.aux-controls button.selected,.aux-controls nav button.on,.aux-controls button:active{
+  background:var(--selected-fill);background-image:var(--selected-tint);border-color:var(--selected-line);color:var(--selected-ink);
+}
+.aux-controls button.selected:hover,.aux-controls nav button.on:hover{background-color:var(--selected-hover)}
+.aux-controls button:active{transition:none}
+.aux-controls button.selected .group,.aux-controls button:active .group{color:var(--selected-ink)}
+.aux-controls button:disabled{opacity:.45;cursor:default}
+.aux-controls a{color:var(--accent)}
+.aux-controls :is(.note,.intro,.group,.sub,.field label),.aux-controls #connection{color:var(--dim)}
+.aux-controls :is(input[readonly],textarea[readonly],#feedback){color:var(--accent)}
+.aux-controls .live{color:var(--dim)}
+.aux-controls :focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.aux-controls.preview-controls header{height:auto;min-height:64px;padding:10px 18px;flex-wrap:wrap}
+.aux-controls.preview-controls header h1{letter-spacing:0}
+.aux-controls.preview-controls nav{height:auto;min-height:54px;padding:5px 18px;scrollbar-width:none}
+.aux-controls.preview-controls nav button{letter-spacing:0;min-height:40px}
+@supports(appearance:base-select){
+  .aux-controls select,.aux-controls select::picker(select){appearance:base-select}
+  .aux-controls select::picker(select){border:1px solid var(--glass-edge);border-radius:22px;padding:6px;background:#f0f3f838;background-image:var(--glass-tint);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:var(--glass-depth);max-height:min(420px,65dvh);scrollbar-width:none}
+  .aux-controls select option{padding:9px 12px;border-radius:12px;background:transparent;color:var(--ink)}
+  .aux-controls select option:checked{background:var(--choice-fill);color:var(--accent)}
+}
+@media(prefers-reduced-motion:reduce){.aux-controls button{transition:none}}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+  body.aux-controls{--glass-fill:#fff;--glass-tint:none;--well-fill:#f7f8fa;--button-fill:#f7f9fc;--button-hover:#e9eff6;--selected-fill:#fff;--well-line:#888892;background:var(--bg)}
+  .aux-controls header,.aux-controls nav,.aux-controls .box,.aux-controls button,.aux-controls input,.aux-controls textarea,.aux-controls select,.aux-controls select::picker(select){background-image:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .aux-controls select::picker(select){background:#f7f8fa}
+}
+@supports not (backdrop-filter:blur(1px)){
+  body.aux-controls{--glass-fill:#fff;--glass-tint:none;--button-fill:#f7f9fc;--well-fill:#f7f8fa;--well-line:#888892;background:var(--bg)}
+}

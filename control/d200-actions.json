@@ -1,0 +1,400 @@
+{
+  "version": 1,
+  "recommended": [
+    "home_goal",
+    "away_goal",
+    "home_score_minus",
+    "away_score_minus",
+    "scoreboard_toggle",
+    "sb_clock_toggle",
+    "clock_toggle",
+    "card_yellow",
+    "card_red",
+    "player_show",
+    "lineup_all",
+    "hide_all"
+  ],
+  "actions": [
+    {
+      "id": "home_goal",
+      "label": "主队进球（自动加分）",
+      "group": "比分与进球",
+      "kind": "goal",
+      "side": "home"
+    },
+    {
+      "id": "home_score_plus",
+      "label": "主队比分 ＋1",
+      "group": "比分与进球",
+      "kind": "score",
+      "key": "scoreHome",
+      "delta": 1
+    },
+    {
+      "id": "home_score_minus",
+      "label": "主队比分 −1",
+      "group": "比分与进球",
+      "kind": "score",
+      "key": "scoreHome",
+      "delta": -1
+    },
+    {
+      "id": "away_goal",
+      "label": "客队进球（自动加分）",
+      "group": "比分与进球",
+      "kind": "goal",
+      "side": "away"
+    },
+    {
+      "id": "away_score_plus",
+      "label": "客队比分 ＋1",
+      "group": "比分与进球",
+      "kind": "score",
+      "key": "scoreAway",
+      "delta": 1
+    },
+    {
+      "id": "away_score_minus",
+      "label": "客队比分 −1",
+      "group": "比分与进球",
+      "kind": "score",
+      "key": "scoreAway",
+      "delta": -1
+    },
+    {
+      "id": "sb_clock_toggle",
+      "label": "比赛时钟 开始 / 暂停",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "sb_clock",
+      "command": "toggle"
+    },
+    {
+      "id": "sb_clock_start",
+      "label": "比赛时钟 开始",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "sb_clock",
+      "command": "start"
+    },
+    {
+      "id": "sb_clock_pause",
+      "label": "比赛时钟 暂停",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "sb_clock",
+      "command": "pause"
+    },
+    {
+      "id": "sb_clock_plus",
+      "label": "比赛时钟 ＋1 分钟",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "sb_clock",
+      "command": "plus"
+    },
+    {
+      "id": "sb_clock_minus",
+      "label": "比赛时钟 −1 分钟",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "sb_clock",
+      "command": "minus"
+    },
+    {
+      "id": "sb_clock_reset",
+      "label": "比赛时钟 归零并暂停",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "sb_clock",
+      "command": "reset"
+    },
+    {
+      "id": "clock_run_toggle",
+      "label": "独立计时器 开始 / 暂停",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "clock",
+      "command": "toggle"
+    },
+    {
+      "id": "clock_start",
+      "label": "独立计时器 开始",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "clock",
+      "command": "start"
+    },
+    {
+      "id": "clock_pause",
+      "label": "独立计时器 暂停",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "clock",
+      "command": "pause"
+    },
+    {
+      "id": "clock_plus",
+      "label": "独立计时器 ＋1 分钟",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "clock",
+      "command": "plus"
+    },
+    {
+      "id": "clock_minus",
+      "label": "独立计时器 −1 分钟",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "clock",
+      "command": "minus"
+    },
+    {
+      "id": "clock_reset",
+      "label": "独立计时器 归零并暂停",
+      "group": "计时",
+      "kind": "clock",
+      "prefix": "clock",
+      "command": "reset"
+    },
+    {
+      "id": "scoreboard_toggle",
+      "label": "比分条 显示 / 隐藏",
+      "group": "画面显隐",
+      "kind": "visibility",
+      "key": "scoreboard_show",
+      "value": "toggle"
+    },
+    {
+      "id": "scoreboard_hide",
+      "label": "比分条 隐藏",
+      "group": "画面显隐",
+      "kind": "visibility",
+      "key": "scoreboard_show",
+      "value": false
+    },
+    {
+      "id": "clock_toggle",
+      "label": "计时器 显示 / 隐藏",
+      "group": "画面显隐",
+      "kind": "visibility",
+      "key": "clock_show",
+      "value": "toggle"
+    },
+    {
+      "id": "clock_hide",
+      "label": "计时器 隐藏",
+      "group": "画面显隐",
+      "kind": "visibility",
+      "key": "clock_show",
+      "value": false
+    },
+    {
+      "id": "lineup_toggle",
+      "label": "名单 显示 / 隐藏",
+      "group": "画面显隐",
+      "kind": "visibility",
+      "key": "lineup_show",
+      "value": "toggle"
+    },
+    {
+      "id": "lineup_hide",
+      "label": "名单 隐藏",
+      "group": "画面显隐",
+      "kind": "visibility",
+      "key": "lineup_show",
+      "value": false
+    },
+    {
+      "id": "logo_toggle",
+      "label": "角标 Logo 显示 / 隐藏",
+      "group": "画面显隐",
+      "kind": "visibility",
+      "key": "logo_show",
+      "value": "toggle"
+    },
+    {
+      "id": "logo_hide",
+      "label": "角标 Logo 隐藏",
+      "group": "画面显隐",
+      "kind": "visibility",
+      "key": "logo_show",
+      "value": false
+    },
+    {
+      "id": "lineup_all",
+      "label": "两队首发与替补",
+      "group": "名单",
+      "kind": "lineup",
+      "prefix": "all"
+    },
+    {
+      "id": "lineup_xiH",
+      "label": "主队首发",
+      "group": "名单",
+      "kind": "lineup",
+      "prefix": "xiH"
+    },
+    {
+      "id": "lineup_xiA",
+      "label": "客队首发",
+      "group": "名单",
+      "kind": "lineup",
+      "prefix": "xiA"
+    },
+    {
+      "id": "lineup_subH",
+      "label": "主队替补",
+      "group": "名单",
+      "kind": "lineup",
+      "prefix": "subH"
+    },
+    {
+      "id": "lineup_subA",
+      "label": "客队替补",
+      "group": "名单",
+      "kind": "lineup",
+      "prefix": "subA"
+    },
+    {
+      "id": "card_yellow",
+      "label": "黄牌",
+      "group": "事件动画",
+      "kind": "patch",
+      "patch": {
+        "card_type": "yellow",
+        "card_trigger": "yellow",
+        "card_tick": 0
+      }
+    },
+    {
+      "id": "card_red",
+      "label": "红牌",
+      "group": "事件动画",
+      "kind": "patch",
+      "patch": {
+        "card_type": "red",
+        "card_trigger": "red",
+        "card_tick": 0
+      }
+    },
+    {
+      "id": "player_show",
+      "label": "球员信息条",
+      "group": "事件动画",
+      "kind": "patch",
+      "patch": {
+        "player_trigger": "show",
+        "player_tick": 0
+      }
+    },
+    {
+      "id": "goal_replay",
+      "label": "重播进球（不加分）",
+      "group": "事件动画",
+      "kind": "patch",
+      "patch": {
+        "goal_trigger": "goal",
+        "goal_tick": 0
+      }
+    },
+    {
+      "id": "restart_kickoff",
+      "label": "开球",
+      "group": "事件动画",
+      "kind": "patch",
+      "patch": {
+        "restart_type": "kickoff",
+        "restart_trigger": "kickoff",
+        "restart_tick": 0
+      }
+    },
+    {
+      "id": "restart_throwin",
+      "label": "界外球",
+      "group": "事件动画",
+      "kind": "patch",
+      "patch": {
+        "restart_type": "throwin",
+        "restart_trigger": "throwin",
+        "restart_tick": 0
+      }
+    },
+    {
+      "id": "restart_corner",
+      "label": "角球",
+      "group": "事件动画",
+      "kind": "patch",
+      "patch": {
+        "restart_type": "corner",
+        "restart_trigger": "corner",
+        "restart_tick": 0
+      }
+    },
+    {
+      "id": "restart_goalkick",
+      "label": "球门球",
+      "group": "事件动画",
+      "kind": "patch",
+      "patch": {
+        "restart_type": "goalkick",
+        "restart_trigger": "goalkick",
+        "restart_tick": 0
+      }
+    },
+    {
+      "id": "restart_freekick",
+      "label": "任意球",
+      "group": "事件动画",
+      "kind": "patch",
+      "patch": {
+        "restart_type": "freekick",
+        "restart_trigger": "freekick",
+        "restart_tick": 0
+      }
+    },
+    {
+      "id": "restart_penalty",
+      "label": "点球",
+      "group": "事件动画",
+      "kind": "patch",
+      "patch": {
+        "restart_type": "penalty",
+        "restart_trigger": "penalty",
+        "restart_tick": 0
+      }
+    },
+    {
+      "id": "clear_events",
+      "label": "撤下事件动画",
+      "group": "画面显隐",
+      "kind": "patch",
+      "patch": {
+        "clear_events_tick": 0
+      }
+    },
+    {
+      "id": "hide_all",
+      "label": "全部图形下屏",
+      "group": "画面显隐",
+      "kind": "patch",
+      "patch": {
+        "scoreboard_show": false,
+        "clock_show": false,
+        "lineup_show": false,
+        "logo_show": false,
+        "clear_events_tick": 0
+      }
+    },
+    {
+      "id": "sub_show",
+      "label": "执行已保存换人",
+      "group": "事件动画",
+      "kind": "patch",
+      "patch": {
+        "sub_trigger": "show",
+        "sub_tick": 0
+      }
+    }
+  ]
+}

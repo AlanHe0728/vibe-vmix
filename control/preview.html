@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⚽ 足球包装 · 预览监控</title>
+<!--
+=====================================================================
+ 足球比赛包装系统 - 预览监控页 (不用进 vMix 就能看效果)
+---------------------------------------------------------------------
+ 本页把 titles/*.html 模板以 1920×1080 iframe 载入并按比例缩放显示，
+ 背景是一块模拟球场，方便在接入 vMix 前先检查各图形样式与动画。
+ 内容仍由 /state.json 驱动（在控制面板改字段，本页会实时更新）。
+
+ IMPORTANT：本页必须通过【服务器】访问（http://localhost:8123/...），
+ 不能直接双击文件（file://）打开。地址栏端地址：
+   http://localhost:8123/control/preview.html
+=====================================================================
+-->
+<style>
+  .hidden{display:none !important;}
+  *{margin:0;padding:0;box-sizing:border-box;user-select:none;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0b0e14;
+    font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#e8ecf4;}
+  body{display:flex;flex-direction:column;}
+
+  header{flex:none;height:56px;display:flex;align-items:center;gap:12px;padding:0 18px;
+    background:#10141d;border-bottom:1px solid #232a3a;}
+  header h1{font-size:16px;font-weight:700;letter-spacing:1px;}
+  header .sub{color:#8b94a7;font-size:12px;}
+  header .sp{margin-left:auto;display:flex;gap:8px;}
+  .btn{border:1px solid #232a3a;background:#1a2030;color:#e8ecf4;border-radius:6px;
+    padding:6px 12px;font-size:12px;cursor:pointer;}
+  .btn:hover{filter:brightness(1.25);}
+
+  #banner{flex:none;padding:12px 18px;font-size:13px;line-height:1.8;
+    background:#3a2a12;border-bottom:1px solid #a16207;color:#fde68a;}
+  #banner b{color:#fff;}
+  #banner code{background:#000;padding:2px 6px;border-radius:4px;font-size:12px;color:#93c5fd;}
+
+  nav{flex:none;height:46px;display:flex;align-items:center;gap:6px;padding:0 18px;
+    background:#0d1017;border-bottom:1px solid #1d2430;overflow-x:auto;}
+  nav button{flex:none;border:1px solid transparent;background:transparent;color:#8b94a7;
+    border-radius:6px;padding:7px 14px;font-size:13px;cursor:pointer;letter-spacing:1px;}
+  nav button:hover{color:#e8ecf4;background:#161b26;}
+  nav button.on{color:#fff;background:#1e3a8a;border-color:#1e40af;}
+
+  #wrap{position:relative;flex:1;min-height:0;}
+  #pitch{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:
+      radial-gradient(circle at 50% 46%,rgba(255,255,255,.06) 0 240px,transparent 240px),
+      linear-gradient(180deg,#0f6a2c 0%,#0c5a25 55%,#094a1f 100%);}
+  #pitch::before{content:"";position:absolute;inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+    background-size:80px 80px;}
+  #pitch::after{content:"";position:absolute;left:50%;top:50%;width:340px;height:340px;
+    border:2px solid rgba(255,255,255,.5);border-radius:50%;transform:translate(-50%,-50%);}
+  #btnfix{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:250px;height:120px;border:2px solid rgba(255,255,255,.5);
+    background:rgba(255,255,255,.04);border-radius:8px;}
+  #player{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+
+  .frame{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;
+    transform-origin:top left;background:transparent;}
+
+  .overlay{position:absolute;left:14px;bottom:14px;background:rgba(6,8,12,.8);
+    border:1px solid #232a3a;border-radius:8px;padding:6px 12px;font-size:11px;
+    color:#8b94a7;z-index:5;}
+</style>
+<link rel="stylesheet" href="glass-theme.css">
+<link rel="stylesheet" href="preview-tools.css">
+</head>
+<body class="aux-controls preview-controls">
+<header>
+  <h1>⚽ 足球包装 · 预览监控</h1>
+  <span class="sub">1920×1080 画布 · 拖动排版，安全框与临时隐藏仅用于预览</span>
+  <div class="sp">
+    <button class="btn selected" id="layoutToggle" aria-controls="layoutInspector" aria-expanded="true" onclick="FBPPreviewTools.toggle()">布局工具</button>
+    <button class="btn" onclick="reload()">🔄 刷新模板</button>
+    <button class="btn" onclick="openPanel()">打开控制面板</button>
+  </div>
+</header>
+<div id="banner" class="hidden"></div>
+<nav id="tabs"></nav>
+<div id="workspace">
+<div id="wrap">
+  <div id="pitch">
+    <div id="btnfix"></div>
+  </div>
+  <div id="player">
+    <iframe class="frame" id="frame" title="模板预览"></iframe>
+  </div>
+  <div class="overlay" id="ovl">加载中…</div>
+</div>
+<aside id="layoutInspector" aria-label="预览布局工具">
+  <div class="inspector-heading"><h2>布局属性</h2><button onclick="FBPPreviewTools.toggle()" aria-label="收起布局工具">收起</button></div>
+  <section class="inspector-section">
+    <label for="layoutElement">当前栏目</label><select id="layoutElement"><option value="">选择一个栏目</option></select>
+    <div class="inspector-pair"><div><label for="layoutX">X · 中心坐标</label><input id="layoutX" type="number" step="1" disabled></div><div><label for="layoutY">Y · 中心坐标</label><input id="layoutY" type="number" step="1" disabled></div></div>
+    <button id="applyPosition" class="selected-action" disabled>应用坐标</button>
+    <div class="scale-heading"><label for="layoutScale">缩放</label><output id="layoutScaleText" for="layoutScale">1.00×</output></div>
+    <input id="layoutScale" type="range" min=".3" max="3" step=".01" value="1" disabled>
+    <button id="resetLayerScale" class="selected-action" disabled>恢复该栏目大小</button>
+    <p id="layoutStatus" role="status">选择栏目后编辑；坐标、缩放会保存并同步上屏。</p>
+  </section>
+  <section class="inspector-section">
+    <h3>对齐</h3><label for="alignReference">对齐范围</label><select id="alignReference"><option value="title">文字安全框 · 90%</option><option value="action">画面安全框 · 95%</option><option value="frame">构图范围边界</option></select>
+    <div class="align-buttons"><button data-align="left" class="selected-action" disabled>靠左</button><button data-align="center" class="selected-action" disabled>水平居中</button><button data-align="right" class="selected-action" disabled>靠右</button><button data-align="top" class="selected-action" disabled>靠上</button><button data-align="middle" class="selected-action" disabled>垂直居中</button><button data-align="bottom" class="selected-action" disabled>靠下</button></div>
+  </section>
+  <section class="inspector-section">
+    <h3>构图与辅助线</h3><label for="previewRatio">预览比例</label><select id="previewRatio"><option value="16:9">16:9 · 横屏</option><option value="4:3">4:3</option><option value="1:1">1:1 · 方形</option><option value="9:16">9:16 · 竖屏</option><option value="21:9">21:9 · 宽屏</option><option value="custom">自定义比例</option></select>
+    <div id="customRatio" class="inspector-pair" hidden><div><label for="ratioW">比例宽</label><input id="ratioW" type="number" min="1" max="10000" value="16"></div><div><label for="ratioH">比例高</label><input id="ratioH" type="number" min="1" max="10000" value="9"></div></div>
+    <p id="compositionSize">只调整预览构图范围，上屏画布由 vMix 决定。</p>
+    <label class="inspector-switch" for="safetyGuides"><span>显示安全框</span><input id="safetyGuides" type="checkbox" checked></label>
+    <label class="inspector-switch" for="showGrid"><span>始终显示网格</span><input id="showGrid" type="checkbox"></label>
+    <label class="inspector-switch" for="snapGrid"><span>自动吸附网格</span><input id="snapGrid" type="checkbox"></label>
+    <label for="gridStep">网格间距 · px</label><input id="gridStep" type="number" min="5" max="200" step="1" value="20">
+    <p>移动时自动显示网格。未开启吸附时可自由移动；坐标从画布左上角计算。</p>
+  </section>
+  <section class="inspector-section">
+    <h3>预览栏目</h3><p>开关仅影响此浏览器的编辑预览，不改变播出显示状态。点击名称可选中栏目。</p>
+    <div id="layoutLayers"></div>
+    <div class="inspector-pair"><button id="isolateLayer" class="selected-action" disabled>仅显示当前项</button><button id="restoreLayers">恢复全部</button></div>
+  </section>
+</aside>
+</div>
+
+<script>
+var BASE='http://localhost:8123';
+var SERVED=false;
+try{
+  if(location.protocol==='http:'||location.protocol==='https:'){ BASE=location.origin; SERVED=true; }
+}catch(e){}
+
+function $(id){return document.getElementById(id);}
+
+var TEMPLATES=[
+  {key:'graphics',file:'graphics.html',label:'联合(单链接)'},
+  {key:'scoreboard',file:'scoreboard.html',label:'比分条'},
+  {key:'clock',file:'clock.html',label:'计时器'},
+  {key:'restart',file:'restart.html',label:'发球'},
+  {key:'card',file:'card.html',label:'红黄牌'},
+  {key:'player',file:'player.html',label:'球员条'},
+  {key:'goal',file:'goal.html',label:'进球'},
+  {key:'sub',file:'graphics.html?only=sub',label:'换人'},
+  {key:'lineup',file:'lineup.html',label:'名单'}
+];
+var current=0;
+
+var tabs=$('tabs');
+TEMPLATES.forEach(function(t,i){
+  var b=document.createElement('button');
+  b.textContent=t.label;
+  b.onclick=function(){select(i);};
+  tabs.appendChild(b);
+});
+function select(i){
+  current=i;
+  var t=TEMPLATES[i];
+  var frame=$('frame');
+  var q=t.file.indexOf('?')>=0?'&edit=1':'?edit=1';
+  frame.src=BASE+'/titles/'+t.file+q;
+  $('ovl').textContent=t.label+' · '+t.file+'  (单链接可拖拽元素定位)';
+  Array.prototype.forEach.call(tabs.children,function(b,j){b.classList.toggle('on',j===i);});
+  fit();
+}
+function reload(){select(current);}
+
+function openPanel(){
+  var url=BASE+'/control/panel.html';
+  if(SERVED){ window.open(url,'_blank'); }
+  else{
+    showBanner('你正在用 file:// 直接打开本页（服务器未参与）。请先双击 <code>control\\启动控制面板.bat</code> 启动服务器，再用下面的地址访问：<br>控制面板：<b>'+url+'</b><br>预览监控：<b>http://localhost:8123/control/preview.html</b>');
+  }
+}
+
+function showBanner(html){
+  var b=$('banner'); b.innerHTML=html; b.classList.remove('hidden'); fit();
+}
+function hideBanner(){ $('banner').classList.add('hidden'); fit(); }
+
+function checkServer(){
+  if(!SERVED){ showBanner('本页必须通过<b>服务器</b>访问才能预览，不能直接双击文件打开。<br>请先双击 <code>control\\启动控制面板.bat</code>，然后在浏览器地址栏输入：<b>http://localhost:8123/control/preview.html</b>'); return Promise.resolve(false); }
+  return fetch(BASE+'/state.json',{cache:'no-cache'}).then(function(r){
+    if(!r.ok) throw new Error('http '+r.status);
+    return r.json();
+  }).then(function(){ hideBanner(); return true; })
+  .catch(function(){
+    showBanner('⚠️ 无法连接服务器（端口 8123 未启动）。<br>请双击 <code>control\\启动控制面板.bat</code> 启动服务器，然后点「刷新模板」。<br>也可在控制台查看服务器是否报错（如端口被占用）。');
+    return false;
+  });
+}
+
+function fit(){
+  var w=$('wrap').clientWidth,h=$('wrap').clientHeight;
+  if(!w||!h) return;
+  var s=Math.min(w/1920,h/1080);
+  var pw=1920*s,ph=1080*s;
+  var player=$('player');
+  player.style.width=pw+'px';player.style.height=ph+'px';
+  player.style.left=((w-pw)/2)+'px';player.style.top=((h-ph)/2)+'px';
+  $('frame').style.transform='scale('+s+')';
+}
+window.addEventListener('resize',fit);
+
+checkServer().then(function(){ select(0); });
+</script>
+<script src="preview-tools.js"></script>
+</body>
+</html>

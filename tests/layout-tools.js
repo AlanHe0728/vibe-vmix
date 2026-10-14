@@ -1,0 +1,82 @@
+// Real scorebar sizing, same-origin preview tools and on-air isolation.
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict'),{spawn}=require('node:child_process');
+const {CDP}=require('./browser'),{startServer,stop,delay}=require('./regression');
+const crest=color=>'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 48"><path fill="'+color+'" d="M3 3h34v25c0 9-9 14-17 17C12 42 3 37 3 28Z"/><path fill="none" stroke="white" stroke-width="2" d="M8 8h24v19c0 6-6 10-12 12-6-2-12-6-12-12Z"/></svg>');
+async function main(){
+  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fbp-layout-tools-')),profile=path.join(temp,'edge'),out=path.resolve(__dirname,'../docs/screenshots');fs.mkdirSync(out,{recursive:true});
+  let server,browser,cdp;const bases=[];
+  try{
+    browser=spawn(process.env.FBP_BROWSER||'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',['--headless=new','--disable-gpu','--no-first-run','--disable-extensions','--disable-background-networking','--disable-background-timer-throttling','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{windowsHide:true,stdio:'ignore'});
+    const active=path.join(profile,'DevToolsActivePort');for(let i=0;i<100&&!fs.existsSync(active);i++)await delay(100);assert(fs.existsSync(active));
+    const [port,endpoint]=fs.readFileSync(active,'utf8').trim().split(/\r?\n/),ws=new WebSocket('ws://127.0.0.1:'+port+endpoint);await new Promise((resolve,reject)=>{ws.addEventListener('open',resolve,{once:true});ws.addEventListener('error',reject,{once:true});});cdp=new CDP(ws);
+    for(const kind of ['node','powershell']){
+      console.log('CHECK '+kind+' scorebar and preview layout');
+      const file=path.join(temp,kind+'.json');fs.writeFileSync(file,JSON.stringify({teamHome:'LIV',teamAway:'MNC',scoreHome:2,scoreAway:1,scoreboard_show:true,clock_show:true,lineup_show:true,lineup_mode:'all',xiH_players:'10 主十\n1 主一',xiA_players:'9 客九',lineup_pos:{x:653,y:518},sb_pos:{x:960,y:150},homeLogo:crest('#c8102e'),awayLogo:crest('#00529f'),logo_data:crest('#536e63'),logo_show:true}));
+      server=await startServer(kind,file);bases.push(server.base);const viewer=await cdp.page(server.base+'/titles/graphics.html');await cdp.until(viewer,"S.teamHome==='LIV'");await delay(500);
+      const post=async patch=>{const response=await fetch(server.base+'/state.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});assert.equal(response.status,200);assert.equal((await response.json()).ok,true);};
+      const stored=()=>JSON.parse(fs.readFileSync(file,'utf8'));
+      const width=()=>cdp.eval(viewer,"document.querySelector('.sb-wrap').offsetWidth");assert.equal(await width(),650,'Old data retains logo layout');
+      const panel=await cdp.page(server.base+'/control/panel.html');await cdp.until(panel,"$('connectionText').textContent==='服务已连接'");assert.equal(await cdp.eval(panel,"$('sb_logos_show').checked"),true);
+      await cdp.eval(panel,"$('sb_logos_show').click();WRITE_QUEUE");await cdp.until(viewer,'S.sb_logos_show===false');assert.equal(await width(),306);assert.equal(await cdp.eval(viewer,"getComputedStyle($('sbLogoH')).display"),'none');assert.equal(stored().logo_show,true);assert.equal(stored().homeLogo,crest('#c8102e'));
+      await cdp.send('Page.reload',{},panel);await cdp.until(panel,"$('connectionText').textContent==='服务已连接'&&!$('sb_logos_show').checked");
+      async function scoreShot(name){if(kind!=='node')return;const clip=await cdp.eval(viewer,"(()=>{var r=$('sb').getBoundingClientRect();return {x:r.x-16,y:r.y-16,width:r.width+32,height:r.height+32,scale:2};})()");const shot=await cdp.send('Page.captureScreenshot',{format:'png',clip,captureBeyondViewport:true},viewer);fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(shot.data,'base64'));}
+      await scoreShot('broadcast-compact-scorebar');
+      await post({scoreHome:99,scoreAway:99});await cdp.until(viewer,"S.scoreHome===99 && S.scoreAway===99");assert(await cdp.eval(viewer,"$('sbMid').querySelector('.sc').scrollWidth<=$('sbMid').clientWidth"),'Multi-digit scores fit the central cell');await post({scoreHome:2,scoreAway:1});await cdp.until(viewer,'S.scoreHome===2 && S.scoreAway===1');assert.equal(await width(),306);
+      await post({teamHome:'主队足球俱乐部',teamAway:'MNC'});await cdp.until(viewer,"S.teamHome==='主队足球俱乐部'");assert(await width()>306);
+      const lanes=await cdp.eval(viewer,"Array.from(document.querySelectorAll('.sb-side')).map(e=>e.getBoundingClientRect().width)");assert(Math.abs(lanes[0]-lanes[1])<1);assert(await cdp.eval(viewer,"$('sbHome').scrollWidth<=$('sbHome').clientWidth+1"));await scoreShot('broadcast-adaptive-scorebar');
+      await post({teamHome:'A',teamAway:'B'});await cdp.until(viewer,"S.teamHome==='A'");assert.equal(await width(),306,'Short names return to the three-letter base');
+      await post({sb_logos_show:true,teamHome:'LIV',teamAway:'MNC'});await cdp.until(viewer,'S.sb_logos_show===true');assert.equal(await width(),650);await scoreShot('broadcast-logo-scorebar');await post({sb_logos_show:false});await cdp.until(viewer,'S.sb_logos_show===false');
+      const preview=await cdp.page(server.base+'/control/preview.html');await cdp.send('Page.bringToFront',{},preview);await cdp.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false},preview);
+      const child="$('frame').contentWindow",api=child+'.FBPEditor';await cdp.until(preview,"$('layoutElement').options.length===10 && "+child+".S.sb_logos_show===false");
+      assert.equal(await cdp.eval(viewer,"!!$('layoutGuides')"),false,'No guides exist on air');assert.equal(await cdp.eval(preview,"getComputedStyle($('frame').contentDocument.getElementById('editbar')).display"),'none','Preview controls are outside the scaled canvas');
+      const readonly=fs.readFileSync(file,'utf8');
+      async function setting(id,value){await cdp.eval(preview,`$('${id}').value=${JSON.stringify(value)};$('${id}').dispatchEvent(new Event('change',{bubbles:true}));`);}
+      await setting('previewRatio','4:3');assert.deepEqual(await cdp.eval(preview,api+'.snapshot().frame'),{x:240,y:0,width:1440,height:1080});
+      await setting('previewRatio','9:16');assert.equal(await cdp.eval(preview,api+'.snapshot().frame.width'),607.5);assert.equal(await cdp.eval(preview,"$('frame').contentDocument.body.offsetWidth"),1920);
+      await setting('previewRatio','custom');await setting('ratioW','3');await setting('ratioH','2');assert.equal(await cdp.eval(preview,api+'.snapshot().frame.width'),1620);
+      await cdp.eval(preview,"$('safetyGuides').click()");assert.equal(await cdp.eval(preview,"getComputedStyle($('frame').contentDocument.querySelector('.guide-title')).display"),'none');await cdp.eval(preview,"$('safetyGuides').click()");
+      await cdp.eval(preview,"$('layoutLayers').querySelector('input[aria-label=\"在预览中显示比分条\"]').click()");assert.equal(await cdp.eval(preview,"getComputedStyle($('frame').contentDocument.getElementById('sb')).display"),'none');assert.equal(await cdp.eval(viewer,"getComputedStyle($('sb')).display"),'block');assert.equal(stored().scoreboard_show,true);
+      await setting('layoutElement','sb');await cdp.until(preview,api+".snapshot().selected==='sb'");await cdp.eval(preview,"$('isolateLayer').click()");assert.equal(await cdp.eval(preview,"$('frame').contentDocument.querySelectorAll('.pos:not(.editor-hidden)').length"),1);assert.equal(await cdp.eval(viewer,"$('clk').classList.contains('on')"),true);
+      await cdp.eval(preview,"$('restoreLayers').click()");assert.equal(await cdp.eval(preview,"$('frame').contentDocument.querySelectorAll('.editor-hidden').length"),0);
+      await cdp.eval(preview,"$('layoutLayers').querySelector('input[aria-label=\"在预览中显示红黄牌\"]').click()");await cdp.send('Page.reload',{},preview);await cdp.until(preview,"$('layoutElement').options.length===10 && $('previewRatio').value==='custom'");assert.equal(await cdp.eval(preview,"$('frame').contentDocument.getElementById('card').classList.contains('editor-hidden')"),true);assert.equal(fs.readFileSync(file,'utf8'),readonly,'Guides, aspect and temporary visibility do not write broadcast data');
+      await setting('layoutElement','sb');await cdp.eval(preview,"$('layoutX').value='1123';$('layoutY').value='267';$('applyPosition').click()");await cdp.until(preview,child+'.S.sb_pos.x===1123 && '+child+'.S.sb_pos.y===267');await cdp.until(viewer,"$('sb').style.left==='1123px'");
+      await setting('previewRatio','4:3');await setting('alignReference','title');
+      for(const [direction,axis,expected] of [['left','x',465],['center','x',960],['right','x',1455],['top','y',110],['middle','y',540],['bottom','y',970]]){
+        await cdp.eval(preview,`document.querySelector('[data-align="${direction}"]').click()`);await cdp.until(preview,`${child}.S.sb_pos.${axis}===${expected}`);
+      }
+      await cdp.eval(preview,"$('layoutScale').value='1.25';$('layoutScale').dispatchEvent(new Event('input',{bubbles:true}));$('layoutScale').dispatchEvent(new Event('change',{bubbles:true}));");await cdp.until(preview,child+'.S.sb_scale===1.25');await cdp.eval(preview,"$('resetLayerScale').click()");await cdp.until(preview,child+'.S.sb_scale===1');
+      await cdp.eval(preview,"$('layoutX').value='800';$('layoutY').value='300';$('applyPosition').click();$('isolateLayer').click()");await cdp.until(preview,child+'.S.sb_pos.x===800 && '+child+'.S.sb_pos.y===300');
+      await setting('gridStep','40');await cdp.eval(preview,"$('snapGrid').click()");
+      async function drag(dx,dy,snap){
+        const point=await cdp.eval(preview,"(()=>{var f=$('frame'),scale=f.getBoundingClientRect().width/1920,r=f.contentDocument.getElementById('sb').getBoundingClientRect(),p=f.getBoundingClientRect();return {x:p.left+(r.left+20)*scale,y:p.top+(r.top+29)*scale,scale:scale};})()");
+        await cdp.send('Input.dispatchMouseEvent',{type:'mousePressed',x:point.x,y:point.y,button:'left',buttons:1,clickCount:1},preview);assert.equal(await cdp.eval(preview,child+".document.getElementById('layoutGuides').classList.contains('show-grid')"),true);
+        await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:point.x+dx*point.scale,y:point.y+dy*point.scale,button:'left',buttons:1},preview);
+        const current=await cdp.eval(preview,api+'.snapshot()');await delay(250);assert.equal(await cdp.eval(preview,child+'.DRAG.sb'),true);assert.equal(await cdp.eval(preview,api+'.snapshot().x'),current.x,'Polling cannot overwrite the drag');
+        await cdp.send('Input.dispatchMouseEvent',{type:'mouseReleased',x:point.x+dx*point.scale,y:point.y+dy*point.scale,button:'left',buttons:0,clickCount:1},preview);
+        try{await cdp.until(preview,child+'.S.sb_pos.x==='+Math.round(current.x)+' && !'+child+'.DRAG.sb && !'+child+'.PENDING.sb');}
+        catch(error){console.error('Drag diagnostic',kind,JSON.stringify({point,current,stored:stored().sb_pos,editor:await cdp.eval(preview,`(()=>{var w=${child};return {snapshot:w.FBPEditor.snapshot(),drag:w.DRAG,pending:w.PENDING,state:w.S.sb_pos};})()`),errors:cdp.events.filter(e=>e.method==='Runtime.exceptionThrown'||e.method==='Network.loadingFailed').slice(-5)}));throw error;}
+        return stored().sb_pos;
+      }
+      assert.deepEqual(await drag(33,17,true),{x:840,y:320},'Scaled iframe pointer drag snaps to the visible grid');await cdp.eval(preview,"$('snapGrid').click()");assert.deepEqual(await drag(3,7,false),{x:843,y:327});
+      await cdp.eval(preview,"$('restoreLayers').click()");await setting('layoutElement','lineup');await cdp.eval(preview,"$('layoutX').value='1111';$('layoutY').value='666';$('applyPosition').click()");await cdp.until(preview,child+'.S.lineup_all_pos && '+child+'.S.lineup_all_pos.x===1111');assert.deepEqual(stored().lineup_pos,{x:653,y:518});
+      await post({lineup_mode:'single'});await cdp.until(preview,child+".S.lineup_mode==='single'");await cdp.eval(preview,"$('layoutX').value='1010';$('layoutY').value='600';$('applyPosition').click()");await cdp.until(preview,child+'.S.lineup_pos.x===1010');assert.equal(stored().lineup_all_pos.x,1111);
+      await setting('layoutElement','sb');const before=fs.readFileSync(file,'utf8');await cdp.eval(preview,`(()=>{var w=${child};w.originalFetch=w.fetch;w.fetch=function(url,opt){if(opt&&opt.method==='POST')return Promise.resolve(new w.Response(JSON.stringify({ok:false,error:'test failure'}),{status:500,headers:{'Content-Type':'application/json'}}));return w.originalFetch(url,opt);};return w.FBPEditor.position(450,250);})()`);assert.equal(fs.readFileSync(file,'utf8'),before);assert.equal(await cdp.eval(preview,api+'.snapshot().x'),843);assert(await cdp.eval(preview,child+".document.getElementById('saveStatus').textContent.includes('保存失败')"));await cdp.eval(preview,child+'.fetch='+child+'.originalFetch');
+      await post({lineup_mode:'all'});await cdp.until(preview,child+".S.lineup_mode==='all'");await cdp.eval(preview,"$('layoutX').value='750';$('layoutY').value='120';$('applyPosition').click()");await cdp.until(preview,child+'.S.sb_pos.x===750');
+      if(kind==='node'){
+        await cdp.eval(preview,"$('showGrid').click();$('isolateLayer').click()");const shot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},preview);fs.writeFileSync(path.join(out,'preview-layout-tools.png'),Buffer.from(shot.data,'base64'));
+        await cdp.eval(preview,"$('layoutInspector').scrollTop=$('layoutInspector').scrollHeight");const visibilityShot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},preview);fs.writeFileSync(path.join(out,'preview-layer-visibility.png'),Buffer.from(visibilityShot.data,'base64'));
+        for(const size of [390,320]){await cdp.send('Emulation.setDeviceMetricsOverride',{width:size,height:900,deviceScaleFactor:1,mobile:false},preview);await delay(100);assert(await cdp.eval(preview,"$('layoutInspector').getBoundingClientRect().right<=innerWidth+1"));await cdp.eval(preview,"FBPPreviewTools.toggle()");assert(await cdp.eval(preview,"$('player').clientWidth>0"));await cdp.eval(preview,"FBPPreviewTools.toggle()");}
+      }
+      await cdp.eval(preview,"select(TEMPLATES.findIndex(t=>t.key==='scoreboard'))");await cdp.until(preview,child+".ONLY==='sb' && "+child+".EDIT && $('layoutLayers').children.length===1");
+      for(const asset of ['/titles/editor-tools.js','/titles/editor-tools.css','/control/preview-tools.js','/control/preview-tools.css']){const r=await fetch(server.base+asset);assert.equal(r.status,200);await r.arrayBuffer();}
+      const targets=await cdp.send('Target.getTargets');for(const t of targets.targetInfos.filter(t=>t.type==='page'&&t.url.startsWith(server.base+'/')))await cdp.send('Target.closeTarget',{targetId:t.targetId});await stop(server.child);server=null;
+      server=await startServer(kind,file);bases.push(server.base);const restart=await fetch(server.base+'/state.json');assert.equal((await restart.json()).sb_logos_show,false);await stop(server.child);server=null;
+      console.log('PASS '+kind+' adaptive scorebar, saved crest switch, aspect/safety frame, local visibility, scaled pointer snap, exact coordinates, six alignments, slider, lineup layout profiles, failed-save rollback and restart');
+    }
+    assert.equal(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown').length,0);assert.equal(cdp.events.filter(e=>e.method==='Network.requestWillBeSent'&&/^https?:/.test(e.params.request.url)&&!bases.some(base=>e.params.request.url.startsWith(base+'/'))).length,0);
+  }catch(error){console.error('FAIL layout workflow:',error);throw error;}finally{
+    if(cdp){await cdp.send('Browser.close').catch(()=>{});cdp.ws.close();}if(browser&&browser.exitCode===null){await delay(300);if(browser.exitCode===null)await stop(browser);}if(server)await stop(server.child);
+    if(path.dirname(path.resolve(temp))!==path.resolve(os.tmpdir())||!path.basename(temp).startsWith('fbp-layout-tools-'))throw Error('Unsafe cleanup');await delay(500);fs.rmSync(temp,{recursive:true,force:true,maxRetries:20,retryDelay:300});
+  }
+}
+main().catch(e=>{console.error(e);process.exitCode=1;});

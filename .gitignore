@@ -1,0 +1,16 @@
+# Runtime state is local and may contain team, player, logo and match data.
+control/state.json
+control/server-runtime*.log
+control/*.log
+
+# Portable binaries and build-only dependencies are distributed via Releases.
+dist/
+packaging/cache/
+node_modules/
+desktop/seed-state.json
+
+# Temporary files and editor profiles.
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
