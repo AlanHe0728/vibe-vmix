@@ -43,6 +43,7 @@ for(const file of ['main.js','portable-data.js'])fs.copyFileSync(path.join(root,
 fs.copyFileSync(path.join(root,'desktop','package.json'),path.join(production,'package.json'));
 fs.cpSync(path.join(__dirname,'licenses'),path.join(output,'LICENSES'),{recursive:true});
 fs.copyFileSync(path.join(root,'docs','MICROKIT_LICENSE.txt'),path.join(output,'LICENSES','MicroKit-MIT.txt'));
+if(fs.existsSync(path.join(root,'LICENSE')))fs.copyFileSync(path.join(root,'LICENSE'),path.join(output,'LICENSES','Project-LICENSE.txt'));
 makeIcon(path.join(production,'desktop','icon.ico'));
 const preferredState=path.join(root,'control','state.json');
 const exampleState=path.join(root,'control','state.example.json');
@@ -93,6 +94,7 @@ const instructions=[
   '画面设置：皮肤、颜色、动画、队徽、角标、背景和自定义字体，素材随数据保存。',
   '预览与布局：拖动缩放、精确坐标、安全框、比例、对齐、网格吸附和仅预览隐藏。','',
   '版权说明：内置 Electron/Chromium、Motion、SheetJS 的许可随软件保留。',
+  '对应版本源码与更新说明：https://gitee.com/alanhe0728/vibe-vmix/tree/v'+appVersion,
   '运行问题记录在 data\\desktop-error.log；数据格式损坏时软件会提示，不会清空已有数据。',''
 ].join('\r\n');
 fs.writeFileSync(path.join(output,'先读我-使用说明.txt'),'\uFEFF'+instructions,'utf8');

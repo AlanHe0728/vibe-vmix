@@ -30,6 +30,8 @@ Windows 10/11 x64 的完整文件夹应用，内置 Electron 44.7.0 的 Chromium
 
 1.0.2 增加控台顶部常驻时钟、服务端自动半场/休息/终场切换、名单底部总名单首发勾选，并修正球员信息条默认标题。自动切换默认关闭，保持软件运行时由内置服务执行；关闭主窗口时暂停时钟并取消待自动开始的休息计时。
 
+1.1.0 将此前本地迭代统一公开发行，更新纯白控台、事件三按钮、总名单编辑、GK/队长修改与预览工具风格。正式包仅包含原版 `control/` 与 `titles/`，不含实验中的 `v2/`。采用“大版本.小版本.补丁”三位版本号，后续修复使用 1.1.x。
+
 发布文件仅包括生产页面与素材、桌面入口、数据快照和内置运行环境；不携带测试脚本、测试图片、旧服务器日志、Node/PowerShell 启动脚本、MicroKit dev 项目或下载缓存。Electron/Chromium 的许可来自官方运行包；Motion、SheetJS 和适配 MicroKit 的许可证保存在发布目录 `LICENSES`。EXE 设置了专属足球图标和版本信息；本次构建未配置商业代码签名。
 
 框架分发方式依据 [Electron 官方手动分发文档](https://www.electronjs.org/docs/latest/tutorial/application-distribution)，运行环境来自 [Electron 44.7.0 官方发布](https://github.com/electron/electron/releases/tag/v44.7.0)。页面使用沙箱、上下文隔离并禁用 renderer Node；外部链接仅允许已提供的官方说明站点，依据 [Electron 安全文档](https://www.electronjs.org/docs/latest/tutorial/security)。
