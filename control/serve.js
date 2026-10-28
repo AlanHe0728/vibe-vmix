@@ -4,6 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const clocks = require('./clock-state');
 const d200 = require('./d200');
+const timing = require('./match-timing');
 // Both the legacy CLI and the portable desktop app use this exact server.
 // Importing the module must not open a port or a browser.
 function createServer(options = {}) {
@@ -33,6 +34,11 @@ function commit(next) {
   }
   state = next; cacheState();
 }
+let autoSaveFailed=false;
+function advanceMatch(){
+  try{const next=timing.advance(state);if(next)commit(next);autoSaveFailed=false;}
+  catch(error){if(!autoSaveFailed)console.error('Automatic match timing save failed:',error.message);autoSaveFailed=true;}
+}
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');
@@ -53,6 +59,7 @@ const server = http.createServer((req,res) => {
   try { p = decodeURIComponent(new URL(req.url,'http://localhost').pathname); }
   catch (_) { return json(res,{ok:false,error:'invalid URL'},400); }
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+  if(p==='/state.json'||p==='/state'||p.startsWith('/api/d200/'))advanceMatch();
   if(p.startsWith('/api/d200/')){
     res.setHeader('Cache-Control','no-store');
     if(p==='/api/d200/actions' || p==='/api/d200/status'){
@@ -116,10 +123,14 @@ const server = http.createServer((req,res) => {
 });
 server.pauseClocks = () => {
   const patch = {};
+  if(state.match_break_until>0)patch.match_timing_suspend=true;
   if (state.sb_clock_state.running) patch.sb_clockcmd = 'pause';
   if (state.clock_state.running) patch.clock_cmd = 'pause';
   if (Object.keys(patch).length) commit(clocks.merge(state,patch));
 };
+let autoTimer;
+server.on('listening',()=>{autoTimer=setInterval(advanceMatch,200);autoTimer.unref();});
+server.on('close',()=>clearInterval(autoTimer));
 return server;
 }
 module.exports = {createServer};

@@ -30,7 +30,7 @@ function patchFor(id,state) {
     default: throw new Error('unknown action type');
   }
 }
-function controls(state){return {status:state.status||'running',restart_type:state.restart_type||'',card_type:state.card_type||'',scoreboard_show:truthy(state.scoreboard_show??true),clock_show:truthy(state.clock_show),lineup_show:truthy(state.lineup_show),logo_show:truthy(state.logo_show),lineup:state.lineup_mode==='single'?(state.lineup_active||'xiH'):'all',sb_clockrun:!!state.sb_clock_state.running,clock_run:!!state.clock_state.running};}
+function controls(state){return {timing_version:1,period:state.period||'上半场',match_timing:require('./match-timing').settings(state.match_timing),match_break_until:state.match_break_until||0,match_clock:state.sb_clock_state,status:state.status||'running',restart_type:state.restart_type||'',card_type:state.card_type||'',scoreboard_show:truthy(state.scoreboard_show??true),clock_show:truthy(state.clock_show),lineup_show:truthy(state.lineup_show),logo_show:truthy(state.logo_show),lineup:state.lineup_mode==='single'?(state.lineup_active||'xiH'):'all',sb_clockrun:!!state.sb_clock_state.running,clock_run:!!state.clock_state.running};}
 function status(state,now=Date.now()) {
   const visible={scoreboard:truthy(state.scoreboard_show ?? true),clock:truthy(state.clock_show),lineup:truthy(state.lineup_show),logo:truthy(state.logo_show)};
   const status={ok:true,onfield:{home:onfield(state,'home'),away:onfield(state,'away')},score:{home:score(state.scoreHome),away:score(state.scoreAway)},

@@ -1,0 +1,65 @@
+// Independent V2 services, batch substitution transaction, real browser and V1 preservation.
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),net=require('node:net'),assert=require('node:assert/strict'),crypto=require('node:crypto'),{spawn}=require('node:child_process'),{once}=require('node:events');
+const {CDP}=require('./browser'),{stop,delay}=require('./regression');
+const project=path.resolve(__dirname,'..'),root=path.join(project,'v2'),{migrate,merge}=require('../v2/control/clock-state');
+const id=n=>'home|'+n+'|球员'+n;
+const crest=c=>'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56"><path fill="'+c+'" d="M4 4h40v28L24 52 4 32Z"/><path fill="white" d="M18 12h12v25H18Z"/></svg>');
+function fixture(){return {teamHome:'海港竞技',teamAway:'北城联队',colorHome:'#222b52',colorAway:'#85b5dc',homeLogo:crest('#222b52'),awayLogo:crest('#85b5dc'),scoreHome:2,scoreAway:1,status:'running',period:'下半场',sb_clockacc:4823000,scoreboard_show:true,sb_logos_show:false,lineup_mode:'all',lineup_show:false,xiH_players:Array.from({length:11},(_,i)=>(i+1)+' 球员'+(i+1)+(i===0?' (GK)':i===7?' (C)':'')).join('\n'),xiA_players:Array.from({length:11},(_,i)=>(i+1)+' 客队球员'+(i+1)+(i===0?' (GK)':'')).join('\n'),subH_players:Array.from({length:17},(_,i)=>(i+12)+' 球员'+(i+12)).join('\n'),subA_players:'12 客替补一\n13 客替补二\n14 客替补三',goal_team:'海港竞技',goal_name:'球员10',goal_num:'10',goal_trigger:'goal',goal_tick:10,card_name:'球员8',card_num:'8',card_team:'海港竞技',card_type:'yellow',card_trigger:'yellow',card_tick:10,player_team:'海港竞技',player_name:'球员10',player_num:'10',player_title:'球员信息',player_tick:10,clock_show:false,clock_mm:15,clock_mode:'down',clock_label:'中场休息',clock_sub:'',sub_tick:10,hold_sub:15,hold_goal:15,hold_card:15,hold_ply:15,hold_rst:15};}
+async function start(kind,file){const socket=net.createServer();socket.listen(0);await once(socket,'listening');const port=socket.address().port;await new Promise(r=>socket.close(r));const child=spawn(kind==='node'?process.execPath:'powershell',kind==='node'?[path.join(root,'control/serve.js')]:['-NoProfile','-ExecutionPolicy','Bypass','-File',path.join(root,'control/serve.ps1')],{cwd:root,windowsHide:true,env:{...process.env,PORT:String(port),FBP_NO_BROWSER:'1',FBP_STATE_FILE:file}});let output='';child.stdout.on('data',b=>output+=b);child.stderr.on('data',b=>output+=b);const base='http://localhost:'+port;for(let i=0;i<100;i++){if(child.exitCode!==null)throw Error(output);try{const r=await fetch(base+'/state.json');if(r.ok){await r.text();return {base,child};}}catch(_){}await delay(100);}await stop(child);throw Error(output);}
+async function main(){
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fbp-v2-')),profile=path.join(temp,'edge'),out=path.join(project,'.impeccable/review/v2');fs.mkdirSync(out,{recursive:true});
+ const real=path.join(project,'control/state.json'),original=fs.existsSync(real)?fs.readFileSync(real):null,snapshot={};
+ function remember(directory){for(const item of fs.readdirSync(directory,{withFileTypes:true})){const file=path.join(directory,item.name);if(item.isDirectory())remember(file);else if(item.isFile()&&file!==real&&!/\.(log|tmp)$/i.test(file))snapshot[path.relative(project,file)]=crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');}}
+ remember(path.join(project,'control'));remember(path.join(project,'titles'));
+ let server,browser,cdp;
+ try{
+  const initial=migrate(fixture()),batch=[{off_id:id(1),on_id:id(12)},{off_id:id(2),on_id:id(13)},{off_id:id(3),on_id:id(14)}];
+  const swapped=merge(initial,{sub_side:'home',sub_batch:batch,sub_trigger:'show',sub_tick:1});assert.deepEqual(swapped.onfield_home.slice(0,3),[id(12),id(13),id(14)]);assert.equal(swapped.sub_batch[2].on_name,'球员14');assert.deepEqual(initial.onfield_home.slice(0,3),[id(1),id(2),id(3)]);
+  assert.deepEqual(merge(initial,{sub_side:'home',sub_batch:Array.from({length:11},(_,i)=>({off_id:id(i+1),on_id:id(i+12)})),sub_trigger:'show',sub_tick:1}).onfield_home,Array.from({length:11},(_,i)=>id(i+12)));
+  assert.throws(()=>merge(initial,{sub_side:'home',sub_batch:[batch[0],{off_id:id(2),on_id:id(12)}],sub_trigger:'show',sub_tick:1}),/重复/);
+  assert.throws(()=>merge(initial,{sub_side:'home',sub_batch:[batch[0],{off_id:id(2),on_id:id(3)}],sub_trigger:'show',sub_tick:1}),/无效/);
+  console.log('PASS V2 batch unit validation and immutable failure');
+  browser=spawn('C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',['--headless=new','--window-size=1920,1080','--no-first-run','--disable-extensions','--disable-background-networking','--disable-background-timer-throttling','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{windowsHide:true,stdio:'ignore'});
+  const active=path.join(profile,'DevToolsActivePort');for(let i=0;i<100&&!fs.existsSync(active);i++)await delay(100);const [port,endpoint]=fs.readFileSync(active,'utf8').trim().split(/\r?\n/),ws=new WebSocket('ws://127.0.0.1:'+port+endpoint);await new Promise(r=>ws.addEventListener('open',r,{once:true}));cdp=new CDP(ws);
+  for(const kind of ['node','powershell']){
+   const file=path.join(temp,kind+'.json');fs.writeFileSync(file,JSON.stringify(fixture()));server=await start(kind,file);
+   const state=()=>JSON.parse(fs.readFileSync(file,'utf8'));
+   const post=async(p,status=200)=>{const r=await fetch(server.base+'/state.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});assert.equal(r.status,status,await r.clone().text());return r.json();};
+   assert.equal((await (await fetch(server.base+'/version.json')).json()).version,2);
+   const viewer=await cdp.page(server.base+'/titles/graphics.html');await cdp.until(viewer,"window.FBPPremier&&S.teamHome==='海港竞技'");await cdp.eval(viewer,'document.fonts.ready');await delay(600);
+   const panel=await cdp.page(server.base+'/control/panel.html');await cdp.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false},panel);await cdp.until(panel,"window.FBPBatchSub&&$('sub_off_player').options.length===12");
+   async function click(selector){await cdp.eval(panel,`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'center'})`);const point=await cdp.eval(panel,`(()=>{var e=document.querySelector(${JSON.stringify(selector)}),r=e.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;if(!e.contains(document.elementFromPoint(x,y)))throw Error('Obscured '+${JSON.stringify(selector)});return{x,y}})()`);for(const type of ['mousePressed','mouseReleased'])await cdp.send('Input.dispatchMouseEvent',{type,...point,button:'left',buttons:type==='mousePressed'?1:0,clickCount:1},panel);}
+   await click('#task-sub');await delay(120);
+   await cdp.eval(panel,`$('sub_off_player').value=${JSON.stringify(id(1))};$('sub_off_player').dispatchEvent(new Event('change'));$('sub_on_player').value=${JSON.stringify(id(12))};$('sub_on_player').dispatchEvent(new Event('change'));`);
+   await click('#addSubPair');await click('#addSubPair');
+   await cdp.eval(panel,`document.querySelectorAll('.sub-batch-pair').forEach((r,i)=>{var s=r.querySelectorAll('select');s[0].value=['${id(2)}','${id(3)}'][i];s[1].value=['${id(13)}','${id(14)}'][i];});`);
+   await click('#event-sub .event-actions button:nth-child(2)');await cdp.eval(panel,'WRITE_QUEUE');assert.equal(state().sub_batch.length,3);assert.deepEqual(state().onfield_home.slice(0,3),[id(1),id(2),id(3)]);assert.equal(state().sub_tick,10);
+   await cdp.send('Page.reload',{},panel);await cdp.until(panel,"window.FBPBatchSub&&document.querySelectorAll('.sub-batch-pair').length===2&&$('sub_off_player').value!==''");await click('#task-sub');await delay(100);
+   await click('#event-sub .event-actions button:nth-child(3)');await cdp.eval(panel,'WRITE_QUEUE');assert.deepEqual(state().onfield_home.slice(0,3),[id(12),id(13),id(14)]);await cdp.until(viewer,"$('sub').classList.contains('on')&&document.querySelectorAll('.swap-pair').length===3");await delay(900);
+   assert.deepEqual(await cdp.eval(viewer,"Array.from(document.querySelectorAll('.swap-pair .swap-name')).map(e=>e.textContent)"),['球员1','球员12','球员2','球员13','球员3','球员14']);
+   const before=fs.readFileSync(file,'utf8');await post({sub_batch:[{off_id:id(4),on_id:id(15)},{off_id:id(5),on_id:id(15)}],sub_side:'home',sub_trigger:'show',sub_tick:1},400);assert.equal(fs.readFileSync(file,'utf8'),before,'Invalid whole batch is not committed');
+   fs.mkdirSync(file+'.tmp');await post({sub_batch:[{off_id:id(4),on_id:id(15)}],sub_side:'home',sub_trigger:'show',sub_tick:1},500);assert.equal(fs.readFileSync(file,'utf8'),before,'Disk failure does not commit any player');fs.rmdirSync(file+'.tmp');
+   await post({sub_batch:[{off_id:id(4),on_id:id(15)}],sub_side:'home',sub_trigger:'show',sub_tick:1});assert.equal(state().onfield_home[3],id(15));
+   await post({sub_batch:[{off_id:id(5),on_id:id(16)},{off_id:id(6),on_id:id(17)},{off_id:id(7),on_id:id(18)}],sub_side:'home',sub_trigger:'show',sub_tick:1});
+   await cdp.until(viewer,"document.querySelectorAll('.swap-pair').length===3&&$('subOffNum').textContent==='5'");
+   if(kind==='node'){
+    async function shot(session,name){await cdp.send('Page.bringToFront',{},session);await delay(250);const result=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},session);fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(result.data,'base64'));}
+    await cdp.send('Emulation.setDefaultBackgroundColorOverride',{color:{r:78,g:94,b:89,a:1}},viewer);await delay(1100);await shot(viewer,'substitutions');
+    await post({clear_events_tick:1,lineup_show:true,lineup_tick:1});await cdp.until(viewer,"$('lineupAll').querySelectorAll('.lu-row').length===42");await delay(1100);await shot(viewer,'lineup');
+    assert(await cdp.eval(viewer,"(()=>{var r=$('lineup').getBoundingClientRect();return r.left>=0&&r.right<=1920&&r.top>=0&&r.bottom<=1080})()"),'Complete roster stays inside broadcast canvas');
+    assert(await cdp.eval(viewer,"$('lineup').getBoundingClientRect().top>$('sbPeriod').getBoundingClientRect().bottom+8"),'Roster clears scoreboard and period');
+    await post({lineup_show:false,goal_tick:1,goal_trigger:'goal'});await cdp.until(viewer,"$('goal').classList.contains('on')");await delay(900);await shot(viewer,'goal');
+    await post({clear_events_tick:1});await delay(400);await shot(viewer,'scoreboard');
+    await post({teamHome:'ABCDEFGHIJKLMNOPQRSTUVWXYZ 很长的球队名称测试',teamAway:'客',scoreHome:12,scoreAway:10});await cdp.until(viewer,"$('sbH').textContent==='12'");assert(await cdp.eval(viewer,"$('sbHome').scrollWidth<=$('sbHome').clientWidth+1"),'Long team name fits adaptive lane');await post({teamHome:'海港竞技',teamAway:'北城联队',scoreHome:2,scoreAway:1});
+    await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]},viewer);await post({card_tick:1,card_trigger:'yellow'});await cdp.until(viewer,"$('card').classList.contains('on')");assert.equal(await cdp.eval(viewer,"getComputedStyle($('card')).clipPath"),'none');await cdp.send('Emulation.setEmulatedMedia',{features:[]},viewer);
+    await cdp.eval(panel,"window.scrollTo(0,0);FBPBatchSub.refresh()");await shot(panel,'console-desktop');for(const width of [390,320]){await cdp.send('Emulation.setDeviceMetricsOverride',{width,height:844,deviceScaleFactor:1,mobile:false},panel);await cdp.eval(panel,'window.scrollTo(0,0)');await delay(120);assert(await cdp.eval(panel,'document.documentElement.scrollWidth<=innerWidth+1'),'No narrow layout overflow');if(width===390)await shot(panel,'console-mobile');}
+    const preview=await cdp.page(server.base+'/control/preview.html');await cdp.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false},preview);await cdp.until(preview,"document.getElementById('frame').contentWindow.FBPPremier&&document.querySelectorAll('.preview-layer').length===9");await cdp.eval(preview,"document.getElementById('frame').contentWindow.FBPEditor.select('lineup');document.getElementById('frame').contentWindow.FBPEditor.isolate()");await delay(400);await shot(preview,'preview');
+   }
+   console.log('PASS '+kind+' V2 saved/execute batch, draft reload, entire-batch rejection, atomic swaps and renderer');await stop(server.child);server=null;
+  }
+  const exceptions=cdp.events.filter(e=>e.method==='Runtime.exceptionThrown');assert.equal(exceptions.length,0,JSON.stringify(exceptions));
+  for(const [file,hash] of Object.entries(snapshot))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(project,file))).digest('hex'),hash,'V1 unchanged: '+file);
+  if(original)assert.deepEqual(fs.readFileSync(real),original);else assert.equal(fs.existsSync(real),false);console.log('PASS original runtime hashes and live match data unchanged; V2 desktop/mobile/preview screenshots: '+out);
+ }finally{if(cdp){await cdp.send('Browser.close').catch(()=>{});cdp.ws.close();}if(browser&&browser.exitCode===null)await stop(browser);if(server)await stop(server.child);}
+}
+main().catch(e=>{console.error(e);process.exitCode=1;});

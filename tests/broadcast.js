@@ -6,16 +6,16 @@ async function main(){
   const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fbp-broadcast-')),profile=path.join(temp,'edge');
   const stateFile=path.join(temp,'state.json'),out=path.resolve(__dirname,'../docs/screenshots');
   fs.mkdirSync(out,{recursive:true});
-  const roster='1 球员甲\n2 球员丁\n3 球员戊\n4 球员己\n5 球员庚\n6 球员辛\n7 球员壬\n8 球员癸\n9 球员12\n10 球员乙 (C)\n11 球员13';
-  fs.writeFileSync(stateFile,JSON.stringify({teamHome:'主队',teamAway:'客队',scoreHome:2,scoreAway:1,scoreboard_show:true,period:'下半场',sb_clockacc:3825000,
+  const roster='1 颜骏凌\n2 蒋光太\n3 朱辰杰\n4 李磊\n5 张琳芃\n6 王上源\n7 武磊\n8 徐新\n9 张玉宁\n10 吴曦 (C)\n11 韦世豪';
+  fs.writeFileSync(stateFile,JSON.stringify({teamHome:'测试队队',teamAway:'北京国安',scoreHome:2,scoreAway:1,scoreboard_show:true,period:'下半场',sb_clockacc:3825000,
     clock_show:true,clock_label:'中场休息',clock_sub:'HALF TIME',clock_mm:15,clock_mode:'down',
-    lineup_show:true,lineup_mode:'single',lineup_active:'xiH',xiH_team:'主队',xiH_players:roster,
-    xiA_team:'客队',xiA_players:roster,subH_team:'主队',subH_players:roster.split('\n').slice(0,7).join('\n'),subA_team:'客队',subA_players:roster.split('\n').slice(0,7).join('\n'),
+    lineup_show:true,lineup_mode:'single',lineup_active:'xiH',xiH_team:'测试队队',xiH_players:roster,
+    xiA_team:'北京国安',xiA_players:roster,subH_team:'测试队队',subH_players:roster.split('\n').slice(0,7).join('\n'),subA_team:'北京国安',subA_players:roster.split('\n').slice(0,7).join('\n'),
     subH_subtitle:'替补球员',subA_subtitle:'替补球员',xiH_subtitle:'首发阵容',xiA_subtitle:'首发阵容',
-    goal_name:'球员乙',goal_num:'10',goal_team:'主队',goal_scoreHome:2,goal_scoreAway:1,
-    card_num:'17',card_name:'球员12',card_team:'客队',card_reason:'犯规',
-    player_num:'10',player_name:'球员乙',player_team:'主队',player_pos:'中场',player_event:'队长',
-    restart_team:'主队',restart_player:'10 球员乙',hold_goal:30,hold_card:30,hold_rst:30,hold_ply:30}));
+    goal_name:'吴曦',goal_num:'10',goal_team:'测试队队',goal_scoreHome:2,goal_scoreAway:1,
+    card_num:'17',card_name:'张玉宁',card_team:'北京国安',card_reason:'犯规',
+    player_num:'10',player_name:'吴曦',player_team:'测试队队',player_pos:'中场',player_event:'队长',
+    restart_team:'测试队队',restart_player:'10 吴曦',hold_goal:30,hold_card:30,hold_rst:30,hold_ply:30}));
   let server,browser,cdp;
   try{
     server=await startServer('node',stateFile);
@@ -27,7 +27,7 @@ async function main(){
     const [port,endpoint]=fs.readFileSync(active,'utf8').trim().split(/\r?\n/);
     const ws=new WebSocket('ws://127.0.0.1:'+port+endpoint);await new Promise((res,rej)=>{ws.addEventListener('open',res,{once:true});ws.addEventListener('error',rej,{once:true});});
     cdp=new CDP(ws);const page=await cdp.page(server.base+'/titles/graphics.html');
-    await cdp.until(page,"S.teamHome==='主队' && $('lineupList').children.length===11");
+    await cdp.until(page,"S.teamHome==='测试队队' && $('lineupList').children.length===11");
     const snapshot=fs.readFileSync(stateFile,'utf8');
     assert.equal(await cdp.eval(page,'getComputedStyle(document.body).backgroundColor'),'rgba(0, 0, 0, 0)','Broadcast background stays transparent');
     assert.equal(await cdp.eval(page,"getComputedStyle(document.querySelector('.sb-bar')).backgroundColor"),'rgb(247, 249, 249)','Scoreboard has a neutral data surface');
@@ -65,7 +65,7 @@ async function main(){
     }
     for(const key of ['xiH','xiA','subH','subA']){
       await cdp.eval(page,`S.lineup_active='${key}';luApply();`);
-      assert.equal(await cdp.eval(page,"$('lineupTeam').textContent"),key.endsWith('H')?'主队':'客队');
+      assert.equal(await cdp.eval(page,"$('lineupTeam').textContent"),key.endsWith('H')?'测试队队':'北京国安');
       assert.equal(await cdp.eval(page,"$('lineupRailTitle').textContent"),key.startsWith('sub')?'替补球员':'首发阵容','Horizontal subtitle tracks the active roster');
       const captured=await cdp.eval(page,"window.savedRow=$('lineupList').firstChild;luApply();savedRow===$('lineupList').firstChild");
       assert(captured,'Repeated polling must preserve lineup DOM');
@@ -82,7 +82,7 @@ async function main(){
     await cdp.eval(page,"S.xiH_players=Array.from({length:26},(_,i)=>(i+1)+' 球员姓名').join(String.fromCharCode(10));luApply()");
     const geometry=await cdp.eval(page,"(()=>{var panel=$('lineup').getBoundingClientRect();return Array.from($('lineupList').children).map(row=>{var r=row.getBoundingClientRect();return r.top>=panel.top&&r.bottom<=panel.bottom&&r.left>=panel.left&&r.right<=panel.right;});})()");
     assert.equal(geometry.length,26);assert(geometry.every(Boolean),'All roster rows must fit within the plate');
-    await cdp.eval(page,"S.xiH_players='1 球员甲'+String.fromCharCode(10)+'2 球员己';S.xiH_subtitle='客队全体球员候补轮换名单测试';luApply()");
+    await cdp.eval(page,"S.xiH_players='1 颜骏凌'+String.fromCharCode(10)+'2 李磊';S.xiH_subtitle='客队全体球员候补轮换名单测试';luApply()");
     assert(await cdp.eval(page,"$('lineup').getBoundingClientRect().height<380"),'Long subtitle must not stretch a short roster off-screen');
     await cdp.eval(page,"S.theme_skin='glass';S.theme_accent='#FFFFFF';applyTheme()");
     assert.equal(await cdp.eval(page,"getComputedStyle(document.querySelector('.sb-mid')).backgroundImage"),'none','Existing white accent must not recolor the score cell');
@@ -97,7 +97,7 @@ async function main(){
     assert.equal(await cdp.eval(page,"getComputedStyle($('sb')).transitionDuration"),'0s');
     for(const [file,id] of Object.entries({scoreboard:'sb',clock:'clk',restart:'rst',card:'card',player:'ply',goal:'goal',lineup:'lineup'})){
       const legacy=await cdp.page(server.base+'/titles/'+file+'.html?state='+encodeURIComponent(server.base+'/state.json'));
-      await cdp.until(legacy,`typeof S!=='undefined' && S.teamHome==='主队'`);
+      await cdp.until(legacy,`typeof S!=='undefined' && S.teamHome==='测试队队'`);
       assert.equal(await cdp.eval(legacy,"new URLSearchParams(location.search).get('only')"),id);
       assert.equal(await cdp.eval(legacy,"STATE_URL"),server.base+'/state.json');
       assert.deepEqual(await cdp.eval(legacy,"Array.from(document.querySelectorAll('#canvas>.pos')).filter(e=>getComputedStyle(e).display!=='none').map(e=>e.id)"),[id]);

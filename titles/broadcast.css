@@ -64,6 +64,7 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:transparent;colo
 .ply-strip{width:3px;background:var(--plyr);flex:none}.ply-num{width:76px;flex:none;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:650;background:#e3eaea}
 .ply-main{flex:1;min-width:0;padding:17px 24px}.ply-name{font-size:28px;font-weight:650;line-height:1.1}
 .ply-meta{display:flex;gap:12px;align-items:center;font-size:17px;color:var(--dim);margin-top:6px;min-width:0}.ply-meta .dot{width:1px;height:14px;background:#a3b2b4;flex:none}
+.ply-meta .dot[hidden]{display:none}
 .ply-ev{display:none;position:absolute;top:0;left:0;width:100%;height:32px;padding:5px 16px;background:var(--band);color:white;font-size:19px;line-height:22px;font-weight:600}.ply-ev.show{display:block}
 .gd{display:flex;flex-direction:column;width:650px;min-height:112px}
 .gd-word{height:32px;display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--band);color:white;font-size:19px;font-weight:600}
@@ -80,7 +81,7 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:transparent;colo
 .lu-row{display:flex;gap:16px;align-items:center;min-width:0;height:42px;padding:0 8px 0 0;border-bottom:1px solid var(--line);opacity:1}.lu-row:last-child{border-bottom:0}
 .lu-rn{flex:none;width:44px;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:650;color:var(--ink);background:#e3eaea}.lu-rn.no-num{color:var(--dim)}
 .lu-name{flex:1;min-width:0;font-size:22px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lu-cap{display:none;flex:none;font-size:11px;font-weight:500;line-height:18px;color:var(--dim);border:1px solid #adbabb;padding:0 5px}.lu-cap.show{display:block}
+.lu-badges{display:flex;align-items:center;gap:4px;flex:none}.lu-cap,.lu-gk{flex:none;font-size:11px;font-weight:500;line-height:18px;color:var(--dim);border:1px solid #adbabb;padding:0 5px}.lu-cap{display:none}.lu-cap.show{display:block}
 /* One complete match roster: symmetrical team columns, starters then substitutes. */
 .lu-all{display:none}.lu.complete{width:1200px}.lu.complete>.lu-panel{display:none}.lu.complete>.lu-all{display:block;background:var(--paper);box-shadow:0 2px 4px #10202520}
 .lu-match-title{height:42px;display:flex;align-items:center;justify-content:center;background:var(--band);color:white;font-size:20px;font-weight:600}

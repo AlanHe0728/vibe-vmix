@@ -18,9 +18,13 @@
   }
   function init(){Object.keys(entries).forEach(function(key){
     var entry=entries[key],input=document.getElementById(entry.input),host=document.createElement('div');host.className='asset-upload';input.before(host);host.appendChild(input);
-    var info=document.createElement('span');info.className='asset-file-info';info.id=entry.input+'Info';info.setAttribute('role','status');host.appendChild(info);input.setAttribute('aria-describedby',info.id);
+    // Native file inputs cannot display a persisted filename. Give the picker
+    // and the saved resource separate elements so their labels never overlap.
+    input.hidden=true;input.classList.add('asset-native-input');
+    var button=document.createElement('button');button.type='button';button.className='btn asset-pick';button.textContent='选择文件';button.setAttribute('aria-label','选择'+entry.label+'文件');button.onclick=function(){input.click();};host.appendChild(button);
+    var info=document.createElement('span');info.className='asset-file-info';info.id=entry.input+'Info';info.setAttribute('role','status');host.appendChild(info);input.setAttribute('aria-describedby',info.id);button.setAttribute('aria-describedby',info.id);
     var preview=document.createElement('div');preview.id=entry.input+'Preview';preview.className='asset-preview';preview.hidden=true;input.closest('.frow').after(preview);
-    if(key!=='font_data'){var img=document.createElement('img');img.alt='已保存'+entry.label;preview.appendChild(img);var note=document.createElement('span');note.textContent='已保存，可重新选择文件替换';preview.appendChild(note);}
+    if(key!=='font_data'){var img=document.createElement('img');img.alt='已保存'+entry.label;preview.appendChild(img);}
     render(key);
   });}
   function hydrate(next){state=Object.assign({},next);Object.keys(entries).forEach(render);}

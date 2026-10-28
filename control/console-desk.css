@@ -1,0 +1,233 @@
+/* Operate surface: one floating command layer, quiet content, explicit actions. */
+body.console-desk{
+  --ink:#202a35;--dim:#52606d;--accent:#1666ad;--focus:#2274b8;
+  --well-fill:rgba(255,255,255,.38);--well-line:rgba(64,81,98,.20);
+  --button-fill:rgba(255,255,255,.16);--button-hover:rgba(255,255,255,.50);
+  --button-shadow:0 2px 4px #213b541c,0 5px 12px #213b5417;
+  --button-shadow-raised:0 3px 6px #213b5421,0 8px 18px #213b541c;
+  --button-shadow-hover:0 4px 8px #213b5426,0 9px 20px #213b5421;
+  --button-shadow-compact:0 1px 3px #213b541f,0 3px 7px #213b5417;
+  --button-shadow-pressed:0 1px 2px #213b5426;
+  --section-line:#c8d0d8;--row-line:#e0e5eb;
+  --chrome-rule-width:min(1056px,calc(100% - 64px));
+  --control-depth:none;--control-blur:none;--glass-tint:none;
+  background:#fff;
+  color:var(--ink);caret-color:var(--accent);
+}
+html:has(body.console-desk){scroll-padding-top:calc(var(--console-chrome-height,200px) + 16px)}
+.console-desk ::selection{background:#b9d7ef;color:#162c40}
+.console-desk button::before{content:none}
+.console-desk .console-chrome{position:sticky;top:0;z-index:20;isolation:isolate;padding-bottom:16px;background:linear-gradient(#fff,#fff) bottom/100% 16px no-repeat;border:0;box-shadow:0 10px 28px #24374b09}
+/* Composite the material behind the controls, never their text. Keeping the
+   sticky content out of a backdrop root prevents dropped text tiles on scroll. */
+.console-desk .console-chrome::before{content:"";position:absolute;inset:0 0 16px;z-index:-1;pointer-events:none;background:rgba(246,249,252,.66);backdrop-filter:blur(24px) saturate(125%);-webkit-backdrop-filter:blur(24px) saturate(125%)}
+/* Keep the rule inside an opaque gutter, so scrolled text cannot paint on it. */
+.console-desk .console-chrome::after{content:"";position:absolute;left:50%;bottom:0;width:var(--chrome-rule-width);height:16px;transform:translateX(-50%);border-top:1px solid var(--section-line);background:#fff;pointer-events:none}
+.console-desk .app-header{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:28px;max-width:1248px;margin:auto;min-height:72px;padding:12px 32px;background:none;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.console-desk .app-header::after{content:"";position:absolute;left:50%;bottom:0;width:var(--chrome-rule-width);height:1px;transform:translateX(-50%);background:var(--row-line);pointer-events:none}
+.console-desk .brand{font-size:15px;font-weight:650;letter-spacing:-.02em;white-space:nowrap}
+.console-desk .header-actions{gap:14px;margin-left:0;flex-wrap:nowrap;justify-self:end}
+.console-desk .connection-status{font-size:11px;gap:6px;white-space:nowrap}
+.console-desk #writeStatus{font-size:11px;max-width:120px}
+.console-desk .desk-notice{max-width:1184px;margin:0 auto;padding:10px 16px 14px;color:#6d3542;font-size:12px;line-height:1.7;overflow-wrap:anywhere}
+.console-desk .desk-notice[hidden]{display:none}
+.console-desk .panel-nav{flex:none;position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:228px;min-width:0;max-width:none;margin:0;padding:3px;border:0;background:rgba(78,100,125,.045);box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.console-desk .panel-nav button{min-height:38px;font-size:13px;padding:6px 12px;color:var(--dim);box-shadow:var(--button-shadow-compact);transition:background-color 140ms ease,box-shadow 140ms ease,transform 100ms ease}
+.console-desk .panel-nav button[aria-selected=true]{color:var(--accent);box-shadow:var(--button-shadow)}
+.console-desk .panel-nav button:hover{box-shadow:var(--button-shadow-hover);background:rgba(255,255,255,.18)}
+.console-desk .tab-indicator{top:3px;bottom:3px;box-shadow:none}
+.console-desk .match-strip{position:relative;top:auto;z-index:auto;display:grid;grid-template-columns:minmax(220px,1fr) minmax(0,1.65fr) minmax(220px,1fr);gap:12px 24px;align-items:center;width:calc(100% - 64px);max-width:1056px;margin:0 auto;padding:18px 0 12px;border:0;border-radius:0;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.console-desk .live-clock-console{gap:14px;justify-content:center;flex-wrap:nowrap}
+.console-desk .match-strip .live-clock{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin:0}
+.console-desk .match-strip #liveClock{font-size:38px;font-weight:650;line-height:1;letter-spacing:-.035em}
+.console-desk .match-strip #liveClockState{font-size:10px;color:var(--dim)}
+.console-desk .live-match{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);justify-content:center;align-items:center;gap:14px;min-width:0;isolation:isolate;transform:translateZ(0)}
+.console-desk .live-team{position:relative;padding:0 12px;font-size:15px;line-height:1.5;font-weight:550}
+.console-desk .live-team:first-child{justify-self:end}.console-desk .live-team:last-child{justify-self:start}
+.console-desk .live-team::before{content:"";position:absolute;left:0;top:50%;width:3px;height:26px;transform:translateY(-50%);background:var(--team-color,#c8102e)}
+.console-desk .live-team:last-child::before{left:auto;right:0;background:var(--team-color,#00529f)}
+.console-desk .score-edit{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:80px;min-height:44px;border:0;border-radius:12px;padding:4px 8px;background:transparent;color:var(--ink);cursor:pointer;box-shadow:var(--button-shadow-compact);transition:background-color 140ms ease,box-shadow 140ms ease,transform 100ms ease}
+.console-desk #liveScore{font-size:30px;line-height:1.2;font-weight:650;letter-spacing:-.03em}
+.console-desk .score-edit:hover,.console-desk .score-edit[aria-expanded=true]{background:rgba(255,255,255,.58);box-shadow:var(--button-shadow)}
+.console-desk .match-strip .quick-actions{grid-column:auto;width:auto;display:flex;gap:8px;justify-content:center;flex-wrap:nowrap;isolation:isolate;transform:translateZ(0)}
+.console-desk .match-strip .quick-actions .btn{min-width:104px;min-height:44px;padding:10px 16px;font-size:12px;font-weight:550}
+.console-desk .match-secondary{grid-column:1/-1;display:flex;justify-content:center;gap:8px;padding-top:2px}
+.console-desk .visibility-actions{display:flex;align-items:center;gap:8px}
+.console-desk .match-secondary .btn{min-height:32px;font-size:11px;padding:5px 10px}
+.console-desk #phaseSettingsButton{display:flex;gap:10px}
+.console-desk #liveMatchStatus{color:var(--dim);font-weight:400}
+.console-desk .btn{border-color:var(--well-line);background:var(--button-fill);background-image:none;box-shadow:var(--button-shadow);backdrop-filter:none;-webkit-backdrop-filter:none;color:var(--dim);font-weight:550;transition:background-color 140ms ease,box-shadow 140ms ease,transform 100ms ease}
+.console-desk .btn:hover{background:var(--button-hover);border-color:rgba(64,81,98,.27);box-shadow:var(--button-shadow-hover)}
+.console-desk .btn:active{transform:scale(.98);background:#fff;color:var(--accent);transition:none}
+.console-desk .btn.primary-action,.console-desk .btn.choice-button[aria-pressed=true]{color:var(--accent);border-color:transparent;background:rgba(255,255,255,.96);box-shadow:var(--button-shadow-raised)}
+.console-desk .btn.primary-action:hover,.console-desk .btn.choice-button[aria-pressed=true]:hover{background:#fff;box-shadow:var(--button-shadow-hover)}
+.console-desk .btn.quiet-button{background:transparent;border-color:transparent;box-shadow:var(--button-shadow-compact)}
+.console-desk .btn.quiet-button:hover,.console-desk .btn.quiet-button[aria-expanded=true]{background:rgba(255,255,255,.48);box-shadow:var(--button-shadow)}
+.console-desk .btn.quiet-button[aria-pressed=true]{color:var(--accent);background:#fff;box-shadow:var(--button-shadow)}
+.console-desk .btn:disabled{opacity:.5;cursor:default;transform:none;box-shadow:none}
+.console-desk .desk-flyout{position:fixed;top:calc(var(--console-chrome-height,200px) + 8px);right:max(16px,calc((100vw - 1184px)/2));z-index:25;display:block;width:min(820px,calc(100vw - 32px));max-height:calc(100dvh - var(--console-chrome-height,200px) - 24px);overflow:auto;scrollbar-width:none;padding:24px;border:0;border-radius:22px;background:rgba(250,252,254,.89);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 12px 48px #24374b25}
+.console-desk .desk-flyout::-webkit-scrollbar{display:none}
+.console-desk .desk-flyout[hidden]{display:none}
+.console-desk .desk-flyout h3{font-size:16px;line-height:1.5;margin-bottom:16px}
+.console-desk .top-clock-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
+.console-desk .compact-flyout{width:min(400px,calc(100vw - 32px))}
+.console-desk #scoreSettings{left:50%;right:auto;transform:translateX(-50%)}
+.console-desk #phaseSettings{left:max(16px,calc((100vw - 1184px)/2));right:auto}
+.console-desk main{max-width:1120px;padding:32px 32px 32px;min-height:calc(100dvh - 240px)}
+.console-desk main>section{scroll-margin-top:calc(var(--console-chrome-height,200px) + 24px)}
+.console-desk .section-heading{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:28px}
+.console-desk .section-heading h2{font-size:23px;font-weight:600;letter-spacing:-.025em}
+.console-desk .section-heading p{font-size:12px;line-height:1.7;color:var(--dim)}
+.console-desk main>section>.section-heading{flex-direction:column;align-items:center;gap:6px;text-align:center}
+.console-desk .event-nav,.console-desk .settings-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
+.console-desk .event-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));max-width:780px;margin:0 auto;padding-bottom:20px;border-bottom:1px solid var(--section-line)}
+.console-desk .settings-nav{justify-content:center;padding-bottom:20px;border-bottom:1px solid var(--section-line)}
+.console-desk .event-nav button,.console-desk .settings-nav button{min-height:44px;padding:10px 18px;border:0;border-radius:999px;background:transparent;color:var(--dim);font-size:13px;font-weight:550;cursor:pointer;box-shadow:var(--button-shadow-compact);transition:background-color 140ms ease,color 140ms ease,box-shadow 140ms ease,transform 100ms ease}
+.console-desk .event-nav button:hover,.console-desk .settings-nav button:hover{background:#ffffff66;box-shadow:var(--button-shadow-hover)}
+.console-desk .event-nav button[aria-selected=true],.console-desk .settings-nav button[aria-selected=true]{background:#fff;color:var(--accent);box-shadow:var(--button-shadow-raised)}
+.console-desk .event-stage{background:rgba(255,255,255,.68);border-radius:22px;padding:32px 40px}
+.console-desk .card{background:none;background-image:none;border:0;border-radius:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:0;min-width:0}
+.console-desk .card::before{display:none}
+.console-desk .event-stage>.card{max-width:780px;margin:0 auto;display:block}
+.console-desk .event-stage>.card[hidden]{display:none}
+.console-desk .card h2{min-height:0;font-size:16px;font-weight:600;margin:0 0 28px;line-height:1.5}
+.console-desk .event-stage .card>h2{display:block;margin-bottom:24px;text-align:center}
+.console-desk .frow{margin-bottom:20px;gap:20px}
+.console-desk .field>label{font-size:12px;font-weight:450;line-height:18px;margin-bottom:8px;color:var(--dim)}
+.console-desk input[type=text],.console-desk input[type=number],.console-desk input[type=search],.console-desk select,.console-desk textarea,.console-desk input[type=file],.console-desk input[type=color],.console-desk .number-control,.console-desk .range-control{background:var(--well-fill);background-image:none;border:1px solid var(--well-line);border-radius:12px;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;color:var(--ink);font-size:14px;caret-color:var(--accent)}
+.console-desk .asset-upload{display:flex;align-items:center;gap:10px;height:44px;padding:4px 10px 4px 4px;border:1px solid var(--well-line);border-radius:12px;background:var(--well-fill)}
+.console-desk .asset-native-input[hidden]{display:none!important}
+.console-desk .asset-upload .asset-pick{flex:none;min-height:34px;padding:4px 12px;font-size:12px;line-height:22px;border-color:var(--well-line);background:#fff}
+.console-desk .asset-file-info{position:static;flex:1;min-width:0;transform:none;font-size:12px;line-height:22px;user-select:text}
+.console-desk .number-control input[type=text]{border:0;background:transparent}
+.console-desk input[type=checkbox]{background:rgba(126,143,159,.14);background-image:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;border-color:var(--well-line)}
+.console-desk input[type=checkbox]::before{background:rgba(255,255,255,.94);box-shadow:0 1px 4px #283b4d20;backdrop-filter:none;-webkit-backdrop-filter:none}
+.console-desk input[type=checkbox]:checked{background:#d9e8f5;border-color:#a3bed7}
+.console-desk input[type=text]:hover,.console-desk select:hover{border-color:#8e9ca9}
+.console-desk select.roster-select.has-value{background:#f2f7fb;color:#245d8a;border-color:#b4ccde}
+.console-desk .field-note{font-size:11px;line-height:1.75;color:var(--dim);margin:8px 0 18px}
+.console-desk .field-note:empty{display:none}
+.console-desk .btns{gap:10px;margin-top:28px;padding-top:24px;border-color:var(--section-line)}
+.console-desk .event-actions{justify-content:center}
+.console-desk .grp{margin:24px 0}
+.console-desk .event-options{margin:24px 0;font-size:12px;border-top:1px solid var(--section-line);padding-top:4px}
+.console-desk .event-options>summary{min-height:44px;display:list-item;align-content:center;cursor:pointer;color:var(--dim);font-size:12px;line-height:1.6;padding:12px 0;list-style-position:inside}
+.console-desk .event-options:not([open]){margin-bottom:0}
+.console-desk .event-options .timing-check{font-size:12px;line-height:1.6}
+.console-desk .card-grid{gap:36px;align-items:start}
+.console-desk .card-header,.console-desk .card-footer{min-height:0!important}
+.console-desk .card-footer{padding-top:20px!important}
+.console-desk .card-body{flex:initial}
+.console-desk .appearance-grid,.console-desk .devices-grid{padding:28px;background:rgba(255,255,255,.68);border-radius:22px}
+.console-desk .appearance-grid .logo-card{padding-top:24px;border-top:1px solid #64788a1c}
+.console-desk .logo-card .upload-grid{grid-template-columns:1fr}
+.console-desk #view-settings>section>.section-heading{display:none}
+.console-desk .preparation-details{padding:0;border:0;border-top:1px solid #64788a26;margin:28px 0}
+.console-desk .preparation-details>summary{min-height:56px;cursor:pointer;font-size:14px;font-weight:550;line-height:1.8;padding:16px 0;list-style-position:inside}
+.console-desk .preparation-details>summary>span{color:var(--dim);font-size:12px;font-weight:400;margin-left:12px}
+.console-desk .team-profiles{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:36px;padding-top:16px}
+.console-desk .team-profile>.grp{margin-bottom:0}
+.console-desk .preparation-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:16px}
+.console-desk .preparation-footer p{margin:0}
+.console-desk .match-config-card{background:rgba(255,255,255,.68);border-radius:20px;padding:24px;gap:8px 20px}
+.console-desk .match-config-card h2{margin-bottom:6px;font-size:15px}
+.console-desk .match-config-card p{font-size:12px}
+.console-desk .match-config-help{display:none}
+.console-desk .match-config-card .btns{gap:8px}
+.console-desk .match-config-card .btn{font-size:12px;padding:8px 12px}
+.console-desk .lineup-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;background:transparent;border:0;border-radius:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:12px 0;margin:24px 0}
+.console-desk .lineup-toolbar strong{font-size:14px}
+.console-desk .lineup-toolbar p{font-size:12px;max-width:50ch}
+.console-desk .lineup-toolbar .btns{padding:0;border:0;gap:8px}
+.console-desk .lineup-toolbar .btn{font-size:12px;padding:8px 12px}
+.console-desk .live-rosters .card{padding:20px 0}
+.console-desk .roster-chips>span{background:rgba(255,255,255,.45);background-image:none}
+.console-desk .lineups-grid{padding:20px 0}
+.console-desk .preset-card{margin:28px 0;border-top:1px solid #64788a26}
+.console-desk .preset-card summary{padding:16px 0}
+.console-desk .preset-content{padding:8px 0 0}
+.console-desk .squad-picker{margin-top:40px;padding-top:32px;border-top:1px solid var(--section-line)}
+.console-desk .squad-grid{position:relative;gap:36px}
+.console-desk .team-profiles::after,.console-desk .squad-grid::after{content:"";position:absolute;left:50%;top:16px;bottom:0;width:1px;background:var(--section-line);pointer-events:none}
+.console-desk .squad-grid::after{top:0}
+.console-desk .squad-card{padding:0}
+.console-desk .squad-card h3{font-size:16px;font-weight:600}
+.console-desk .squad-import{margin:12px 0 16px;border-top:1px solid #64788a1c;border-bottom:1px solid #64788a1c;font-size:12px}
+.console-desk .squad-import>summary{min-height:44px;align-content:center;cursor:pointer;padding:12px 0;list-style-position:inside;color:var(--dim)}
+.console-desk .squad-import-content{display:grid;gap:10px;padding:4px 0 16px}
+.console-desk .squad-import-content>label{font-size:12px;color:var(--dim)}
+.console-desk .squad-import-content>textarea{height:128px;min-height:120px;width:100%;resize:vertical}
+.console-desk .squad-import-content>button{justify-self:start}
+.console-desk .squad-row{border-color:transparent;border-bottom-color:var(--row-line);background:rgba(255,255,255,.45);background-image:none;box-shadow:none;border-radius:12px;padding:0 4px 0 0;gap:0;cursor:default}
+.console-desk .squad-select{display:flex;align-items:center;flex:1;min-width:0;min-height:46px;gap:10px;padding:6px 8px;cursor:pointer}
+.console-desk .squad-role-actions{display:flex;align-items:center;gap:2px;flex:none}
+.console-desk .squad-role-actions .squad-role-toggle{min-width:30px;min-height:32px;padding:4px 5px;border-color:transparent;border-radius:8px;background:transparent;font-size:10px;font-weight:450;line-height:20px}
+.console-desk .squad-role-actions .squad-role-toggle[aria-pressed=true]{color:var(--accent);background:#fff;border-color:#b4ccde}
+.console-desk .squad-role-actions .squad-role-toggle:hover{background:#f2f6fa;border-color:#b4ccde}
+.console-desk .squad-row .squad-delete{flex:none;min-width:48px;min-height:36px;margin:0;padding:6px 10px;border-color:transparent;background:transparent;font-size:11px;font-weight:450;color:var(--dim)}
+.console-desk .squad-row .squad-delete:hover{background:#64788a0d;border-color:#64788a26}
+.console-desk .squad-tools>[hidden],.console-desk .squad-add-form[hidden],.console-desk .squad-edit-status[hidden]{display:none}
+.console-desk .squad-add-form{display:grid;gap:14px;padding:16px;margin:0 0 16px;border-radius:12px;background:#f7f9fb}
+.console-desk .squad-add-fields{display:grid;grid-template-columns:72px minmax(0,1.4fr) minmax(0,1fr);gap:12px}
+.console-desk .squad-add-fields>label{min-width:0;font-size:11px;color:var(--dim)}
+.console-desk .squad-add-fields input{display:block;width:100%;margin-top:8px;min-width:0}
+.console-desk .squad-add-roles,.console-desk .squad-add-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.console-desk .squad-add-roles label{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);cursor:pointer}
+.console-desk .squad-add-actions{gap:8px}
+.console-desk .squad-add-actions .btn{min-height:36px;font-size:12px;padding:6px 14px}
+.console-desk .squad-edit-status{margin:0 0 16px;overflow-wrap:anywhere}
+.console-desk .squad-row:hover{background:rgba(255,255,255,.75);box-shadow:none;border-color:#93a7b633}
+.console-desk .squad-row[data-selected=true]{background:rgba(255,255,255,.94);border-color:#a4bdd455;color:var(--accent)}
+.console-desk .squad-number{background:#64788a0b}
+.console-desk .squad-footer .btns{margin-top:24px;padding-top:24px;border-top:1px solid var(--section-line)}
+.console-desk #log{max-width:1056px;margin:16px auto 24px;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.console-desk #log .lh{padding:0}
+.console-desk #log .log-toggle{background:transparent;border:0;box-shadow:var(--button-shadow-compact);backdrop-filter:none;-webkit-backdrop-filter:none;padding-left:14px}
+/* Compact controls keep a readable edge without elevating the content rows. */
+.console-desk .number-step,.console-desk .squad-role-actions .squad-role-toggle,.console-desk .squad-row .squad-delete{box-shadow:var(--button-shadow-compact)}
+.console-desk .number-step:hover,.console-desk #log .log-toggle:hover{box-shadow:var(--button-shadow)}
+.console-desk button:not(:disabled):active,.console-desk .btn:not(:disabled):active,.console-desk .btn.choice-button[aria-pressed=true]:not(:disabled):active,.console-desk #log .log-toggle:not(:disabled):active{box-shadow:var(--button-shadow-pressed);transform:scale(.98);transition:none}
+.console-desk button:disabled,.console-desk .btn:disabled,.console-desk .btn:disabled:hover{box-shadow:none;transform:none}
+.console-desk #log.collapsed #clearLog{display:none}
+.console-desk #log .lb{padding:16px 0;font-size:11px}
+.console-desk :focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+@supports(appearance:base-select){
+  .console-desk select::picker(select){background:rgba(248,251,254,.88);border:0;border-radius:18px;padding:6px;box-shadow:0 8px 30px #24374b24;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);scrollbar-width:none}
+}
+@media(min-width:1001px){
+  .console-desk .live-match::before,.console-desk .live-match::after{content:"";position:absolute;top:50%;left:-12px;width:1px;height:40px;transform:translateY(-50%);background:var(--section-line);pointer-events:none}
+  .console-desk .live-match::after{left:auto;right:-12px}
+}
+@media(max-width:760px){
+  .console-desk .team-profiles::after,.console-desk .squad-grid::after{display:none}
+  .console-desk .team-profile+.team-profile,.console-desk .squad-card+.squad-card{padding-top:24px;border-top:1px solid var(--section-line)}
+}
+@media(max-width:1248px){.console-desk .app-header{gap:20px}.console-desk .connection-status #connectionText{display:none}}
+@media(max-width:1000px){
+  body.console-desk{--chrome-rule-width:min(1056px,calc(100% - 48px))}
+  .console-desk .app-header{gap:14px;padding:12px 24px}.console-desk .brand{font-size:14px}.console-desk .panel-nav{width:204px}.console-desk .header-actions{gap:4px}.console-desk #writeStatus{display:none}.console-desk .header-actions .btn{font-size:12px;padding:8px 10px}
+  .console-desk .match-strip{width:calc(100% - 48px);grid-template-columns:auto minmax(0,1fr);gap:12px 24px}.console-desk .match-strip .quick-actions{grid-row:2;grid-column:2;justify-content:flex-end}.console-desk .match-secondary{grid-row:2;grid-column:1;justify-content:flex-start;gap:2px}.console-desk #liveMatchStatus{display:none}.console-desk .match-secondary .btn{padding:5px 8px}
+  .console-desk .frow.with-actions{grid-template-columns:minmax(0,1fr) auto}.console-desk .score-row{grid-template-columns:repeat(2,minmax(0,1fr))}.console-desk .match-config-card{grid-template-columns:1fr}.console-desk .match-config-card>.btns{justify-content:flex-start}.console-desk .lineup-toolbar{align-items:flex-start;flex-direction:column}.console-desk .event-stage{padding:28px}
+  .console-desk #log{margin-left:32px;margin-right:32px}
+}
+@media(max-width:760px){
+  body.console-desk{--chrome-rule-width:calc(100% - 32px)}
+  .console-desk .app-header{display:grid;grid-template-columns:minmax(0,1fr) auto;min-height:0;padding:10px 16px;gap:8px 12px}.console-desk .brand{font-size:14px;white-space:normal}.console-desk .header-actions{width:auto;gap:2px}.console-desk .header-actions>.btn{margin:0}.console-desk .connection-status{margin-right:4px}.console-desk .panel-nav{grid-row:2;grid-column:1/-1;position:relative;top:auto;width:100%;max-width:300px;margin:0 auto}.console-desk .panel-nav button{min-height:34px}
+  .console-desk .match-strip{width:calc(100% - 32px);grid-template-columns:minmax(0,1fr) auto;padding:14px 0 10px;gap:12px}.console-desk .live-clock-console{grid-column:1;justify-content:flex-start;gap:10px}.console-desk .match-strip #liveClock{font-size:32px}.console-desk .match-strip #liveClockState{font-size:10px}.console-desk #topClockToggle{font-size:12px;padding:8px 12px;min-height:44px}.console-desk .live-match{grid-column:1/-1;grid-row:2;gap:10px}.console-desk .live-team{font-size:14px}.console-desk #liveScore{font-size:23px}.console-desk .score-edit{min-height:38px;min-width:70px}
+  .console-desk .match-strip .quick-actions{grid-column:2;grid-row:1;gap:6px;flex-direction:column}.console-desk .match-strip .quick-actions .btn{min-width:0;min-height:32px;padding:5px 10px;font-size:11px;flex:none}.console-desk .match-secondary{grid-row:3;grid-column:1/-1;justify-content:center;flex-wrap:wrap}.console-desk #liveMatchStatus{display:inline}.console-desk .match-secondary .btn{min-height:30px}
+  .console-desk main{padding:28px 16px 16px;min-height:0}.console-desk .section-heading{display:block;margin-bottom:20px}.console-desk .section-heading h2{font-size:21px}.console-desk .section-heading p{margin-top:6px;font-size:11px}.console-desk .event-nav,.console-desk .settings-nav{gap:4px;margin-bottom:20px}.console-desk .event-nav{grid-template-columns:repeat(3,minmax(0,1fr))}.console-desk .event-nav button{padding:8px 10px;font-size:12px;min-height:40px}
+  .console-desk .event-stage{padding:24px 18px;border-radius:18px}.console-desk .event-stage .card h2{margin-bottom:24px}.console-desk .frow{gap:14px;margin-bottom:18px}.console-desk .field>label{font-size:11px}.console-desk input[type=text],.console-desk select{font-size:13px}.console-desk .btn{font-size:12px;padding:10px 14px}.console-desk .btns{gap:8px;margin-top:24px;padding-top:20px}.console-desk .event-options{margin-top:20px}.console-desk .score-row{grid-template-columns:1fr}.console-desk .top-clock-settings{grid-template-columns:1fr;gap:24px}.console-desk .desk-flyout{left:16px;right:auto;width:calc(100vw - 32px);max-height:calc(100dvh - var(--console-chrome-height,300px) - 16px);padding:20px;border-radius:18px}.console-desk #scoreSettings{left:16px;transform:none}
+  .console-desk .team-profiles,.console-desk .squad-grid{grid-template-columns:1fr;gap:28px}.console-desk .preparation-footer{align-items:flex-start;flex-direction:column;gap:12px}.console-desk .preparation-details>summary>span{display:block;margin-left:16px}.console-desk .appearance-grid,.console-desk .devices-grid{padding:24px 18px;gap:32px}.console-desk .match-config-card{padding:20px 18px;border-radius:18px}.console-desk .match-config-card .btns{padding:0}.console-desk .lineup-toolbar{gap:16px}.console-desk .lineup-toolbar .btns{justify-content:flex-start}.console-desk .squad-name{font-size:13px}.console-desk .squad-role{font-size:10px;max-width:64px}.console-desk .squad-row{padding:0 4px 0 0;gap:0}.console-desk .squad-select{gap:6px;padding:6px}.console-desk .squad-row .squad-delete{min-width:44px;padding:6px}.console-desk .squad-add-fields{grid-template-columns:64px minmax(0,1fr)}.console-desk .squad-add-fields>label:last-child{grid-column:1/-1}.console-desk #log{margin-left:16px;margin-right:16px}
+}
+@media(prefers-reduced-motion:reduce){.console-desk *{transition:none!important;animation:none!important}}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+  body.console-desk{background:#fff;--well-fill:#f7f9fb;--well-line:#788897;--button-fill:#edf1f5}
+  .console-desk .console-chrome,.console-desk .desk-flyout{background:#f7f9fc;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .console-desk .console-chrome::before{background:#f7f9fc;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .console-desk .event-stage,.console-desk .appearance-grid,.console-desk .devices-grid,.console-desk .match-config-card{background:#fff}
+  .console-desk .squad-row{background:#edf1f5}.console-desk select::picker(select){background:#fff;backdrop-filter:none}
+}
+@supports not (backdrop-filter:blur(1px)){
+  body.console-desk{background:#fff}.console-desk .console-chrome,.console-desk .desk-flyout{background:#f7f9fc}
+  .console-desk .console-chrome::before{background:#f7f9fc}
+}

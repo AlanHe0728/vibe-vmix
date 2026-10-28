@@ -1,20 +1,22 @@
 /* Layout interactions are read-only; existing panel commands own all state writes. */
-var PANEL_TABS=['match','events','lineups','appearance','devices'];
+var PANEL_TABS=['match','lineups'];
 var LIVE_CLOCK=null;
 function selectPanelTab(key,instant){
-  if(PANEL_TABS.indexOf(key)<0)return;
+  if(key==='events')key='match';
+  if(key==='appearance'||key==='devices'){FBPDesk.settings(key);key='settings';}
+  if(PANEL_TABS.indexOf(key)<0&&key!=='settings')return;
+  FBPDesk.closeFlyout(false);
   PANEL_TABS.forEach(function(name){
     var active=name===key,tab=document.getElementById('tab-'+name);
     tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;
     document.getElementById('view-'+name).hidden=!active;
   });
+  document.getElementById('view-settings').hidden=key!=='settings';
+  document.getElementById('settingsButton').setAttribute('aria-expanded',String(key==='settings'));
+  document.querySelector('.panel-nav').querySelectorAll('[role=tab]').forEach(function(tab){if(key==='settings')tab.tabIndex=tab.id==='tab-match'?0:-1;});
   FBPWidgets.updateTabs(instant);
   alignPanelCards();
-  var main=document.getElementById('main');
-  if(window.scrollY>main.offsetTop){
-    var sticky=document.querySelector(matchMedia('(max-width:760px)').matches?'.panel-nav':'.app-header');
-    window.scrollTo(0,Math.max(0,main.offsetTop-sticky.offsetHeight));
-  }
+  window.scrollTo(0,0);
 }
 function togglePanelLog(){
   var log=document.getElementById('log');log.classList.toggle('collapsed');
@@ -113,6 +115,7 @@ function alignPanelCards(){
 function renderLiveFields(state,score){
   if(state.teamHome!==undefined)document.getElementById('liveHome').textContent=state.teamHome||'主队';
   if(state.teamAway!==undefined)document.getElementById('liveAway').textContent=state.teamAway||'客队';
+  [['Home','liveHome','#c8102e'],['Away','liveAway','#00529f']].forEach(function(team){var color=state['color'+team[0]];if(color!==undefined)document.getElementById(team[1]).style.setProperty('--team-color',CSS.supports('color',String(color))?color:team[2]);});
   if(score)document.getElementById('liveScore').textContent=score.home+' : '+score.away;
   else if(state.scoreHome!==undefined&&state.scoreAway!==undefined)document.getElementById('liveScore').textContent=state.scoreHome+' : '+state.scoreAway;
 }
@@ -127,5 +130,6 @@ function renderLiveClock(){
   if(age>4000){document.getElementById('liveClockState').textContent='状态同步中断';return;}
   var seconds=Math.floor(Math.max(0,clock.milliseconds+(clock.running?age*(clock.mode==='down'?-1:1):0))/1000);
   document.getElementById('liveClock').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
-  document.getElementById('liveClockState').textContent=clock.running?'比赛计时中':'比赛计时暂停';
+  var until=window.FBPMatchTiming&&FBPMatchTiming.breakUntil();
+  document.getElementById('liveClockState').textContent=until>Date.now()?'休息剩余 '+Math.ceil((until-Date.now())/60000)+' 分钟':clock.running?'比赛计时中':'比赛计时暂停';
 }

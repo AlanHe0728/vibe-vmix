@@ -1,7 +1,7 @@
 /* Shared form drafts. Team names save on commit; selection never plays an event. */
 (function(){
   'use strict';
-  var groups=['goal','player','card','restart'],rosters=['xiH','xiA','subH','subA'],people=[],autoNames={},scoreDraft={home:false,away:false},ready=false;
+  var groups=['goal','player','card','restart'],rosters=['xiH','xiA','subH','subA'],people=[],autoNames={},autoPositions={},scoreDraft={home:false,away:false},ready=false;
   var active={home:null,away:null},startingSignatures={home:'',away:''},savedSignatures={home:'',away:''},lastSides={};
   var savedNames={home:'',away:''},nameRequests={};
   function el(id){return document.getElementById(id);}
@@ -9,11 +9,11 @@
   function team(side){return el(side==='away'?'teamAway':'teamHome').value.trim()||(side==='away'?'客队':'主队');}
   function color(side){return el(side==='away'?'colorAway':'colorHome').value;}
   function sideOf(prefix){return el(prefix+'_side').value==='away'?'away':'home';}
-  function message(prefix,text){el(prefix+'_match_hint').textContent=text||'选择球员或输入号码，自动匹配当前球队名单。';}
+  function message(prefix,text){el(prefix+'_match_hint').textContent=text||'';}
   function parse(text,side,section){
     return String(text).split(/\r\n|\n|\r/).map(function(line){
       var p=FBPRosterFormat.line(line);if(!p)return null;
-      return {num:p.num,keyNum:number(p.num),name:p.name,side:side,section:section};
+      return {num:p.num,keyNum:number(p.num),name:p.name,side:side,section:section,captain:p.captain,goalkeeper:p.goalkeeper,position:p.position};
     }).filter(Boolean);
   }
   function rebuild(){
@@ -22,22 +22,23 @@
       var id=p.side+'|'+p.keyNum+'|'+p.name;if(seen[id])return;seen[id]=true;p.id=id;people.push(p);
     });});
     ['home','away'].forEach(function(side){var signature=el(side==='home'?'xiH_players':'xiA_players').value;if(signature!==startingSignatures[side]){active[side]=null;startingSignatures[side]=signature;}});
-    groups.forEach(options);subOptions();renderRoster();
+    groups.forEach(options);subOptions();renderRoster();if(window.FBPRosterPicker)FBPRosterPicker.refresh();
   }
   function isIn(p){return Array.isArray(active[p.side])?active[p.side].includes(p.id):p.section==='首发';}
   function renderRoster(){
-    var root=el('liveRosters'),signature=JSON.stringify(people.map(function(p){return [p.id,isIn(p),team(p.side)];}));if(root.dataset.signature===signature)return;root.dataset.signature=signature;root.replaceChildren();
+    var root=el('liveRosters'),signature=JSON.stringify(people.map(function(p){return [p.id,isIn(p),team(p.side),p.captain,p.goalkeeper,p.position];}));if(root.dataset.signature===signature)return;root.dataset.signature=signature;root.replaceChildren();
     ['home','away'].forEach(function(side){var card=document.createElement('div');card.className='card live-roster';var title=document.createElement('h2');title.textContent=(side==='home'?'主队 · ':'客队 · ')+team(side);card.appendChild(title);
-      [true,false].forEach(function(on){var list=people.filter(function(p){return p.side===side&&isIn(p)===on;}),heading=document.createElement('h3');heading.textContent=(on?'场内':'场外')+' · '+list.length+' 人';card.appendChild(heading);var items=document.createElement('div');items.className='roster-chips';items.dataset.side=side;items.dataset.onfield=String(on);list.forEach(function(p){var item=document.createElement('span');item.dataset.player=p.id;item.textContent=p.num+' · '+p.name;items.appendChild(item);});if(!list.length)items.textContent='暂无球员';card.appendChild(items);});root.appendChild(card);
+      [true,false].forEach(function(on){var list=people.filter(function(p){return p.side===side&&isIn(p)===on;}),heading=document.createElement('h3');heading.textContent=(on?'场内':'场外')+' · '+list.length+' 人';card.appendChild(heading);var items=document.createElement('div');items.className='roster-chips';items.dataset.side=side;items.dataset.onfield=String(on);list.forEach(function(p){var item=document.createElement('span');item.dataset.player=p.id;item.textContent=playerLabel(p);items.appendChild(item);});if(!list.length)items.textContent='暂无球员';card.appendChild(items);});root.appendChild(card);
     });
   }
+  function playerLabel(p){return p.num+' · '+p.name+(p.goalkeeper?' · GK':'')+(p.captain?' · 队长':'');}
   function options(prefix){
     var select=el(prefix+'_roster_player'),chosen=select.value,side=sideOf(prefix);select.replaceChildren();
     var placeholder=new Option('选择名单中的球员','');select.add(placeholder);
     [true,false].forEach(function(onPitch){
       var entries=people.filter(function(p){return p.side===side&&isIn(p)===onPitch;});if(!entries.length)return;
       var group=document.createElement('optgroup');group.label=onPitch?'场内球员':'场外球员';
-      entries.forEach(function(p){group.appendChild(new Option(p.num+' · '+p.name,p.id));});select.appendChild(group);
+      entries.forEach(function(p){group.appendChild(new Option(playerLabel(p),p.id));});select.appendChild(group);
     });
     select.value=chosen;if(!select.value)select.value='';select.disabled=!people.some(function(p){return p.side===side;});
     el(prefix+'_side').options[0].textContent='主队 · '+team('home');el(prefix+'_side').options[1].textContent='客队 · '+team('away');
@@ -45,25 +46,25 @@
   }
   function applyTeam(prefix){var side=sideOf(prefix);el(prefix+'_team').value=team(side);if(el(prefix+'_color'))el(prefix+'_color').value=color(side);}
   function choose(prefix,p){
-    el(prefix+'_num').value=p.num;el(prefix+'_name').value=p.name;autoNames[prefix]=p.name;el(prefix+'_roster_player').value=p.id;applyTeam(prefix);syncRestart(prefix);message(prefix,'已匹配：'+team(p.side)+' · '+p.num+'号 '+p.name+'（'+(isIn(p)?'场内':'场外')+'）');FBPWidgets.sync();FBPChoices.syncSelects();
+    el(prefix+'_num').value=p.num;el(prefix+'_name').value=p.name;if(prefix==='player'){autoPositions[prefix]=p.position||(p.goalkeeper?'GK':'');el('player_pos').value=autoPositions[prefix];}autoNames[prefix]=p.name;el(prefix+'_roster_player').value=p.id;applyTeam(prefix);syncRestart(prefix);message(prefix,'');FBPWidgets.sync();FBPChoices.syncSelects();
   }
   function syncRestart(prefix){if(prefix==='restart')el('restart_player').value=[el('restart_num').value.trim(),el('restart_name').value.trim()].filter(Boolean).join(' ');}
-  function clearAutomaticName(prefix){if(autoNames[prefix]&&el(prefix+'_name').value===autoNames[prefix])el(prefix+'_name').value='';autoNames[prefix]=null;}
+  function clearAutomaticName(prefix){if(autoNames[prefix]&&el(prefix+'_name').value===autoNames[prefix]){el(prefix+'_name').value='';if(prefix==='player'&&el('player_pos').value===autoPositions[prefix])el('player_pos').value='';}autoNames[prefix]=null;autoPositions[prefix]=null;}
   function matchNumber(prefix){
     var n=number(el(prefix+'_num').value),side=sideOf(prefix),matches=people.filter(function(p){return p.side===side&&p.keyNum===n;});
     var onPitch=matches.filter(isIn);if(onPitch.length)matches=onPitch;
     if(matches.length===1){choose(prefix,matches[0]);return;}
     clearAutomaticName(prefix);el(prefix+'_roster_player').value='';
     syncRestart(prefix);FBPChoices.syncSelects();
-    message(prefix,matches.length>1?'该号码对应多名球员，请从名单中选择。':n?'当前球队未找到 '+n+'号，可手动填写姓名。':'');
+    message(prefix,matches.length>1?'该号码对应多名球员，请从名单中选择。':n?'未找到 '+n+'号':'');
   }
   function changeSide(prefix){
-    if(lastSides[prefix]&&lastSides[prefix]!==sideOf(prefix)){el(prefix+'_name').value='';autoNames[prefix]=null;}
+    if(lastSides[prefix]&&lastSides[prefix]!==sideOf(prefix)){clearAutomaticName(prefix);el(prefix+'_name').value='';}
     lastSides[prefix]=sideOf(prefix);applyTeam(prefix);options(prefix);matchNumber(prefix);persist('fbp_'+prefix+'_side',sideOf(prefix));FBPWidgets.sync();
   }
   function teamChanged(side){
     var suffix=side==='away'?'A':'H';['xi','sub'].forEach(function(key){el(key+suffix+'_team').value=team(side);el(key+suffix+'_color').value=color(side);});
-    groups.forEach(function(prefix){if(sideOf(prefix)===side)applyTeam(prefix);options(prefix);});subOptions();FBPWidgets.sync();
+    groups.forEach(function(prefix){if(sideOf(prefix)===side)applyTeam(prefix);options(prefix);});subOptions();FBPWidgets.sync();if(window.FBPRosterPicker)FBPRosterPicker.refresh();
   }
   function teamNamePatch(side,name,state){
     var patch={},suffix=side==='away'?'A':'H';patch[side==='away'?'teamAway':'teamHome']=name;
@@ -97,6 +98,7 @@
     setScore(side,value,false);return true;
   }
   function hydrate(state){
+    if(window.FBPRosterPicker)FBPRosterPicker.accept(state);
     ['home','away'].forEach(function(side){savedNames[side]=String(state[side==='away'?'teamAway':'teamHome']||'').trim();});
     acceptScores({home:state.scoreHome??0,away:state.scoreAway??0});
     ['side','num','name'].forEach(function(key){if(state['restart_'+key]!==undefined)el('restart_'+key).value=state['restart_'+key];});
@@ -118,6 +120,7 @@
     groups.forEach(function(prefix){var side=sideOf(prefix);patch[prefix+'_side']=side;patch[prefix+'_team']=team(side);if(el(prefix+'_color'))patch[prefix+'_color']=color(side);});return patch;
   }
   var importedSheets={};
+  function resetImports(){importedSheets={};rosters.forEach(function(prefix){el(prefix+'_sheets').hidden=true;el(prefix+'_sheet').replaceChildren();el(prefix+'_import').value='';});if(window.FBPRosterPicker)FBPRosterPicker.resetImports();}
   function importText(text){return FBPRosterFormat.text(text).text;}
   function selectRosterSheet(prefix,index){
     var sheet=importedSheets[prefix]&&importedSheets[prefix][Number(index)];if(!sheet)return;
@@ -146,12 +149,12 @@
   function subOptions(){
     var side=el('sub_side').value;el('sub_side').options[0].textContent='主队 · '+team('home');el('sub_side').options[1].textContent='客队 · '+team('away');
     ['off','on'].forEach(function(direction){var select=el('sub_'+direction+'_player'),chosen=select.value;select.replaceChildren(new Option(direction==='off'?'选择场内下场球员':'选择场外上场球员',''));
-      people.filter(function(p){return p.side===side&&isIn(p)===(direction==='off');}).forEach(function(p){select.add(new Option(p.num+' · '+p.name,p.id));});select.value=chosen;if(!select.value){select.value='';if(chosen){el('sub_'+direction+'_num').value='';el('sub_'+direction+'_name').value='';}}select.disabled=select.options.length===1;
+      people.filter(function(p){return p.side===side&&isIn(p)===(direction==='off');}).forEach(function(p){select.add(new Option(playerLabel(p),p.id));});select.value=chosen;if(!select.value){select.value='';if(chosen){el('sub_'+direction+'_num').value='';el('sub_'+direction+'_name').value='';}}select.disabled=select.options.length===1;
     });
   }
-  function selectSub(direction){var select=el('sub_'+direction+'_player'),p=people.find(function(p){return p.id===select.value;});if(!p)return;el('sub_'+direction+'_num').value=p.num;el('sub_'+direction+'_name').value=p.name;el('sub_match_hint').textContent='选择完成后，点击执行换人更新场内名单并上屏。';}
+  function selectSub(direction){var select=el('sub_'+direction+'_player'),p=people.find(function(p){return p.id===select.value;});if(!p)return;el('sub_'+direction+'_num').value=p.num;el('sub_'+direction+'_name').value=p.name;message('sub','');}
   function matchSubNumber(direction){var n=number(el('sub_'+direction+'_num').value),matches=people.filter(function(p){return p.side===el('sub_side').value&&p.keyNum===n&&isIn(p)===(direction==='off');});el('sub_'+direction+'_player').value='';el('sub_'+direction+'_name').value='';
-    if(matches.length===1){el('sub_'+direction+'_player').value=matches[0].id;selectSub(direction);}else el('sub_match_hint').textContent=matches.length>1?'该号码对应多名球员，请从换人选项中选择。':'当前'+(direction==='off'?'场内':'场外')+'未找到该号码。';
+    if(matches.length===1){el('sub_'+direction+'_player').value=matches[0].id;selectSub(direction);}else message('sub',matches.length>1?'该号码对应多名球员，请从换人选项中选择。':n?'未找到该号码':'');
   }
   function substitutionPatch(play){
     var side=el('sub_side').value,off=people.find(function(p){return p.id===el('sub_off_player').value;}),incoming=people.find(function(p){return p.id===el('sub_on_player').value;});
@@ -160,8 +163,9 @@
     if(play){patch['xi'+suffix+'_players']=el('xi'+suffix+'_players').value;patch['sub'+suffix+'_players']=el('sub'+suffix+'_players').value;patch[side==='home'?'teamHome':'teamAway']=team(side);patch[side==='home'?'colorHome':'colorAway']=color(side);patch.sub_trigger='show';patch.sub_tick=nTick();}
     return patch;
   }
-  function liveRoster(onfield){if(!onfield)return;var changed=false;['home','away'].forEach(function(side){if(startingSignatures[side]!==savedSignatures[side]||!Array.isArray(onfield[side]))return;if(JSON.stringify(active[side])!==JSON.stringify(onfield[side])){active[side]=onfield[side];changed=true;}});if(changed){groups.forEach(function(prefix){options(prefix);var p=people.find(function(p){return p.id===el(prefix+'_roster_player').value;});if(p)message(prefix,'已匹配：'+team(p.side)+' · '+p.num+'号 '+p.name+'（'+(isIn(p)?'场内':'场外')+'）');});subOptions();}FBPChoices.syncSelects();renderRoster();}
+  function liveRoster(onfield){if(!onfield)return;var changed=false;['home','away'].forEach(function(side){if(startingSignatures[side]!==savedSignatures[side]||!Array.isArray(onfield[side]))return;if(JSON.stringify(active[side])!==JSON.stringify(onfield[side])){active[side]=onfield[side];changed=true;}});if(changed){groups.forEach(function(prefix){options(prefix);var p=people.find(function(p){return p.id===el(prefix+'_roster_player').value;});if(p)message(prefix,'');});subOptions();}FBPChoices.syncSelects();renderRoster();}
   function saved(patch){
+    if(window.FBPRosterPicker)FBPRosterPicker.accept(patch);
     ['home','away'].forEach(function(side){var key=side==='home'?'xiH_players':'xiA_players';if(Object.prototype.hasOwnProperty.call(patch,key))savedSignatures[side]=String(patch[key]);var nameKey=side==='home'?'teamHome':'teamAway';if(patch[nameKey]!==undefined)savedNames[side]=String(patch[nameKey]).trim();});
   }
   function init(){
@@ -171,7 +175,7 @@
       el(prefix+'_side').addEventListener('change',function(){changeSide(prefix);});
       el(prefix+'_roster_player').addEventListener('change',function(){var id=this.value,p=people.find(function(p){return p.id===id;});if(p)choose(prefix,p);});
       el(prefix+'_num').addEventListener('input',function(){matchNumber(prefix);});
-      el(prefix+'_name').addEventListener('input',function(){autoNames[prefix]=null;el(prefix+'_roster_player').value='';syncRestart(prefix);message(prefix,'当前使用手动填写的姓名。');});
+      el(prefix+'_name').addEventListener('input',function(){autoNames[prefix]=null;el(prefix+'_roster_player').value='';syncRestart(prefix);message(prefix,'');});
     });
     rosters.forEach(function(prefix){el(prefix+'_players').addEventListener('input',rosterEdited);el(prefix+'_players').addEventListener('change',rosterEdited);
       bindTeamName(el(prefix+'_team'),prefix.slice(-1)==='A'?'away':'home');
@@ -182,5 +186,5 @@
     ['off','on'].forEach(function(d){el('sub_'+d+'_player').addEventListener('change',function(){selectSub(d);});el('sub_'+d+'_num').addEventListener('input',function(){matchSubNumber(d);});});
     rebuild();
   }
-  window.FBPLinks={init:init,hydrate:hydrate,setScore:setScore,acceptScores:acceptScores,remoteScore:remoteScore,teamPatch:teamPatch,saveTeamName:saveTeamName,changeSide:changeSide,rebuild:rosterEdited,importRoster:importRoster,importText:importText,selectRosterSheet:selectRosterSheet,substitutionPatch:substitutionPatch,liveRoster:liveRoster,saved:saved,isScoreDraft:function(side){return scoreDraft[side];}};
+  window.FBPLinks={init:init,hydrate:hydrate,setScore:setScore,acceptScores:acceptScores,remoteScore:remoteScore,teamPatch:teamPatch,saveTeamName:saveTeamName,changeSide:changeSide,rebuild:rosterEdited,importRoster:importRoster,importText:importText,selectRosterSheet:selectRosterSheet,resetImports:resetImports,substitutionPatch:substitutionPatch,liveRoster:liveRoster,saved:saved,isScoreDraft:function(side){return scoreDraft[side];}};
 })();

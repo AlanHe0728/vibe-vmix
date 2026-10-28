@@ -6,7 +6,9 @@ const {spawnSync}=require('node:child_process');
 const {portableReleaseState}=require('../desktop/portable-data');
 const {makeIcon}=require('./make-icon');
 const root=path.resolve(__dirname,'..'),version='44.7.0';
-const name='足球转播控制台-1.0.0-Windows-x64';
+const appVersion=require('../desktop/package.json').version;
+if(!/^\d+\.\d+\.\d+$/.test(appVersion))throw Error('Desktop version must be major.minor.patch');
+const name='足球转播控制台-'+appVersion+'-Windows-x64';
 const output=path.join(root,'dist',process.argv[2]||name);
 if(path.dirname(output)!==path.join(root,'dist'))throw Error('Output must be a direct child of dist');
 if(fs.existsSync(output)||fs.existsSync(output+'.zip'))throw Error('Release already exists; choose a new output name. Existing portable match data must never be overwritten.');
@@ -61,9 +63,9 @@ run(rcedit,[executable,'--set-icon',path.join(production,'desktop','icon.ico'),
   '--set-version-string','FileDescription','足球转播控制台 · vMix 图形包装',
   '--set-version-string','OriginalFilename','足球转播控制台.exe',
   '--set-version-string','CompanyName','足球转播工具',
-  '--set-file-version','1.0.0.0','--set-product-version','1.0.0.0']);
+  '--set-file-version',appVersion+'.0','--set-product-version',appVersion+'.0']);
 const instructions=[
-  '足球转播控制台 1.0.0 · Windows 10/11 64 位便携版','',
+  '足球转播控制台 '+appVersion+' · Windows 10/11 64 位便携版','',
   '1. 先把 ZIP 完整解压到普通文件夹（桌面、文档、U 盘均可）。',
   '2. 双击「足球转播控制台.exe」。不需要安装 Node、Python、PowerShell 或 MicroKit，也不用联网下载组件。',
   '3. 在「设备连接」复制联合上屏地址，粘贴到本机 vMix 的网页浏览器输入，画布设为 1920×1080。','',
@@ -83,6 +85,11 @@ const instructions=[
   '比赛控制：比分、队名、阶段、状态、比赛时钟和独立计时器。',
   '球员事件：进球、红黄牌、发球、球员条、换人；导入名单后支持选择球员和输入号码匹配。',
   '名单：粘贴号码姓名或导入 Excel，保存后可一次显示双方首发和替补，也可单独显示。',
+  '名单页「比赛配置文件」可导出/读取 TXT，一份文件带走双方队名、颜色、内嵌队徽、首发、替补、位置与队长/GK 标记。',
+  '名单行尾 (GK) 标记守门员，(C) 标记队长；两者可以同时标记。Excel 支持位置、队长和守门员列。',
+  '顶部比分区的比赛时钟始终可开始/暂停；计时设置中可启用半场及中场休息的自动切换，默认关闭。',
+  '名单页最下面的总名单可逐条勾选首发，首发和替补自动分配，选完点击「保存双方首发」。',
+  '读取配置后场内名单恢复首发；下一场的比分和时间请在比赛控制中自行重置。',
   '画面设置：皮肤、颜色、动画、队徽、角标、背景和自定义字体，素材随数据保存。',
   '预览与布局：拖动缩放、精确坐标、安全框、比例、对齐、网格吸附和仅预览隐藏。','',
   '版权说明：内置 Electron/Chromium、Motion、SheetJS 的许可随软件保留。',
@@ -94,7 +101,7 @@ for(const entry of fs.readdirSync(output,{recursive:true,withFileTypes:true})) {
   if(!entry.isFile())continue;
   const file=path.join(entry.parentPath,entry.name);files.push({path:path.relative(output,file).split(path.sep).join('/'),bytes:fs.statSync(file).size,sha256:sha(fs.readFileSync(file))});
 }
-fs.writeFileSync(path.join(output,'release-manifest.json'),JSON.stringify({version:'1.0.0',electron:version,
+fs.writeFileSync(path.join(output,'release-manifest.json'),JSON.stringify({version:appVersion,electron:version,
   builtAt:new Date().toISOString(),platform:'win32-x64',runtimeSHA256:expected,files},null,2));
 console.log('Ready:',output);
 if(!process.argv.includes('--no-zip')) {

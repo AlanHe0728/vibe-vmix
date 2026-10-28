@@ -8,7 +8,7 @@ const {migrate}=require('../control/clock-state');
 async function suite(kind,temp){
   const file=path.join(temp,kind+'.json');
   fs.writeFileSync(file,JSON.stringify({teamHome:'主队甲',teamAway:'客队乙',colorHome:'#123456',colorAway:'#654321',
-    scoreHome:0,scoreAway:0,goal_name:'测试球员',goal_num:'9',card_name:'李四',card_num:'8',
+    scoreHome:0,scoreAway:0,goal_name:'张三',goal_num:'9',card_name:'李四',card_num:'8',
     xiH_players:'1 甲\n2 乙',logo_data:'preserve',clock_mode:'down',clock_mm:3}));
   const server=await startServer(kind,file),base=server.base;
   const read=async()=>await (await fetch(base+'/state.json')).json();
@@ -26,12 +26,12 @@ async function suite(kind,temp){
     assert.equal((await read()).scoreHome,0);
     await act('home_score_minus');assert.equal((await read()).scoreHome,0);
     await Promise.all(Array.from({length:8},()=>act('home_goal')));
-    let s=await read();assert.equal(s.scoreHome,8);assert.equal(s.goal_scoreHome,8);assert.equal(s.goal_team,'主队甲');assert.equal(s.goal_name,'测试球员');assert.equal(s.goal_num,'9');
+    let s=await read();assert.equal(s.scoreHome,8);assert.equal(s.goal_scoreHome,8);assert.equal(s.goal_team,'主队甲');assert.equal(s.goal_name,'张三');assert.equal(s.goal_num,'9');
     const tick=s.goal_tick;await act('home_goal');s=await read();assert.equal(s.scoreHome,9);assert(s.goal_tick>tick);
     await act('away_goal');s=await read();assert.equal(s.scoreAway,1);assert.equal(s.goal_team,'客队乙');assert.equal(s.goal_color,'#654321');
     await act('goal_replay');assert.equal((await read()).scoreAway,1);
     await Promise.all(Array.from({length:6},(_,i)=>i%2 ? act('home_goal') :
-      fetch(base+'/state.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scoreHome_delta:1})}).then(async r=>{assert.equal(r.status,200);assert.equal((await r.json()).ok,true);}))); 
+      fetch(base+'/state.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scoreHome_delta:1})}).then(async r=>{assert.equal(r.status,200);assert.equal((await r.json()).ok,true);})));
     s=await read();assert.equal(s.scoreHome,15);assert.equal(s.scoreHome_delta,undefined);
     let r=await act('scoreboard_toggle');assert.equal(r.status.visible.scoreboard,false);assert.equal(r.status.buttons.scoreboard_toggle.active,'off');
     r=await act('scoreboard_toggle');assert.equal(r.status.visible.scoreboard,true);

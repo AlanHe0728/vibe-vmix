@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>if(location.pathname.indexOf("/v2/")===0){location.replace(location.protocol+"//"+location.hostname+":8124/control/panel.html");document.write("<plaintext>请使用第二版启动入口。");}</script>
+<title>足球比赛控制台 · 第二版</title>
+<!-- 控制面板通过本地服务写入比赛状态；vMix 使用 titles/graphics.html 单链接。
+     MicroKit 控件已静态适配在 microkit-controls.js，不依赖 MicroKit 开发服务。 -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="glass-theme.css">
+<link rel="stylesheet" href="panel-layout.css">
+<link rel="stylesheet" href="match-controls.css">
+<link rel="stylesheet" href="console-desk.css">
+<link rel="stylesheet" href="v2-console.css">
+</head>
+<body class="console-desk">
+<div id="servedBanner" class="sbn hidden"></div>
+<div class="console-chrome">
+<header class="app-header"><a class="brand" href="#main">足球比赛控制台</a><nav class="panel-nav" role="tablist" aria-label="工作区"><button type="button" id="tab-match" role="tab" aria-controls="view-match" aria-selected="true" tabindex="0" onclick="selectPanelTab('match')">比赛操作</button><button type="button" id="tab-lineups" role="tab" aria-controls="view-lineups" aria-selected="false" tabindex="-1" onclick="selectPanelTab('lineups')">名单准备</button><span class="tab-indicator" aria-hidden="true"></span></nav><div class="header-actions"><div class="connection-status"><span class="dot" id="connDot"></span><span id="connectionText">正在连接</span></div><span id="writeStatus" role="status"></span><button class="btn quiet-button" onclick="editorOpen()">预览与布局</button><button class="btn quiet-button" id="settingsButton" aria-controls="view-settings" aria-expanded="false" onclick="selectPanelTab('settings')">设置</button></div></header>
+<div class="match-strip" aria-label="当前比赛与比赛时钟">
+  <div class="live-clock-console"><div class="live-clock"><span id="liveClock">—:—</span><span id="liveClockState">同步中</span></div><button class="btn primary-action" id="topClockToggle" onclick="FBPDesk.toggleClock()" disabled>开始计时</button></div>
+  <div class="live-match"><span id="liveHome" class="live-team">主队</span><button class="score-edit" id="scoreEditButton" aria-label="更正比分" aria-expanded="false" aria-controls="scoreSettings" onclick="FBPDesk.toggleFlyout('scoreSettings',this)"><strong id="liveScore">— : —</strong></button><span id="liveAway" class="live-team">客队</span></div>
+  <div class="quick-actions"><button class="btn" id="homeScorePlus" onclick="quickScore('home')">主队 +1</button><button class="btn" id="awayScorePlus" onclick="quickScore('away')">客队 +1</button></div>
+  <div class="match-secondary"><button class="btn quiet-button" id="phaseSettingsButton" aria-expanded="false" aria-controls="phaseSettings" onclick="FBPDesk.toggleFlyout('phaseSettings',this)"><span id="livePeriod">上半场</span><span id="liveMatchStatus">进行中</span></button><button class="btn quiet-button" id="topClockSettingsButton" aria-expanded="false" aria-controls="topClockSettings" onclick="FBPMatchTiming.toggle()">计时设置</button><div class="visibility-actions" role="group" aria-label="图层显示"><button class="btn quiet-button" id="scoreboardToggle" aria-pressed="false" onclick="FBPDesk.toggleScoreboard()" disabled>比分条同步中</button><button class="btn quiet-button" id="lineupToggle" aria-pressed="false" onclick="FBPDesk.toggleLineup()" disabled>名单同步中</button></div></div>
+<div class="top-clock-settings desk-flyout" id="topClockSettings" hidden>
+    <div><h3>计时设置</h3><div class="frow two-fields"><div class="field"><label for="sb_clockmode">计时模式</label><select id="sb_clockmode"><option value="up">正计时</option><option value="down">倒计时</option></select></div><div class="field"><label for="sb_clock_mm">比赛时间（分 : 秒）</label><div class="time-pair"><input id="sb_clock_mm" type="text" inputmode="numeric" aria-label="比赛分钟" value="0"><span aria-hidden="true">:</span><input id="sb_clock_ss" type="text" inputmode="numeric" aria-label="比赛秒数" value="00"></div></div></div><div class="btns"><button class="btn" onclick="setMatchClock()">设置并暂停</button><button class="btn" onclick="matchClockPreset(0)">00:00</button><button class="btn" onclick="matchClockPreset(45)">45:00</button><button class="btn" onclick="matchClockPreset(90)">90:00</button><button class="btn" onclick="trigger('sb_clockcmd','plus')">+1分</button><button class="btn" onclick="trigger('sb_clockcmd','minus')">-1分</button><button class="btn" onclick="trigger('sb_clockcmd','reset')">复位</button><button class="btn" onclick="FBPMatchTiming.clock('second')">开始下半场</button></div></div>
+    <div><h3>自动切换半场</h3><label class="timing-check"><input type="checkbox" id="matchAutoEnabled">启用自动切换</label><div class="frow two-fields"><div class="field"><label for="matchHalfMinutes">每半场时长（分钟）</label><input id="matchHalfMinutes" type="number" min="1" max="180" step="1" value="45"></div><div class="field"><label for="matchBreakMinutes">中场休息（分钟）</label><input id="matchBreakMinutes" type="number" min="0" max="120" step="1" value="15"></div></div><label class="timing-check"><input type="checkbox" id="matchAutoResume" checked>休息结束后自动开始下半场</label><div class="btns"><button class="btn" onclick="FBPMatchTiming.save()">保存自动切换设置</button></div><p class="field-note" id="matchTimingNote" role="status"></p></div>
+  </div><div class="desk-flyout compact-flyout" id="scoreSettings" hidden><h3>更正比分</h3><div class="frow two-fields"><div class="field"><label for="scoreHome">主队比分</label><input id="scoreHome" type="text" inputmode="numeric" value="0"></div><div class="field"><label for="scoreAway">客队比分</label><input id="scoreAway" type="text" inputmode="numeric" value="0"></div></div><button class="btn primary-action" onclick="applyScoreCorrection()">保存更正</button><details class="event-options"><summary>更多比分操作</summary><div class="btns"><button class="btn" onclick="trigger('score_trigger','flash')">播放比分提示</button><button class="btn" onclick="confirmResetScore(this)">比分归零</button></div><p id="scoreResetNote" class="field-note" role="status"></p></details></div><div class="desk-flyout compact-flyout" id="phaseSettings" hidden><h3>阶段与比赛状态</h3><div class="frow"><div class="field "><label for="period">阶段</label><select aria-label="阶段" id="period" onchange="setPeriod(this.value)"><option>上半场</option><option>下半场</option><option>加时赛</option>
+        <option>点球大战</option><option>中场休息</option><option>比赛结束</option></select></div></div><div class="field"><label for="matchStatus">比赛状态</label><select id="matchStatus" onchange="setStatus(this.value)"><option value="running">进行中</option><option value="paused">暂停</option></select></div></div></div></div>
+<main id="main">
+<section id="view-match" role="tabpanel" aria-labelledby="tab-match" tabindex="0">
+<div class="event-nav" role="tablist" aria-label="比赛事件"><button type="button" id="task-goal" role="tab" aria-controls="event-goal" aria-selected="true" tabindex="0" onclick="FBPDesk.task('goal')">进球</button><button type="button" id="task-card" role="tab" aria-controls="event-card" aria-selected="false" tabindex="-1" onclick="FBPDesk.task('card')">判罚</button><button type="button" id="task-sub" role="tab" aria-controls="event-sub" aria-selected="false" tabindex="-1" onclick="FBPDesk.task('sub')">换人</button><button type="button" id="task-player" role="tab" aria-controls="event-player" aria-selected="false" tabindex="-1" onclick="FBPDesk.task('player')">球员信息</button><button type="button" id="task-restart" role="tab" aria-controls="event-restart" aria-selected="false" tabindex="-1" onclick="FBPDesk.task('restart')">发球</button><button type="button" id="task-timer" role="tab" aria-controls="event-timer" aria-selected="false" tabindex="-1" onclick="FBPDesk.task('timer')">独立计时器</button></div><div class="event-stage"><div id="event-goal" role="tabpanel" aria-labelledby="task-goal" class="card">
+    <h2>进球信息</h2>
+    <div class="frow two-fields"><div class="field "><label for="goal_side">进球队</label><select aria-label="进球队" id="goal_side" onchange="persist('fbp_goal_side',this.value)"><option value="home">主队</option><option value="away">客队</option></select></div><div class="field"><label for="goal_roster_player">名单球员</label><select id="goal_roster_player"><option value="">选择名单中的球员</option></select></div></div>
+    <p class="field-note" id="goal_match_hint" role="status"></p>
+    <div class="frow two-fields"><div class="field "><label for="goal_name">球员</label><input aria-label="球员" type="text" id="goal_name" placeholder="球员姓名"></div><div class="field "><label for="goal_num">号码</label><input inputmode="numeric" aria-label="号码" type="text" id="goal_num" placeholder="号码"></div></div>
+    <details class="event-options"><summary>画面内容与加分选项</summary><div class="frow"><div class="field"><label for="goal_team">球队</label><input id="goal_team" type="text" placeholder="主队或客队"></div></div><div class="frow score-row"><div class="field "><label for="goal_scoreHome">比分</label><div class="score-pair"><input inputmode="numeric" aria-label="主队比分" type="text" id="goal_scoreHome" class="w80" value="0"><span aria-hidden="true">:</span><input inputmode="numeric" aria-label="客队比分" type="text" id="goal_scoreAway" class="w80" value="0"></div></div><div class="field "><label for="goal_color">颜色</label><div class="color-control"><input type="color" data-color-for="goal_color" aria-label="选择颜色" value="#007AFF"><input aria-label="颜色" type="text" id="goal_color" value="#FFD400"></div></div></div><label class="timing-check"><input id="goal_sync" type="checkbox">同时加 1 分</label></details>
+    <div class="btns event-actions"><button class="btn primary-action" onclick="FBPEvents.run('goal','save-execute')">保存并执行</button><button class="btn" onclick="FBPEvents.run('goal','save')">仅保存</button><button class="btn" onclick="FBPEvents.run('goal','execute')">执行</button></div>
+  </div><div id="event-card" role="tabpanel" aria-labelledby="task-card" hidden class="card">
+    <h2>裁判判罚</h2>
+    <div class="frow"><div class="field"><label for="card_type">判罚类型</label><select id="card_type"><option value="yellow">黄牌</option><option value="red">红牌</option></select></div></div>
+    <div class="frow two-fields"><div class="field"><label for="card_side">球队</label><select id="card_side"><option value="home">主队</option><option value="away">客队</option></select></div><div class="field"><label for="card_roster_player">名单球员</label><select id="card_roster_player"><option value="">选择名单中的球员</option></select></div></div><p class="field-note" id="card_match_hint" role="status"></p>
+    <div class="frow two-fields"><div class="field "><label for="card_num">号码</label><input inputmode="numeric" aria-label="号码" type="text" id="card_num" value="10"></div><div class="field "><label for="card_name">球员</label><input aria-label="球员" type="text" id="card_name" value="球员姓名"></div></div>
+
+    <div class="frow"><div class="field "><label for="card_reason">原因</label><input aria-label="原因" type="text" id="card_reason" placeholder=""></div></div>
+<details class="event-options"><summary>自定义上屏球队</summary>    <div class="frow"><div class="field "><label for="card_team">球队</label><input aria-label="球队" type="text" id="card_team" value=""></div></div></details>
+    <div class="btns event-actions"><button class="btn primary-action" onclick="FBPEvents.run('card','save-execute')">保存并执行</button><button class="btn" onclick="FBPEvents.run('card','save')">仅保存</button><button class="btn" onclick="FBPEvents.run('card','execute')">执行</button></div>
+  </div><div id="event-sub" role="tabpanel" aria-labelledby="task-sub" hidden class="card substitution-card"><h2>换人</h2><div class="frow"><div class="field"><label for="sub_side">换人球队</label><select id="sub_side"><option value="home">主队</option><option value="away">客队</option></select></div></div>
+<div class="frow two-fields"><div class="field"><label for="sub_off_player">下场球员 · 场内</label><select id="sub_off_player"><option value="">选择场内下场球员</option></select></div><div class="field"><label for="sub_on_player">上场球员 · 场外</label><select id="sub_on_player"><option value="">选择场外上场球员</option></select></div></div>
+<div class="frow two-fields"><div class="field"><label for="sub_off_num">下场号码</label><input id="sub_off_num" type="text" inputmode="numeric" placeholder="号码"></div><div class="field"><label for="sub_on_num">上场号码</label><input id="sub_on_num" type="text" inputmode="numeric" placeholder="号码"></div></div>
+<div class="frow two-fields"><div class="field"><label for="sub_off_name">下场姓名</label><input id="sub_off_name" type="text" readonly></div><div class="field"><label for="sub_on_name">上场姓名</label><input id="sub_on_name" type="text" readonly></div></div><p class="field-note" id="sub_match_hint" role="status"></p><div id="subBatchRows" class="sub-batch-list"></div><button type="button" id="addSubPair" class="btn sub-batch-add">添加一组换人</button><p id="subBatchError" class="sub-batch-error" role="alert"></p>
+<div class="btns event-actions"><button class="btn primary-action" onclick="FBPBatchSub.run('save-execute')">保存并执行</button><button class="btn" onclick="FBPBatchSub.run('save')">仅保存</button><button class="btn" onclick="FBPBatchSub.run('execute')">执行</button></div></div><div id="event-player" role="tabpanel" aria-labelledby="task-player" hidden class="card">
+    <h2>球员信息</h2>
+    <div class="frow two-fields"><div class="field"><label for="player_side">球队</label><select id="player_side"><option value="home">主队</option><option value="away">客队</option></select></div><div class="field"><label for="player_roster_player">名单球员</label><select id="player_roster_player"><option value="">选择名单中的球员</option></select></div></div><p class="field-note" id="player_match_hint" role="status"></p>
+<div class="frow two-fields"><div class="field"><label for="player_num">号码</label><input id="player_num" type="text" inputmode="numeric" placeholder="号码"></div><div class="field"><label for="player_name">姓名</label><input id="player_name" type="text" placeholder="球员姓名"></div></div>
+
+    <div class="frow two-fields"><div class="field "><label for="player_pos">位置</label><input aria-label="位置" type="text" id="player_pos" value="中场"></div><div class="field "><label for="player_event">标题</label><input aria-label="球员信息条标题" type="text" id="player_event" value="球员信息" placeholder="球员信息"></div></div>
+<details class="event-options"><summary>自定义上屏球队与颜色</summary><div class="frow"><div class="field"><label for="player_team">球队</label><input id="player_team" type="text" placeholder="主队或客队"></div></div>    <div class="frow"><div class="field "><label for="player_color">颜色</label><div class="color-control"><input type="color" data-color-for="player_color" aria-label="选择颜色" value="#007AFF"><input aria-label="颜色" type="text" id="player_color" value="#C8102E"></div></div></div></details>
+    <div class="btns event-actions"><button class="btn primary-action" onclick="FBPEvents.run('player','save-execute')">保存并执行</button><button class="btn" onclick="FBPEvents.run('player','save')">仅保存</button><button class="btn" onclick="FBPEvents.run('player','execute')">执行</button></div>
+  </div><div id="event-restart" role="tabpanel" aria-labelledby="task-restart" hidden class="card">
+    <h2>发球</h2>
+    <div class="frow"><div class="field"><label for="restart_type">发球类型</label><select id="restart_type"><option value="kickoff">开球</option><option value="throwin">界外球</option><option value="corner">角球</option><option value="goalkick">球门球</option><option value="freekick">任意球</option><option value="penalty">点球</option></select></div></div>
+    <div class="frow two-fields"><div class="field"><label for="restart_side">球队</label><select id="restart_side"><option value="home">主队</option><option value="away">客队</option></select></div><div class="field"><label for="restart_roster_player">名单球员</label><select id="restart_roster_player"><option value="">选择名单中的球员</option></select></div></div><p class="field-note" id="restart_match_hint" role="status"></p>
+    <div class="frow two-fields"><div class="field"><label for="restart_num">号码</label><input id="restart_num" type="text" inputmode="numeric" placeholder="号码"></div><div class="field"><label for="restart_name">姓名</label><input id="restart_name" type="text" placeholder="姓名"></div></div>
+
+
+<details class="event-options"><summary>自定义上屏文字与颜色</summary>    <div class="frow two-fields"><div class="field"><label for="restart_team">上屏球队</label><input type="text" id="restart_team" placeholder="主队或客队"></div><div class="field"><label for="restart_player">上屏球员文字</label><input type="text" id="restart_player" placeholder="选择后自动填写，也可修改"></div></div>    <div class="frow"><div class="field "><label for="restart_text">自定义</label><input aria-label="自定义" type="text" id="restart_text" placeholder=""></div></div>    <div class="frow"><div class="field "><label for="restart_color">颜色</label><div class="color-control"><input type="color" data-color-for="restart_color" aria-label="选择颜色" value="#007AFF"><input aria-label="颜色" type="text" id="restart_color" value="#00C853"></div></div></div></details>
+    <div class="btns event-actions"><button class="btn primary-action" onclick="FBPEvents.run('restart','save-execute')">保存并执行</button><button class="btn" onclick="FBPEvents.run('restart','save')">仅保存</button><button class="btn" onclick="FBPEvents.run('restart','execute')">执行</button></div>
+  </div><div id="event-timer" role="tabpanel" aria-labelledby="task-timer" hidden class="card">
+    <h2>独立计时器</h2>
+    <div class="frow"><div class="field "><label for="clock_label">标题</label><input aria-label="标题" type="text" id="clock_label" value="中场休息"></div></div>
+
+    <div class="frow two-fields"><div class="field "><label for="clock_mode">计时模式</label><select aria-label="计时模式" id="clock_mode"><option value="down">倒计时</option><option value="up">正计时</option></select></div><div class="field "><label for="clock_mm">时间（分 : 秒）</label><div class="time-pair"><input inputmode="numeric" aria-label="分钟" type="text" id="clock_mm" class="w80" value="15"><span aria-hidden="true">:</span><input inputmode="numeric" aria-label="秒" type="text" id="clock_ss" class="w80" value="00"></div></div></div>
+<details class="event-options"><summary>副标题与颜色</summary>    <div class="frow"><div class="field "><label for="clock_sub">副标</label><input aria-label="副标" type="text" id="clock_sub" value="COUNTDOWN"></div></div>    <div class="frow"><div class="field "><label for="clock_color">颜色</label><div class="color-control"><input type="color" data-color-for="clock_color" aria-label="选择颜色" value="#007AFF"><input aria-label="颜色" type="text" id="clock_color" value="#FFD400"></div></div></div></details>
+    <div class="btns event-actions"><button class="btn primary-action" onclick="FBPEvents.run('timer','save-execute')">保存并执行</button><button class="btn" onclick="FBPEvents.run('timer','save')">仅保存</button><button class="btn" onclick="FBPEvents.run('timer','execute')" title="按已保存时间设置并显示计时器">执行</button></div>
+    <details class="event-options"><summary>当前计时控制</summary><div class="grp">
+      <div class="btns">
+        <button class="btn green" onclick="clockCmd('start')"> 开始</button>
+        <button class="btn yellow" onclick="clockCmd('pause')"> 暂停</button>
+        <button class="btn red" onclick="clockCmd('reset')">复位</button>
+        <button class="btn" onclick="clockCmd('plus')">+1分</button>
+        <button class="btn" onclick="clockCmd('minus')">-1分</button>
+      </div>
+      <div class="btns">
+        <button class="btn sm blue" onclick="setVis('clock_show',true)">显示计时器</button>
+        <button class="btn sm" onclick="setVis('clock_show',false)">隐藏计时器</button>
+      </div></div></details>
+  </div></div></section><section id="view-lineups" role="tabpanel" aria-labelledby="tab-lineups" tabindex="0" hidden>
+<div class="card match-config-card" id="matchConfigCard" aria-labelledby="matchConfigTitle">
+  <div class="match-config-intro"><h2 id="matchConfigTitle">比赛配置文件</h2></div>
+  <div class="btns"><button class="btn" id="matchConfigExport" disabled onclick="FBPMatchFiles.exportFile()">导出本场配置</button><button class="btn" id="matchConfigImport" disabled onclick="document.getElementById('matchConfigFile').click()">读取配置文件</button><button class="btn" id="matchConfigExample" onclick="FBPMatchFiles.example()">下载格式示例</button></div>
+  <input id="matchConfigFile" type="file" accept=".txt,.json,text/plain,application/json" hidden aria-label="选择比赛配置文件" onchange="FBPMatchFiles.importFile(this)">
+  <p class="field-note" id="matchConfigStatus" role="status" aria-live="polite"></p>
+
+</div><details class="preparation-details" id="teamDetails" open><summary>球队资料</summary><div class="team-profiles"><div class="team-profile"><div class="frow"><div class="field "><label for="teamHome">主队</label><input aria-label="主队" type="text" id="teamHome" value="主队"></div></div><div class="frow"><div class="field "><label for="colorHome">主色</label><div class="color-control"><input type="color" data-color-for="colorHome" aria-label="选择主色" value="#007AFF"><input aria-label="主色" type="text" id="colorHome" value="#C8102E"></div></div></div><div class="grp">
+      <div class="frow with-actions"><div class="field "><label for="homeLogoFile">主队队徽</label><input aria-label="主队队徽" type="file" id="homeLogoFile" accept="image/*" onchange="onLogoFile(event,'homeLogo')"></div><div class="row-actions"><button class="btn sm" onclick="clearLogoKey('homeLogo')">清除</button></div></div></div></div><div class="team-profile"><div class="frow"><div class="field "><label for="teamAway">客队</label><input aria-label="客队" type="text" id="teamAway" value="客队"></div></div><div class="frow"><div class="field "><label for="colorAway">客色</label><div class="color-control"><input type="color" data-color-for="colorAway" aria-label="选择客色" value="#007AFF"><input aria-label="客色" type="text" id="colorAway" value="#00529F"></div></div></div><div class="grp">
+      <div class="frow with-actions"><div class="field "><label for="awayLogoFile">客队队徽</label><input aria-label="客队队徽" type="file" id="awayLogoFile" accept="image/*" onchange="onLogoFile(event,'awayLogo')"></div><div class="row-actions"><button class="btn sm" onclick="clearLogoKey('awayLogo')">清除</button></div></div></div></div></div><div class="preparation-footer"><button class="btn" onclick="saveTeamColors()">保存队色</button></div></details>
+<details class="preparation-details"><summary>当前场内与场外名单</summary><div class="live-rosters" id="liveRosters" aria-label="实时场内与场外名单"></div></details><div class="lineup-toolbar"><div><strong>完整比赛阵容</strong></div><div class="btns"><button class="btn green" onclick="lineupAllWrite(true)">写入并显示全部名单</button><button class="btn" onclick="lineupAllWrite(false)">保存四份名单（不上屏）</button><button class="btn" onclick="setVis('lineup_show',false)">隐藏名单</button></div></div><details class="preparation-details" id="rosterEditor"><summary>单独编辑首发与替补</summary><div class="card-grid lineups-grid"><div class="card">
+    <h2><span class="tag"></span>主队 · 首发</h2>
+    <div class="frow"><div class="field "><label for="xiH_team">队名</label><input aria-label="队名" type="text" id="xiH_team" value="主队"></div></div>
+    <div class="frow two-fields"><div class="field "><label for="xiH_subtitle">副标题</label><input aria-label="副标题" type="text" id="xiH_subtitle" value="首发阵容"></div><div class="field "><label for="xiH_color">颜色</label><div class="color-control"><input type="color" data-color-for="xiH_color" aria-label="选择颜色" value="#007AFF"><input aria-label="颜色" type="text" id="xiH_color" value="#C8102E"></div></div></div>
+
+    <div class="frow"><div class="field"><label for="xiH_import">导入名单（TXT / CSV / TSV / Excel）</label><input id="xiH_import" type="file" accept=".txt,.csv,.tsv,.xlsx,.xls,.xlsm,text/plain,text/csv" onchange="FBPLinks.importRoster('xiH',this)"></div></div>
+    <div class="frow roster-sheets" id="xiH_sheets" hidden><div class="field"><label for="xiH_sheet">Excel 工作表</label><select id="xiH_sheet" onchange="FBPLinks.selectRosterSheet('xiH',this.value)"></select></div></div>
+    <div class="field list-field"><label for="xiH_players">球员名单</label><textarea id="xiH_players" placeholder="1 球员甲 (GK)&#10;2 球员乙 (后卫)&#10;10 球员丙 (C)"></textarea></div>
+    <div class="btns"><button class="btn green sm" onclick="lineupWrite('xiH')">单独显示</button>
+      <button class="btn sm" onclick="prepareD200('xiH')">保存名单（不上屏）</button>
+      <button class="btn sm" onclick="setVis('lineup_show',false)">隐藏</button></div>
+  </div>
+<div class="card">
+    <h2><span class="tag"></span>客队 · 首发</h2>
+    <div class="frow"><div class="field "><label for="xiA_team">队名</label><input aria-label="队名" type="text" id="xiA_team" value="客队"></div></div>
+    <div class="frow two-fields"><div class="field "><label for="xiA_subtitle">副标题</label><input aria-label="副标题" type="text" id="xiA_subtitle" value="首发阵容"></div><div class="field "><label for="xiA_color">颜色</label><div class="color-control"><input type="color" data-color-for="xiA_color" aria-label="选择颜色" value="#007AFF"><input aria-label="颜色" type="text" id="xiA_color" value="#00529F"></div></div></div>
+
+    <div class="frow"><div class="field"><label for="xiA_import">导入名单（TXT / CSV / TSV / Excel）</label><input id="xiA_import" type="file" accept=".txt,.csv,.tsv,.xlsx,.xls,.xlsm,text/plain,text/csv" onchange="FBPLinks.importRoster('xiA',this)"></div></div>
+    <div class="frow roster-sheets" id="xiA_sheets" hidden><div class="field"><label for="xiA_sheet">Excel 工作表</label><select id="xiA_sheet" onchange="FBPLinks.selectRosterSheet('xiA',this.value)"></select></div></div>
+    <div class="field list-field"><label for="xiA_players">球员名单</label><textarea id="xiA_players" placeholder="1 门将&#10;2 后卫&#10;10 前锋"></textarea></div>
+    <div class="btns"><button class="btn green sm" onclick="lineupWrite('xiA')">单独显示</button>
+      <button class="btn sm" onclick="prepareD200('xiA')">保存名单（不上屏）</button>
+      <button class="btn sm" onclick="setVis('lineup_show',false)">隐藏</button></div>
+  </div>
+<div class="card">
+    <h2><span class="tag"></span>主队 · 替补</h2>
+    <div class="frow"><div class="field "><label for="subH_team">队名</label><input aria-label="队名" type="text" id="subH_team" value="主队"></div></div>
+    <div class="frow two-fields"><div class="field "><label for="subH_subtitle">副标题</label><input aria-label="副标题" type="text" id="subH_subtitle" value="替补名单"></div><div class="field "><label for="subH_color">颜色</label><div class="color-control"><input type="color" data-color-for="subH_color" aria-label="选择颜色" value="#007AFF"><input aria-label="颜色" type="text" id="subH_color" value="#C8102E"></div></div></div>
+    <div class="frow"><div class="field"><label for="subH_import">导入名单（TXT / CSV / TSV / Excel）</label><input id="subH_import" type="file" accept=".txt,.csv,.tsv,.xlsx,.xls,.xlsm,text/plain,text/csv" onchange="FBPLinks.importRoster('subH',this)"></div></div>
+    <div class="frow roster-sheets" id="subH_sheets" hidden><div class="field"><label for="subH_sheet">Excel 工作表</label><select id="subH_sheet" onchange="FBPLinks.selectRosterSheet('subH',this.value)"></select></div></div>
+    <div class="field list-field"><label for="subH_players">球员名单</label><textarea id="subH_players" placeholder="12 替补A&#10;20 替补B"></textarea></div>
+    <div class="btns"><button class="btn green sm" onclick="lineupWrite('subH')">单独显示</button>
+      <button class="btn sm" onclick="prepareD200('subH')">保存名单（不上屏）</button>
+      <button class="btn sm" onclick="setVis('lineup_show',false)">隐藏</button></div>
+  </div>
+<div class="card">
+    <h2><span class="tag"></span>客队 · 替补</h2>
+    <div class="frow"><div class="field "><label for="subA_team">队名</label><input aria-label="队名" type="text" id="subA_team" value="客队"></div></div>
+    <div class="frow two-fields"><div class="field "><label for="subA_subtitle">副标题</label><input aria-label="副标题" type="text" id="subA_subtitle" value="替补名单"></div><div class="field "><label for="subA_color">颜色</label><div class="color-control"><input type="color" data-color-for="subA_color" aria-label="选择颜色" value="#007AFF"><input aria-label="颜色" type="text" id="subA_color" value="#00529F"></div></div></div>
+    <div class="frow"><div class="field"><label for="subA_import">导入名单（TXT / CSV / TSV / Excel）</label><input id="subA_import" type="file" accept=".txt,.csv,.tsv,.xlsx,.xls,.xlsm,text/plain,text/csv" onchange="FBPLinks.importRoster('subA',this)"></div></div>
+    <div class="frow roster-sheets" id="subA_sheets" hidden><div class="field"><label for="subA_sheet">Excel 工作表</label><select id="subA_sheet" onchange="FBPLinks.selectRosterSheet('subA',this.value)"></select></div></div>
+    <div class="field list-field"><label for="subA_players">球员名单</label><textarea id="subA_players" placeholder="12 替补A&#10;20 替补B"></textarea></div>
+    <div class="btns"><button class="btn green sm" onclick="lineupWrite('subA')">单独显示</button>
+      <button class="btn sm" onclick="prepareD200('subA')">保存名单（不上屏）</button>
+      <button class="btn sm" onclick="setVis('lineup_show',false)">隐藏</button></div>
+  </div></div></details><details class="card preset-card"><summary>赛事预设</summary><div class="preset-content">
+
+    <div class="frow with-actions"><div class="field "><label for="presetName">预设名</label><input aria-label="预设名" type="text" id="presetName" placeholder="如：本场比赛"></div><div class="row-actions"><button class="btn sm blue" onclick="savePreset()">保存当前</button></div></div>
+    <div class="frow with-actions"><div class="field "><label for="presetSelect">载入</label><select aria-label="载入" id="presetSelect"></select></div><div class="row-actions"><button class="btn sm green" onclick="loadPreset()">载入</button><button class="btn sm red" onclick="deletePreset()">删除</button></div></div>
+
+
+  </div></details><div id="squadPicker" class="squad-picker"></div></section><section id="view-settings" aria-label="设置" hidden><div class="settings-nav" role="tablist" aria-label="设置分类"><button id="settings-appearance" role="tab" aria-controls="view-appearance" aria-selected="true" onclick="FBPDesk.settings('appearance')">画面设置</button><button id="settings-devices" role="tab" aria-controls="view-devices" aria-selected="false" tabindex="-1" onclick="FBPDesk.settings('devices')">设备连接</button></div><section id="view-appearance" role="tabpanel" aria-labelledby="settings-appearance" tabindex="0" hidden><div class="card-grid appearance-grid"><div class="card theme-card">
+    <h2><span class="tag"></span>皮肤与字体
+      </h2>
+    <div class="frow"><div class="field"><label class="scoreboard-logo-option"><input id="sb_logos_show" type="checkbox" checked onchange="setScoreboardLogos(this.checked)"><span>比分条显示主客队队徽</span></label></div></div>
+    <div class="frow"><div class="field "><label for="theme_skin">皮肤</label><select aria-label="皮肤" id="theme_skin">
+        <option value="dark">紫白</option>
+        <option value="deep">深紫</option>
+        <option value="night">梅紫</option>
+      </select></div></div>
+    <div class="frow two-fields"><div class="field "><label for="theme_accent">上场指示色</label><div class="color-control"><input type="color" data-color-for="theme_accent" aria-label="选择强调色" value="#007AFF"><input aria-label="强调色" type="text" id="theme_accent" value="#008c6b"></div></div><div class="field "><label for="theme_bg">背景</label><div class="color-control"><input type="color" data-color-for="theme_bg" aria-label="选择背景" value="#007AFF"><input aria-label="背景" type="text" id="theme_bg" placeholder="留空=透明"></div></div></div>
+    <div class="frow"><div class="field "><label for="theme_font">字体</label><select aria-label="字体" id="theme_font">
+        <option value="Outfit, Microsoft YaHei, sans-serif">默认（Outfit / 雅黑）</option>
+        <option value="Microsoft YaHei, Segoe UI, sans-serif">微软雅黑</option>
+        <option value="SimHei, Microsoft YaHei, sans-serif">黑体 SimHei</option>
+        <option value="DengXian, Microsoft YaHei, sans-serif">等线 DengXian</option>
+        <option value="Bahnschrift, Segoe UI, sans-serif">西文 Bahnschrift</option>
+      </select></div></div>
+    <div class="card-footer"><div class="btns">
+      <button class="btn green" onclick="writeTheme()">应用主题</button>
+      <button class="btn" onclick="defaultTheme()">恢复默认</button>
+    </div>
+
+  </div></div>
+<div class="card custom-card">
+    <h2><span class="tag"></span>动画与素材
+      </h2>
+    <div class="frow two-fields"><div class="field "><label for="motion">动画风格</label><select aria-label="动画风格" id="motion">
+        <option value="smooth">转播平滑</option>
+        <option value="lively">利落 lively</option>
+        <option value="soft">柔和 soft</option>
+        <option value="linear">线性 linear</option>
+      </select></div><div class="field "><label for="animdur">时长倍率</label><div class="range-control"><input aria-label="动画速度" type="range" id="animdur" value="1" min="0.5" max="2" step="0.05" oninput="$('animdurVal').textContent=parseFloat(this.value).toFixed(2)+'×'"><output id="animdurVal" for="animdur">1.00×</output></div></div></div>
+    <div class="frow two-fields"><div class="field"><label for="wipe_in">Wipe 入场（秒）</label><input id="wipe_in" type="text" inputmode="decimal" value="0.56"></div><div class="field"><label for="wipe_out">Wipe 退场（秒）</label><input id="wipe_out" type="text" inputmode="decimal" value="0.32"></div></div>
+    <fieldset class="hold-settings"><legend>动画停留时间 <span>秒</span></legend><div class="hold-grid"><div class="field"><label for="hold_goal">进球</label><div class="number-control"><input inputmode="decimal" data-scrub-number data-min="0.1" data-max="3600" data-step="0.1" type="text" id="hold_goal" class="w80" value="5.6" title="进球"><button type="button" class="number-step" data-number-for="hold_goal" data-direction="-1" aria-label="减少进球停留时间"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8"/></svg></button><button type="button" class="number-step" data-number-for="hold_goal" data-direction="1" aria-label="增加进球停留时间"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8M8 4v8"/></svg></button></div></div><div class="field"><label for="hold_card">红黄牌</label><div class="number-control"><input inputmode="decimal" data-scrub-number data-min="0.1" data-max="3600" data-step="0.1" type="text" id="hold_card" class="w80" value="5" title="红黄牌"><button type="button" class="number-step" data-number-for="hold_card" data-direction="-1" aria-label="减少红黄牌停留时间"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8"/></svg></button><button type="button" class="number-step" data-number-for="hold_card" data-direction="1" aria-label="增加红黄牌停留时间"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8M8 4v8"/></svg></button></div></div><div class="field"><label for="hold_rst">发球</label><div class="number-control"><input inputmode="decimal" data-scrub-number data-min="0.1" data-max="3600" data-step="0.1" type="text" id="hold_rst" class="w80" value="4.5" title="发球"><button type="button" class="number-step" data-number-for="hold_rst" data-direction="-1" aria-label="减少发球停留时间"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8"/></svg></button><button type="button" class="number-step" data-number-for="hold_rst" data-direction="1" aria-label="增加发球停留时间"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8M8 4v8"/></svg></button></div></div><div class="field"><label for="hold_ply">球员</label><div class="number-control"><input inputmode="decimal" data-scrub-number data-min="0.1" data-max="3600" data-step="0.1" type="text" id="hold_ply" class="w80" value="4.5" title="球员"><button type="button" class="number-step" data-number-for="hold_ply" data-direction="-1" aria-label="减少球员停留时间"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8"/></svg></button><button type="button" class="number-step" data-number-for="hold_ply" data-direction="1" aria-label="增加球员停留时间"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8M8 4v8"/></svg></button></div></div><div class="field"><label for="hold_sub">换人</label><div class="number-control"><input id="hold_sub" type="text" inputmode="decimal" data-scrub-number data-min="0.1" data-max="3600" data-step="0.1" value="5"></div></div></div></fieldset>
+    <div class="grp">
+      <div class="frow with-actions"><div class="field "><label for="bgFile">背景图</label><input aria-label="选择背景图" type="file" id="bgFile" accept="image/*" onchange="onBgFile(event)"></div><div class="row-actions"><button class="btn sm" onclick="clearBg()">清除</button></div></div></div>
+    <div class="grp">
+      <div class="frow two-fields"><div class="field "><label for="fontFile">字体文件</label><input aria-label="选择字体文件" type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf" onchange="onFontFile(event)"></div><div class="field "><label for="font_family">字体字族名</label><input aria-label="字体字族名" type="text" id="font_family" placeholder="字族名"></div></div></div>
+    <div class="card-footer"><div class="btns">
+      <button class="btn green" onclick="applyCustom()">应用自定义</button>
+      <button class="btn" onclick="defaultCustom()">恢复默认</button>
+    </div>
+
+  </div></div>
+<div class="card logo-card">
+    <h2><span class="tag"></span>角标 Logo</h2>
+    <div class="upload-grid">
+
+    <div class="grp">
+      <div class="frow"><div class="field "><label for="logoFile">角标 Logo</label><input aria-label="角标 Logo" type="file" id="logoFile" accept="image/*" onchange="onLogoFile(event,'logo_data')"></div></div>
+      <div class="btns">
+        <button class="btn sm green" onclick="setVis('logo_show',true)">显示角标</button>
+        <button class="btn sm" onclick="setVis('logo_show',false)">隐藏角标</button>
+        <button class="btn sm red" onclick="clearLogoKey('logo_data')">清除角标</button>
+      </div></div>
+    </div>
+  </div></div></section><section id="view-devices" role="tabpanel" aria-labelledby="settings-devices" tabindex="0" hidden><div class="card-grid devices-grid"><div class="card connection-card"><h2>控制服务</h2><div class="frow with-actions"><div class="field "><label for="serverBase">地址</label><input aria-label="地址" type="text" id="serverBase" value="http://localhost:8124" onchange="persist('fbp_serverBase',this.value)"></div><div class="row-actions"><button class="btn blue" onclick="connect()">连接</button></div></div><div class="btns"><button class="btn" onclick="genAllUrls()">生成全部模板地址</button></div></div>
+<div class="card">
+    <h2><span class="tag"></span>联合上屏 · 单链接 Graphic
+      <button class="btn sm urlbtn legacy-link" onclick="copySingleUrl()"> 复制</button></h2>
+
+    <div class="frow with-actions"><div class="field "><label for="singleUrl">vMix 上屏地址</label><input aria-label="vMix 上屏地址" type="text" id="singleUrl" readonly value=""></div><div class="row-actions"><button class="btn sm green" onclick="copySingleUrl()">复制地址</button></div></div>
+    <div class="grp"><div class="gl">图层与布局维护</div>
+
+      <div class="btns">
+        <button class="btn sm red" onclick="hideAll()">隐藏全部常驻图层</button>
+        <button class="btn sm blue" onclick="resetAllPos()"> 重置所有元素位置</button>
+        <button class="btn sm green" onclick="editorOpen()">位置与大小编辑器</button>
+      </div></div>
+
+  </div>
+<div class="card">
+    <h2><span class="tag"></span>Ulanzi D200 实体按键</h2>
+
+    <div class="btns">
+      <button class="btn blue" onclick="window.open(serverBase+'/control/d200.html','_blank')">打开 D200 配置页</button>
+      <button class="btn" onclick="prepareD200('all')">保存事件与名单</button>
+    </div>
+
+  </div>
+<div class="card">
+    <h2><span class="tag"></span>vMix 叠层 显示/隐藏 </h2>
+
+    <div class="frow two-fields"><div class="field "><label for="vmixApi">vMix API 地址</label><input aria-label="vMix API 地址" type="text" id="vmixApi" value="http://localhost:8088/api/"
+        onchange="persist('fbp_vmixApi',this.value)"></div><div class="field "><label for="overlayInput">叠层通道</label><input aria-label="叠层通道" type="text" id="overlayInput" value="2" placeholder="叠层号1-4"
+        onchange="persist('fbp_overlayInput',this.value)"></div></div>
+    <div class="frow with-actions"><div class="field "><label for="overlaySrc">网页输入</label><select aria-label="网页输入" id="overlaySrc"></select></div><div class="row-actions"><button class="btn green" onclick="overlayOn()">显示</button><button class="btn red" onclick="overlayOff()">隐藏</button></div></div>
+
+    <div class="btns"><button class="btn sm blue" onclick="loadInputs()">刷新输入列表</button></div>
+  </div></div></section></section></main>
+
+<div id="log" class="collapsed">
+  <div class="lh">
+    <button class="log-toggle" aria-controls="logBox" aria-expanded="false" onclick="togglePanelLog()">操作日志</button>
+    <button class="btn sm" id="clearLog" onclick="event.stopPropagation();logBox.innerHTML=''">清空</button>
+  </div>
+  <div class="lb" id="logBox"></div>
+</div>
+
+<script src="vendor/motion.js"></script>
+<script src="liquid-nav.js"></script>
+<script src="microkit-controls.js"></script>
+<script src="panel-layout.js"></script>
+<script src="console-desk.js"></script>
+<script src="panel-choices.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="roster-format.js"></script>
+<script src="player-title.js"></script>
+<script src="match-config.js"></script>
+<script src="panel-links.js"></script>
+<script src="panel-assets.js"></script>
+<script src="panel-match-config.js"></script>
+<script src="panel-match-timing.js"></script>
+<script src="panel-roster-picker.js"></script>
+<script src="event-controls.js"></script>
+<script>
+var serverBase=/^https?:$/.test(location.protocol)?location.origin:'http://localhost:8124';
+function $(id){return document.getElementById(id);}
+var logBox=$('logBox');
+function log(txt,ok){var d=document.createElement('div');d.innerHTML='<span class="'+(ok?'st':'er')+'">'+(ok?'✔':'✘')+'</span> '+escapeHtml(txt);
+  logBox.appendChild(d);while(logBox.children.length>120)logBox.removeChild(logBox.firstChild);}
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function setConn(ok){$('connDot').className='dot '+(ok?'ok':'err');$('connectionText').textContent=ok?'服务已连接':'连接异常';}
+
+/* ---------- 连接与状态 ---------- */
+function connect(){
+  serverBase=$('serverBase').value.trim().replace(/\/+$/,'');
+  $('serverBase').value=serverBase;
+  persist('fbp_serverBase',serverBase);
+  updateSingleUrl();
+  fetchState();
+}
+function fetchState(){
+  fetch(serverBase+'/state.json',{cache:'no-cache'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(s){
+    setConn(true);renderLiveFields(s);renderMatchStatus(s.status||'running');
+    // 载入赛事预设容器
+    PRESETS=(s&&s._presets&&typeof s._presets==='object')?s._presets:{};
+    refreshPresetSelect();
+    // 把状态回填到面板字段(仅非空)
+    var map={teamHome:'teamHome',teamAway:'teamAway',scoreHome:'scoreHome',scoreAway:'scoreAway',
+      period:'period',colorHome:'colorHome',colorAway:'colorAway',
+      clock_label:'clock_label',clock_sub:'clock_sub',clock_mode:'clock_mode',clock_mm:'clock_mm',clock_ss:'clock_ss',clock_color:'clock_color',
+      restart_team:'restart_team',restart_player:'restart_player',restart_text:'restart_text',restart_color:'restart_color',
+      card_num:'card_num',card_name:'card_name',card_team:'card_team',card_reason:'card_reason',
+      player_name:'player_name',player_num:'player_num',player_team:'player_team',player_pos:'player_pos',player_event:'player_event',player_color:'player_color',
+      goal_side:'goal_side',card_side:'card_side',player_side:'player_side',sub_side:'sub_side',sub_off_num:'sub_off_num',sub_off_name:'sub_off_name',sub_on_num:'sub_on_num',sub_on_name:'sub_on_name',goal_team:'goal_team',goal_name:'goal_name',goal_num:'goal_num',goal_scoreHome:'goal_scoreHome',goal_scoreAway:'goal_scoreAway',goal_color:'goal_color',
+      xiH_team:'xiH_team',xiH_subtitle:'xiH_subtitle',xiH_color:'xiH_color',xiH_players:'xiH_players',
+      xiA_team:'xiA_team',xiA_subtitle:'xiA_subtitle',xiA_color:'xiA_color',xiA_players:'xiA_players',
+      subH_team:'subH_team',subH_subtitle:'subH_subtitle',subH_color:'subH_color',subH_players:'subH_players',
+      subA_team:'subA_team',subA_subtitle:'subA_subtitle',subA_color:'subA_color',subA_players:'subA_players',
+      theme_skin:'theme_skin',theme_accent:'theme_accent',theme_bg:'theme_bg',theme_font:'theme_font',
+      motion:'motion',animdur:'animdur',wipe_in:'wipe_in',wipe_out:'wipe_out',sb_clockmode:'sb_clockmode',hold_goal:'hold_goal',hold_card:'hold_card',hold_rst:'hold_rst',hold_ply:'hold_ply',hold_sub:'hold_sub',font_family:'font_family'};
+    Object.keys(map).forEach(function(k){
+      if(s[k]!==undefined&&s[k]!==null){var e=$(map[k]);if(e)e.value=k==='theme_bg'&&FBPAssets.isImage(s[k])?'':s[k];}
+    });
+    $('player_event').value=FBPPlayerTitle.get(s);
+    if(s.sb_clock_state){$('sb_clockmode').value=s.sb_clock_state.mode;var c=s.sb_clock_state,elapsed=c.running?Math.max(0,Date.now()-c.base):0;var seconds=Math.floor(Math.max(0,c.accMs+(c.mode==='down'?-elapsed:elapsed))/1000);$('sb_clock_mm').value=Math.floor(seconds/60);$('sb_clock_ss').value=String(seconds%60).padStart(2,'0');}
+    SAVED_SB_LOGOS=s.sb_logos_show===undefined?true:(s.sb_logos_show===true||s.sb_logos_show===1||s.sb_logos_show==='1'||s.sb_logos_show==='true');$('sb_logos_show').checked=SAVED_SB_LOGOS;
+    FBPLinks.hydrate(s);if(window.FBPBatchSub)FBPBatchSub.hydrate(s);FBPEvents.hydrate(s);FBPChoices.fromState(s);FBPAssets.hydrate(s);FBPMatchFiles.ready();
+    FBPWidgets.sync();
+  }).catch(function(e){setConn(false);$('writeStatus').textContent='连接失败：'+e.message;});
+}
+/* 把一组字段写入 state.json（合并）。返回 Promise，便于后续刷新面板。 */
+var WRITE_QUEUE=Promise.resolve(),WRITE_COUNT=0;
+function sendState(patch){
+  var base=serverBase, body=typeof patch==='function'?null:JSON.stringify(patch);WRITE_COUNT++;
+  var result=WRITE_QUEUE.then(function(){
+    $('writeStatus').textContent='保存中…';
+    if(typeof patch==='function')return Promise.resolve(patch()).then(function(value){patch=value;body=JSON.stringify(patch);});
+  }).then(function(){
+    return fetch(base+'/state.json',{method:'POST',headers:{'Content-Type':'application/json'},body:body})
+      .then(function(r){return r.json().then(function(res){
+        if(!r.ok||res.ok!==true)throw new Error(res.error||('HTTP '+r.status));
+        return res;
+      });});
+  }).then(function(res){
+        if(res.score&&(patch.scoreHome_delta!==undefined||patch.scoreAway_delta!==undefined||patch.scoreHome!==undefined||patch.scoreAway!==undefined)){
+          FBPLinks.acceptScores(res.score);
+          REMOTE_SCORES.scoreHome=res.score.home;REMOTE_SCORES.scoreAway=res.score.away;
+          if(patch.goal_trigger==='goal'){$('goal_scoreHome').value=res.score.home;$('goal_scoreAway').value=res.score.away;}
+        }
+        FBPLinks.saved(patch);FBPEvents.saved(patch);FBPLinks.liveRoster(res.onfield);FBPChoices.render(res.controls);renderLiveFields(patch,res.score);FBPAssets.accept(patch);
+        if(patch.status!==undefined)renderMatchStatus(patch.status);
+        setConn(true);$('writeStatus').textContent='已保存';
+        // Summarize binary fields instead of putting megabytes of base64 in the log.
+        var summary={};Object.keys(patch).forEach(function(k){
+          var v=patch[k];summary[k]=typeof v==='string'&&v.length>300?'[上传数据 '+v.length+' 字符]':v;
+        });
+        log('写入 state: '+JSON.stringify(summary),true);return res;
+  }).catch(function(e){
+        log('写入失败: '+e.message,false);setConn(false);
+        $('writeStatus').textContent='保存失败：'+e.message;
+        $('log').classList.remove('collapsed');document.querySelector('.log-toggle').setAttribute('aria-expanded','true');return null;
+  });
+  result=result.then(function(res){WRITE_COUNT--;return res;});
+  WRITE_QUEUE=result.then(function(){});return result;
+}
+/* 发送单个字段 */
+function send(key,val){var o={};o[key]=val;sendState(o);}
+/* 触发（可重复）：每次都会附带一个递增的 *_tick，模板按 tick 变化去重，
+   从而同一动画可反复触发（进多球/多次判罚/多次发球）。 */
+var TICK=Date.now();
+function nTick(){TICK=Math.max(Date.now(),TICK+1);return TICK;}
+/* 触发键 -> 对应的计数键（模板按 *_tick 变化去重） */
+var TICK_MAP={score_trigger:'score_tick',sb_clockcmd:'sb_clock_tick',clock_cmd:'clock_tick',
+  restart_trigger:'restart_tick',card_trigger:'card_tick',player_trigger:'player_tick',
+  goal_trigger:'goal_tick',lineup_trigger:'lineup_tick'};
+function trigger(key,val){
+  var tk=TICK_MAP[key]||(key+'_tick');
+  var o={};o[key]=val;o[tk]=nTick();sendState(o);
+}
+
+/* ---------- 本地记忆（服务器地址/预设等） ---------- */
+function persist(key,val){try{if(val===undefined||val===null)localStorage.removeItem(key);else localStorage.setItem(key,val);}catch(e){}}
+function initPersist(){
+  try{
+    var sb=localStorage.getItem('fbp_serverBase'); if(!/^https?:$/.test(location.protocol)&&sb)serverBase=sb;
+    $('serverBase').value=serverBase;
+    var va=localStorage.getItem('fbp_vmixApi'); if(va)$('vmixApi').value=va;
+    var oi=localStorage.getItem('fbp_overlayInput'); if(oi)$('overlayInput').value=oi;
+    var gs=localStorage.getItem('fbp_goal_side'); if(gs)$('goal_side').value=gs;
+    $('goal_sync').checked=false;
+  }catch(e){}
+}
+
+/* ---------- 赛事预设 ---------- */
+var PRESETS={};
+var PRESET_KEYS=['teamHome','teamAway','scoreHome','scoreAway','period','colorHome','colorAway'];
+function refreshPresetSelect(){
+  var s=$('presetSelect'),names=Object.keys(PRESETS);
+  s.innerHTML=names.map(function(n){return '<option value="'+escapeHtml(n)+'">'+escapeHtml(n)+'</option>';}).join('');
+  if(!names.length)s.innerHTML='<option value="">— 暂无预设 —</option>';
+}
+function savePreset(){
+  var name=$('presetName').value.trim();
+  if(!name){log('请先填写预设名',false);return;}
+  var o={};PRESET_KEYS.forEach(function(k){o[k]=$(k).value;});
+  PRESETS[name]=o;
+  sendState({_presets:PRESETS}).then(function(res){if(!res)return;refreshPresetSelect();log('已保存预设: '+name,true);});
+}
+function loadPreset(){
+  var name=$('presetSelect').value,p=PRESETS[name];
+  if(!p){log('未选择预设',false);return;}
+  var patch={};PRESET_KEYS.forEach(function(k){if(p[k]!==undefined)patch[k]=p[k];});
+  sendState(patch).then(function(res){if(!res)return;fetchState();log('已载入预设: '+name,true);});
+}
+function deletePreset(){
+  var name=$('presetSelect').value;
+  if(!name||!PRESETS[name]){log('未选择预设',false);return;}
+  delete PRESETS[name];
+  sendState({_presets:PRESETS}).then(function(res){if(!res)return;refreshPresetSelect();log('已删除预设: '+name,true);});
+}
+
+/* ---------- 比分条 ---------- */
+function score(key,delta){
+  var el=$(key);var v=Math.max(0,(parseInt(el.value,10)||0)+delta);el.value=v;
+  var side=key==='scoreHome'?'home':'away',draft=FBPLinks.isScoreDraft(side);FBPLinks.setScore(side,v);
+  var o={};o[draft?key:key+'_delta']=draft?v:delta;var other=side==='home'?'away':'home';if(FBPLinks.isScoreDraft(other))o[other==='home'?'scoreHome':'scoreAway']=$(other==='home'?'scoreHome':'scoreAway').value;sendState(o);
+}
+var MATCH_STATUSES={running:'进行中',paused:'暂停'};
+function renderMatchStatus(status){
+  // Older presets and automatic phase transitions still use half/over.
+  // Present both as paused without rewriting their saved phase or clock.
+  if(status==='half'||status==='over')status='paused';
+  if(!MATCH_STATUSES[status])return;
+  $('liveMatchStatus').textContent=MATCH_STATUSES[status];
+  if(document.activeElement!==$('matchStatus'))$('matchStatus').value=status;
+  document.querySelectorAll('[data-match-status]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.matchStatus===status));});
+}
+function setPeriod(period){return sendState({period:period});}
+function setStatus(s){
+  if(!MATCH_STATUSES[s])return;
+  return sendState({status:s,sb_clockcmd:s==='running'?'start':'pause',sb_clock_tick:nTick()});
+}
+function writeScoreboard(){
+  sendState({teamHome:$('teamHome').value,teamAway:$('teamAway').value,scoreHome:$('scoreHome').value,
+    scoreAway:$('scoreAway').value,period:$('period').value,colorHome:$('colorHome').value,
+    colorAway:$('colorAway').value,...FBPLinks.teamPatch()});
+}
+var SAVED_SB_LOGOS=true;
+function setScoreboardLogos(show){
+  $('sb_logos_show').disabled=true;
+  return sendState({sb_logos_show:!!show}).then(function(res){if(res)SAVED_SB_LOGOS=!!show;$('sb_logos_show').checked=SAVED_SB_LOGOS;$('sb_logos_show').disabled=false;});
+}
+
+/* ---------- 计时器 ---------- */
+function writeClock(){
+  sendState({clock_label:$('clock_label').value,clock_sub:$('clock_sub').value,
+    clock_mode:$('clock_mode').value,clock_mm:$('clock_mm').value,clock_ss:$('clock_ss').value,
+    clock_color:$('clock_color').value,clock_cmd:'set',clock_tick:nTick()});
+}
+/* 计时器：正计/倒计 统一控制（自动显示计时器） */
+function clockCmd(cmd){ sendState({clock_cmd:cmd,clock_tick:nTick(),clock_show:true}); }
+function clockSet(){
+  sendState({clock_label:$('clock_label').value,clock_sub:$('clock_sub').value,clock_color:$('clock_color').value,
+    clock_mode:$('clock_mode').value,clock_mm:$('clock_mm').value,clock_ss:$('clock_ss').value,
+    clock_cmd:'set',clock_tick:nTick(),clock_show:true});
+}
+/* Logo / 队徽 */
+function onLogoFile(ev,key){
+  var f=ev.target.files&&ev.target.files[0]; if(!f)return;
+  var r=new FileReader();FBPAssets.pending(key,f.name);
+  r.onload=function(){ var o={}; o[key]=r.result;o[key+'_filename']=f.name; if(key==='logo_data')o.logo_show=true; sendState(o).then(function(res){if(res)log('已上传并显示: '+f.name,true);else FBPAssets.failed(key);}); };
+  r.onerror=function(){ FBPAssets.failed(key);log('图片读取失败',false); };
+  r.readAsDataURL(f);
+}
+function clearLogoKey(key){ var o={}; o[key]='';o[key+'_filename']=''; if(key==='logo_data')o.logo_show=false; sendState(o).then(function(res){if(res)log('已清除: '+key,true);}); }
+function resetAllPos(){ sendState({posreset_tick:nTick()}).then(function(res){if(res)log('已重置所有元素位置（请在预览页确认）',true);}); }
+function editorOpen(){ var u=(serverBase||'http://localhost:8124')+'/control/preview.html'; window.open(u,'_blank'); log('已打开 位置/大小 编辑器: '+u,true); }
+/* 主题 / 皮肤 */
+function writeTheme(){ sendState({theme_skin:$('theme_skin').value,theme_accent:$('theme_accent').value,theme_bg:FBPAssets.background($('theme_bg').value),theme_font:$('theme_font').value}).then(function(res){if(res)log('已应用主题（皮肤/颜色/背景/字体）',true);}); }
+function defaultTheme(){ $('theme_skin').value='dark';$('theme_accent').value='#008c6b';$('theme_bg').value='';$('theme_font').value='Outfit, Microsoft YaHei, sans-serif'; FBPWidgets.sync(); sendState({theme_skin:'dark',theme_accent:'#008c6b',theme_bg:'',theme_font:'Outfit, Microsoft YaHei, sans-serif'}).then(function(res){if(res)log('已恢复默认主题',true);}); }
+/* 自定义：动画/图片/字体 */
+function applyCustom(){
+  var incoming=Number($('wipe_in').value),outgoing=Number($('wipe_out').value);if(!Number.isFinite(incoming)||incoming<.1||incoming>5||!Number.isFinite(outgoing)||outgoing<.1||outgoing>5){log('入退场时间请输入 0.1–5 秒',false);return;}
+  var o={motion:$('motion').value,animdur:parseFloat($('animdur').value)||1,wipe_in:incoming,wipe_out:outgoing,
+    hold_goal:$('hold_goal').value,hold_card:$('hold_card').value,hold_rst:$('hold_rst').value,hold_ply:$('hold_ply').value,hold_sub:$('hold_sub').value,
+    font_family:$('font_family').value};
+  sendState(o).then(function(res){if(res)log('已应用自定义效果（动画/停留/字体）',true);});
+}
+function defaultCustom(){
+  $('wipe_in').value='.56';$('wipe_out').value='.32';$('motion').value='smooth';$('animdur').value='1';$('animdurVal').textContent='1.00×';
+  $('hold_goal').value='5.6';$('hold_card').value='5';$('hold_rst').value='4.5';$('hold_ply').value='4.5';$('hold_sub').value='5';
+  $('font_family').value='';
+  FBPWidgets.sync();
+  sendState({motion:'smooth',animdur:1,wipe_in:.45,wipe_out:.28,hold_goal:'5.6',hold_card:'5',hold_rst:'4.5',hold_ply:'4.5',hold_sub:5,font_data:'',font_data_filename:'',font_family:''}).then(function(res){if(res)log('已恢复默认动画/字体设置',true);});
+}
+function onBgFile(ev){ var f=ev.target.files&&ev.target.files[0]; if(!f)return; var r=new FileReader();
+  FBPAssets.pending('theme_bg',f.name);r.onload=function(){ $('theme_bg').value=''; sendState({theme_bg:r.result,theme_bg_filename:f.name}).then(function(res){if(res)log('已设置背景图（显示在整屏图形下）',true);else FBPAssets.failed('theme_bg');}); }; r.onerror=function(){FBPAssets.failed('theme_bg');log('背景图读取失败',false);}; r.readAsDataURL(f); }
+function clearBg(){ $('theme_bg').value=''; sendState({theme_bg:'',theme_bg_filename:''}).then(function(res){if(res)log('已清除背景图',true);}); }
+function onFontFile(ev){ var f=ev.target.files&&ev.target.files[0]; if(!f)return; var r=new FileReader();
+  FBPAssets.pending('font_data',f.name);r.onload=function(){ var nm=$('font_family').value.trim()||'CustomFont'; sendState({font_data:r.result,font_data_filename:f.name,font_family:nm}).then(function(res){if(res)log('已上传自定义字体：'+f.name,true);else FBPAssets.failed('font_data');}); }; r.onerror=function(){FBPAssets.failed('font_data');log('字体读取失败',false);}; r.readAsDataURL(f); }
+
+/* ---------- 发球 ---------- */
+function restart(type){
+  sendState({restart_type:type,restart_team:$('restart_team').value,restart_player:$('restart_player').value,
+    restart_side:$('restart_side').value,restart_num:$('restart_num').value,restart_name:$('restart_name').value,
+    restart_text:$('restart_text').value,restart_color:$('restart_color').value,restart_trigger:type,
+    restart_tick:nTick()});
+}
+
+/* ---------- 红黄牌 ---------- */
+function card(type){
+  sendState({card_type:type,card_num:$('card_num').value,card_name:$('card_name').value,
+    card_team:$('card_team').value,card_reason:$('card_reason').value,card_trigger:type,
+    card_side:$('card_side').value,card_tick:nTick()});
+}
+
+/* ---------- 球员条 ---------- */
+function writePlayer(){
+  sendState({player_name:$('player_name').value,player_num:$('player_num').value,player_team:$('player_team').value,
+    player_pos:$('player_pos').value,player_event:$('player_event').value,player_title:$('player_event').value.trim()||'球员信息',player_color:$('player_color').value,
+    player_side:$('player_side').value,player_trigger:'show',player_tick:nTick()});
+}
+
+/* ---------- 进球 ---------- */
+function writeGoal(){
+  var side=$('goal_side').value, sync=$('goal_sync').checked;
+  var patch={goal_team:$('goal_team').value,goal_name:$('goal_name').value,goal_num:$('goal_num').value,
+    goal_color:$('goal_color').value,
+    goal_scoreHome:$('goal_scoreHome').value,goal_scoreAway:$('goal_scoreAway').value,
+    goal_side:side,goal_trigger:'goal'};
+  if(sync){
+    // Explicit, one-use opt-in; score deltas are applied atomically by the server.
+    patch[side==='home'?'scoreHome_delta':'scoreAway_delta']=1;
+    patch.score_trigger='flash'; patch.score_tick=nTick();
+  }
+  patch.goal_tick=nTick();
+  return sendState(patch).then(function(res){if(res)$('goal_sync').checked=false;return res;});
+}
+/* Quick scoring is independent of every animation and uses atomic server deltas. */
+function quickScore(side){
+  if(side!=='home'&&side!=='away')return Promise.resolve(null);
+  var patch={};patch[side==='home'?'scoreHome_delta':'scoreAway_delta']=1;
+  return sendState(patch);
+}
+function quickGoal(side){return quickScore(side);}
+function quickResetScore(){
+  $('scoreHome').value=0;$('scoreAway').value=0;
+  $('goal_scoreHome').value=0;$('goal_scoreAway').value=0;
+  return sendState({scoreHome:0,scoreAway:0,goal_scoreHome:0,goal_scoreAway:0});
+}
+
+/* ---------- D200 内容准备与外部比分同步 ---------- */
+function executeSubstitution(){
+  return fetch(serverBase+'/api/d200/status',{cache:'no-store'}).then(function(r){if(!r.ok)throw Error('无法检查换人服务');return r.json();}).then(function(s){
+    if(!s.onfield||!Array.isArray(s.onfield.home)||!Array.isArray(s.onfield.away))throw Error('当前服务是旧版本，请关闭原控制服务，再启动工作副本的启动控制面板.bat，刷新面板后执行换人。');
+    FBPLinks.liveRoster(s.onfield);var patch=FBPLinks.substitutionPatch(true);if(!patch)return;return sendState(patch);
+  }).catch(function(e){$('writeStatus').textContent=e.message;$('sub_match_hint').textContent=e.message;log(e.message,false);});
+}
+function prepareD200(group){
+  if(group==='sub'){var sub=FBPLinks.substitutionPatch(false);return sub?sendState(sub):Promise.resolve(null);}
+  var fields={card:['type','side','num','name','team','reason'],player:['side','name','num','team','pos','event','color'],
+    goal:['side','name','num','team','color'],restart:['type','side','num','name','team','player','text','color'],
+    xiH:['team','subtitle','color','players'],xiA:['team','subtitle','color','players'],
+    subH:['team','subtitle','color','players'],subA:['team','subtitle','color','players']};
+  var patch={};Object.keys(fields).forEach(function(prefix){
+    if(group!=='all'&&group!==prefix)return;
+    fields[prefix].forEach(function(key){var id=prefix+'_'+key;patch[id]=$(id).value;});
+  });
+  if(group==='all'||group==='player')patch.player_title=$('player_event').value.trim()||'球员信息';
+  return sendState(patch).then(function(res){if(res)log('内容已保存',true);return res;});
+}
+var REMOTE_SCORES={};
+function observeRemoteStatus(){
+  fetch(serverBase+'/api/d200/status',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(s){
+    renderLiveStatus(s);
+    if(WRITE_COUNT)return;
+    FBPLinks.liveRoster(s.onfield);
+    FBPChoices.render(s.controls);if(s.controls)renderMatchStatus(s.controls.status);
+    [{key:'scoreHome',value:s.score.home},{key:'scoreAway',value:s.score.away}].forEach(function(item){
+      if(REMOTE_SCORES[item.key]===item.value)return;
+      if(FBPLinks.remoteScore(item.key==='scoreHome'?'home':'away',item.value))REMOTE_SCORES[item.key]=item.value;
+    });
+  }).catch(function(){$('liveClockState').textContent='状态同步中断';}).then(function(){setTimeout(observeRemoteStatus,1000);});
+}
+
+/* ---------- 名单 ---------- */
+/* 名单：主/客 × 首/替，按前缀写入并显示 */
+function lineupAllShow(){return sendState({lineup_mode:'all',lineup_show:true,lineup_tick:nTick()});}
+function lineupAllWrite(show){
+  var patch={};['xiH','xiA','subH','subA'].forEach(function(pfx){['team','subtitle','color','players'].forEach(function(key){patch[pfx+'_'+key]=$(pfx+'_'+key).value;});});
+  if(show){patch.lineup_mode='all';patch.lineup_show=true;patch.lineup_tick=nTick();}
+  return sendState(patch);
+}
+function setMatchClock(){
+  var mm=Number($('sb_clock_mm').value),ss=Number($('sb_clock_ss').value);
+  if(!Number.isInteger(mm)||mm<0||mm>9999||!Number.isInteger(ss)||ss<0||ss>59){log('请输入 0–9999 分钟、0–59 秒',false);return;}
+  return sendState({sb_clockmode:$('sb_clockmode').value,sb_clockacc:(mm*60+ss)*1000,sb_clockcmd:'set',sb_clock_tick:nTick()});
+}
+function matchClockPreset(minutes){$('sb_clock_mm').value=minutes;$('sb_clock_ss').value='00';return setMatchClock();}
+function lineupWrite(pfx){
+  var o={};
+  o[pfx+'_team']=$(pfx+'_team').value;
+  o[pfx+'_subtitle']=$(pfx+'_subtitle').value;
+  o[pfx+'_color']=$(pfx+'_color').value;
+  o[pfx+'_players']=$(pfx+'_players').value;
+  o.lineup_mode='single'; o.lineup_active=pfx; o.lineup_show=true; o.lineup_tick=nTick();
+  sendState(o);
+}
+
+/* ---------- 生成 URL ---------- */
+var BASE=null;
+function genUrl(file){return (serverBase||'http://localhost:8124')+'/titles/'+file;}
+function copyUrl(file){
+  var u=genUrl(file);
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u).then(function(){log('URL 已复制: '+u,true);});}
+  else{log('URL: '+u,true);}
+}
+function setVis(key,show){var o={};o[key]=show?true:false;sendState(o).then(function(res){if(res)log((show?'显示':'隐藏')+' '+key,true);});}
+function hideAll(){sendState({scoreboard_show:false,clock_show:false,lineup_show:false,logo_show:false}).then(function(res){if(res)log('已全部隐藏（比分条/计时器/名单/Logo）',true);});}
+function copySingleUrl(){
+  var u=genUrl('graphics.html');
+  $('singleUrl').value=u;
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u).then(function(){log('单链接已复制: '+u,true);});}
+  else{try{$('singleUrl').select();}catch(e){}log('单链接: '+u,true);}
+}
+function updateSingleUrl(){$('singleUrl').value=genUrl('graphics.html');}
+function genAllUrls(){
+  var single=genUrl('graphics.html');
+  var ul=['scoreboard.html','clock.html','restart.html','card.html','player.html','goal.html','lineup.html']
+    .map(function(f){return '  '+f.split('.')[0]+': '+genUrl(f);});
+  var text=['【联合上屏 · 单链接（推荐，一个输入搞定全部动画）】','  Graphics: '+single,
+    '','【旧版 7 个独立模板（可选）】'].concat(ul).join('\n');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){log('模板 URL 已复制到剪贴板',true);})
+      .catch(function(){log('复制失败，请手动复制:\n'+text,false);});
+  } else { log('模板 URL:\n'+text,true); }
+  alert('模板 URL（复制到 vMix 网页浏览器输入）:\n\n'+text);
+}
+
+/* ---------- vMix 叠层 ---------- */
+var vmixInputs=[];
+function loadInputs(){
+  var api=$('vmixApi').value.trim().replace(/\/+$/,'')+'/';
+  fetch(api,{method:'GET',mode:'cors'}).then(function(r){return r.text();}).then(function(xml){
+    vmixInputs=[];var doc=new DOMParser().parseFromString(xml,'text/xml');
+    doc.querySelectorAll('input').forEach(function(n){
+      if((n.getAttribute('type')||'').toLowerCase()==='webbrowser'){
+        vmixInputs.push({number:n.getAttribute('number'),title:n.getAttribute('title')});
+      }
+    });
+    var s=$('overlaySrc');s.innerHTML=vmixInputs.map(function(i){return '<option value="'+i.number+'">'+escapeHtml(i.title||('Input'+i.number))+'</option>';}).join('');
+    if(!vmixInputs.length){s.innerHTML='<option value="">— 无输入 —</option>';}
+    log('已载入 vMix 输入列表('+vmixInputs.length+')',true);
+  }).catch(function(e){log('无法读取 vMix 输入: '+e.message,false);});
+}
+function overlayOn(){vOverlay('OverlayInput'+($('overlayInput').value||'2'));}
+function overlayOff(){vOverlay('OverlayInput'+($('overlayInput').value||'2')+'Off');}
+function vOverlay(fn){
+  var api=$('vmixApi').value.trim().replace(/\/+$/,'')+'/';
+  var inp=$('overlaySrc').value;if(!inp){log('请先选择输入',false);return;}
+  fetch(api+'?Function='+fn+'&Input='+inp,{method:'GET',mode:'cors'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);log(fn+' → Input'+inp,true);})
+  .catch(function(e){log('叠层命令失败: '+e.message,false);});
+}
+
+FBPDesk.init();
+FBPEvents.init();
+initPanelLayout();
+FBPMatchTiming.init();
+FBPRosterPicker.init();
+FBPChoices.init();
+FBPAssets.init();
+initPersist();
+FBPLinks.init();
+connect();
+updateSingleUrl();
+observeRemoteStatus();
+
+/* 若用 file:// 直接打开本面板，给出明确指引 */
+(function(){
+  var served=(location.protocol==='http:'||location.protocol==='https:');
+  var b=document.getElementById('servedBanner');
+  if(!served && b){
+    b.innerHTML='⚠️ 本控制面板需通过<b>服务器</b>访问（不要直接双击文件）。<br>'+
+      '请先双击 <code>control\\启动控制面板.bat</code>，然后在浏览器地址栏输入：<b>http://localhost:8124/control/panel.html</b>';
+    b.classList.remove('hidden');
+  }
+})();
+</script>
+<script src="panel-batch-sub.js"></script>
+</body>
+</html>

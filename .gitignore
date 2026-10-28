@@ -2,6 +2,8 @@
 control/state.json
 control/server-runtime*.log
 control/*.log
+v2/control/state.json
+v2/control/*.log
 
 # Portable binaries and build-only dependencies are distributed via Releases.
 dist/
@@ -14,3 +16,11 @@ desktop/seed-state.json
 *.bak
 .DS_Store
 Thumbs.db
+
+# Local-only publication artifacts and personal material.
+.work/
+.impeccable/
+.publish/
+docs/HANDOFF.md
+control/assets/console-background.jpg
+v2/control/assets/console-background.jpg

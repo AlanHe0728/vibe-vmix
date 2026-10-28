@@ -23,6 +23,7 @@ function Read-Object($text) {
     return (Convert-Map $obj)
 }
 function Now-Ms { return [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
+. (Join-Path $scriptDir 'match-timing.ps1')
 function Number-Value($value) {
     $n = 0.0
     if ([double]::TryParse([string]$value, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$n) -and -not [double]::IsInfinity($n) -and -not [double]::IsNaN($n)) { return [Math]::Max([double]0,$n) }
@@ -56,7 +57,8 @@ function Apply-Command($s,$patch,$prefix,$now) {
             else { $mode = $s.sb_clockmode; $ms = Number-Value $s.sb_clockacc }
             $c.mode = if ($mode -eq 'down') { 'down' } else { 'up' }; $c.running = $false
         }
-        'start' { $c.running = $true }
+        'start' { $c.running = $true;if ($prefix -eq 'sb_clock' -and $s.period -ceq '中场休息') {$ms=(Get-MatchTiming $s.match_timing).halfMinutes*60000;$s.period='下半场';$s.status='running'} }
+        'second' { if ($prefix -ne 'sb_clock') {throw 'invalid clock command'};$ms=(Get-MatchTiming $s.match_timing).halfMinutes*60000;$c.running=$true;$s.period='下半场';$s.status='running' }
         'pause' { $c.running = $false }
         'reset' { $ms = 0; $c.running = $false }
         'plus' { $ms += 60000 }
@@ -75,7 +77,7 @@ $positions = @{ sb=@(423,96); clk=@(960,400); rst=@(960,918); card=@(960,500); p
 function Merge-State($current,$patch) {
     $next = $current.Clone(); $now = Now-Ms
     foreach ($key in $patch.Keys) {
-        if ($key -in @('__proto__','constructor','prototype','clock_state','sb_clock_state','scoreHome_delta','scoreAway_delta')) { continue }
+        if ($key -in @('__proto__','constructor','prototype','clock_state','sb_clock_state','scoreHome_delta','scoreAway_delta','match_break_until','match_timing_suspend')) { continue }
         if ($key.EndsWith('_tick')) { $next[$key] = [Math]::Max([double]$now,(Number-Value $next[$key])+1) }
         else { $next[$key] = $patch[$key] }
     }
@@ -95,6 +97,7 @@ function Merge-State($current,$patch) {
     Apply-Roster $current $next $patch
     Apply-Command $next $patch 'sb_clock' $now
     Apply-Command $next $patch 'clock' $now
+    Reconcile-MatchTiming $next $patch $current $now
     if ($patch.ContainsKey('posreset_tick')) {
         foreach ($key in $positions.Keys) { $next[$key+'_pos'] = @{x=$positions[$key][0];y=$positions[$key][1]}; $next[$key+'_scale'] = 1 }
     }
@@ -137,7 +140,13 @@ Write-Host "足球包装服务器已启动: http://localhost:$port/control/panel
 if ($env:FBP_NO_BROWSER -ne '1') { try { Start-Process "http://localhost:$port/control/panel.html" } catch {} }
 try {
     while ($listener.IsListening) {
-        $ctx = $listener.GetContext(); $req = $ctx.Request; $res = $ctx.Response
+        $pending=$listener.BeginGetContext($null,$null)
+        do {
+            try {$automatic=Advance-MatchTiming $script:State (Now-Ms);if ($null -ne $automatic) {Save-State $automatic}} catch {[Console]::Error.WriteLine('Automatic match timing save failed: '+$_.Exception.Message)}
+            $arrived=$pending.AsyncWaitHandle.WaitOne(200)
+        } while (-not $arrived -and $listener.IsListening)
+        if (-not $listener.IsListening) {break}
+        $ctx=$listener.EndGetContext($pending);$pending.AsyncWaitHandle.Close(); $req = $ctx.Request; $res = $ctx.Response
         try {
             $res.AppendHeader('Access-Control-Allow-Origin','*')
             $res.AppendHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS')

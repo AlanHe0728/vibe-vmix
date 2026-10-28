@@ -11,10 +11,10 @@
     frame=0;
     var h=Math.max(4,Math.min(nav.clientWidth-width-4,head.get())),t=tail.get();
     // Keep a connected silhouette even when the user skips several tabs.
-    t=h+Math.max(-width*.7,Math.min(width*.7,t-h));
+    t=h+Math.max(-width*.22,Math.min(width*.22,t-h));
     var l=Math.min(h,t),r=Math.max(h,t)+width,m=(l+r)/2;
     var radius=(height-2)/2,span=r-l-2*radius;
-    var waist=1+Math.min(1,Math.abs(h-t)/width)*height*.3;
+    var waist=1+Math.min(1,Math.abs(h-t)/width)*height*.12;
     var a=l+radius+span*.25,b=r-radius-span*.25;
     var d=['M',l+radius,1,'H',a,'C',a+span*.12,1,m-span*.15,waist,m,waist,
       'C',m+span*.15,waist,b-span*.12,1,b,1,'H',r-radius,
@@ -62,7 +62,7 @@
     target=x;
     // Motion values preserve presentation position and velocity on retarget.
     Motion.animate(head,x,{type:'spring',visualDuration:.18,bounce:0});
-    Motion.animate(tail,x,{type:'spring',visualDuration:.28,bounce:0});
+    Motion.animate(tail,x,{type:'spring',visualDuration:.22,bounce:0});
     return true;
   }
   window.FBPLiquidNav={update:update};

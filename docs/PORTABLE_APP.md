@@ -26,6 +26,10 @@ Windows 10/11 x64 的完整文件夹应用，内置 Electron 44.7.0 的 Chromium
 3. 在项目根目录执行 `node packaging/build-portable.js`。若发布文件夹或 ZIP 已存在，构建会拒绝覆盖，避免删除已使用软件的真实数据。可传入新的输出文件夹名：`node packaging/build-portable.js 新输出名`。
 4. 输出位于 `dist`：完整文件夹、ZIP、ZIP 的 SHA256 文本。文件夹内 `release-manifest.json` 记录所有文件的相对路径、大小和 SHA256。
 
+应用版本由 `desktop/package.json` 决定，输出目录、EXE 版本与清单跟随同一版本。1.0.1 起支持「名单 → 比赛配置文件」导入导出，以及完整/单独名单的 GK 标记；操作与格式见 [比赛配置文件说明](MATCH_CONFIG.md)。
+
+1.0.2 增加控台顶部常驻时钟、服务端自动半场/休息/终场切换、名单底部总名单首发勾选，并修正球员信息条默认标题。自动切换默认关闭，保持软件运行时由内置服务执行；关闭主窗口时暂停时钟并取消待自动开始的休息计时。
+
 发布文件仅包括生产页面与素材、桌面入口、数据快照和内置运行环境；不携带测试脚本、测试图片、旧服务器日志、Node/PowerShell 启动脚本、MicroKit dev 项目或下载缓存。Electron/Chromium 的许可来自官方运行包；Motion、SheetJS 和适配 MicroKit 的许可证保存在发布目录 `LICENSES`。EXE 设置了专属足球图标和版本信息；本次构建未配置商业代码签名。
 
 框架分发方式依据 [Electron 官方手动分发文档](https://www.electronjs.org/docs/latest/tutorial/application-distribution)，运行环境来自 [Electron 44.7.0 官方发布](https://github.com/electron/electron/releases/tag/v44.7.0)。页面使用沙箱、上下文隔离并禁用 renderer Node；外部链接仅允许已提供的官方说明站点，依据 [Electron 安全文档](https://www.electronjs.org/docs/latest/tutorial/security)。
@@ -33,6 +37,8 @@ Windows 10/11 x64 的完整文件夹应用，内置 Electron 44.7.0 的 Chromium
 ## 验证
 
 `node tests/regression.js`：Node 与 PowerShell 的 HTTP 200/302/304、时钟、状态保存、失败回滚与重启。
+
+`node tests/match-desk.js`：正倒计时的自动半场与终场、精确锚点、无人打开网页时的 Node/PowerShell 调度、五页签固定时钟、真实鼠标快速选 11 人、草稿与失败保存保护、总名单 Excel 导入、默认/自定义球员标题和窄屏布局。
 
 `node tests/portable.js <发布文件夹路径>`：复制发布文件夹到临时中文/空格路径，运行真正的 EXE，清空 PATH 排除外部 Node/Python/PowerShell；检查首次快照、字体与图片、同实例重复启动、端口冲突、ETag、页面运行环境、队名同步、进球动画、Excel 导入、原生预览窗口、无外部界面资源请求、正常关闭释放端口并暂停计时、文件夹移动后数据与浏览器设置恢复。通过主进程调试协议调用原生窗口关闭，模拟标题栏 X，不将 Chromium 调试 target 关闭误认为桌面退出。
 

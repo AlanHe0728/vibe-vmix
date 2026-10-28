@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>if(location.pathname.indexOf("/v2/")===0){location.replace(location.protocol+"//"+location.hostname+":8124/titles/graphics.html"+location.search);document.write("<plaintext>请使用第二版启动入口。");}</script>
+<meta name="viewport" content="width=1920, height=1080">
+<title>足球包装 · 第二版</title>
+<!--
+=====================================================================
+ vMix 网页浏览器输入【单链接】联合上屏页。
+ ---------------------------------------------------------------------
+ 功能：
+  • 比分条 / 计时器(正倒) / 红黄牌 / 发球 / 球员条 / 进球 / 4份名单(主客×首替) / Logo。
+  • 动画由控制面板一键触发：入场→停留→退场；与已显示动画位置重叠时自动打断前一个。
+  • 所有元素可在编辑模式(预览页 ?edit=1) 拖拽移动、拖拽右下角手柄缩放，位置(*_pos)与大小(*_scale)自动保存。
+  • scoreboard_show / clock_show / logo_show / <名单>_show 控制常驻层。
+  • 触发键沿用 *_tick 计数去重。
+ 用法：http://localhost:8123/titles/graphics.html   (vMix 上屏)
+       位置/大小编辑器：control/preview.html （默认即 ?edit=1）
+=====================================================================
+-->
+<link rel="stylesheet" href="premier.css">
+<link rel="stylesheet" href="editor-tools.css">
+</head>
+<body>
+<div id="canvas">
+
+  <div id="logo" class="pos wipe-horizontal"><img id="logoImg" alt="logo"></div>
+
+  <div id="sb" class="pos"><div class="sb-wrap">
+    <div class="sb-badge" id="sbBadge"><span class="ico"></span><span id="sbBadgeTx">比赛暂停</span></div>
+    <div class="sb-bar">
+      <div class="sb-chip h"></div><div class="sb-chip a"></div>
+      <div class="sb-side home"><img class="sb-logo empty" id="sbLogoH" alt=""><span class="dot"></span><span class="nm" id="sbHome">主队</span></div>
+      <div class="sb-mid" id="sbMid"><div class="sc"><span class="h" id="sbH">0</span><span> - </span><span class="a" id="sbA">0</span></div>
+        <div class="clock" id="sbClock">00:00</div><div class="period" id="sbPeriod">上半场</div></div>
+      <div class="sb-side away"><span class="nm" id="sbAway">客队</span><span class="dot"></span><img class="sb-logo empty" id="sbLogoA" alt=""></div>
+    </div></div>
+  </div>
+
+  <div id="clk" class="pos wipe-vertical"><div class="clk-panel">
+    <div class="clk-mode" id="clkMode">倒计时</div>
+    <div class="clk-label" id="clkLabel">中场休息</div>
+    <div class="clk-time num" id="clkTime">15:00</div>
+    <div class="clk-sub" id="clkSub">COUNTDOWN</div></div>
+  </div>
+
+  <div id="rst" class="pos wipe-horizontal"><div class="rst">
+    <div class="rst-badge" id="rstBadge"><img src="assets/icons/kickoff.svg" alt=""></div>
+    <div class="rst-pill"><div class="rst-main" id="rstMain">开球</div><div class="rst-team" id="rstTeam"><b></b></div></div></div>
+  </div>
+
+  <div id="card" class="pos wipe-horizontal"><div class="cd">
+    <div class="cd-card" id="cdCard"><span class="cd-symbol" aria-hidden="true"></span><div class="cd-num" id="cdNum">10</div><div class="cd-cn" id="cdCn">YELLOW CARD</div></div>
+    <div class="cd-detail"><div class="cd-type" id="cdType">黄牌</div><div class="cd-name" id="cdName">球员姓名</div><div class="cd-team" id="cdTeam">球队</div><div class="cd-reason" id="cdReason">判罚原因</div></div></div>
+  </div>
+
+  <div id="ply" class="pos wipe-horizontal"><div class="ply">
+    <div class="ply-bar"><div class="ply-strip"></div><div class="ply-num num" id="plyNum">10</div>
+      <div class="ply-main"><div class="ply-name" id="plyName">球员姓名</div>
+        <div class="ply-meta"><span id="plyTeam">球队</span><span class="dot"></span><span id="plyPos">位置</span></div>
+        <div class="ply-ev" id="plyEv">球员信息</div></div></div></div>
+  </div>
+
+  <div id="goal" class="pos wipe-horizontal"><div class="gd">
+
+    <div class="gd-word" id="gdWord"><img src="assets/icons/football.svg" alt=""><span>进球</span></div>
+    <div class="gd-info"><div class="gd-num" id="gdNum">10</div>
+      <div class="gd-who"><div class="n" id="gdName">球员姓名</div><div class="t" id="gdTeam">球队</div></div>
+      <div class="gd-sc num"><span id="gdH">0</span><span class="sep">-</span><span id="gdA">0</span></div></div></div>
+  </div>
+
+  <div id="sub" class="pos wipe-horizontal"><div class="swap"><div class="swap-title"><span id="subTeam">球队</span><span>换人</span></div>
+    <div class="swap-row"><span class="swap-direction out">下场<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg></span><span class="swap-num num" id="subOffNum">10</span><span class="swap-name" id="subOffName">下场球员</span></div>
+    <div class="swap-row"><span class="swap-direction incoming">上场<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="swap-num num" id="subOnNum">12</span><span class="swap-name" id="subOnName">上场球员</span></div></div></div>
+
+  <!-- 单个名单面板：默认全部阵容；lineup_mode=single 时按 lineup_active 显示一份。 -->
+  <div id="lineup" class="pos wipe-vertical"><div class="lu"><div class="lu-panel"><div class="lu-rail"><img src="assets/icons/football.svg" alt=""><span class="lu-rail-title" id="lineupRailTitle">首发阵容</span></div><div class="lu-head">
+    <div class="tm" id="lineupTeam">主队</div><div class="sub" id="lineupSub">首发阵容</div><div class="tag"></div></div>
+    <div class="lu-list" id="lineupList"></div></div><div class="lu-all" id="lineupAll"></div></div></div>
+
+</div>
+
+<div id="editbar">
+  <span>拖动=移动 · 拖右下圆点=缩放</span>
+  <span>已选: <b id="selLabel">无</b></span>
+  <input type="range" id="scSlider" min="0.3" max="3" step="0.01" style="width:140px;accent-color:#22d3ee">
+  <span id="scVal">1.00</span><span id="saveStatus" role="status"></span>
+  <button onclick="resetSelScale()">重置该元素大小</button>
+  <button onclick="resetPos()">重置所有位置/大小</button>
+  <button onclick="goPanel()">打开控制面板</button>
+</div>
+
+<script src="../control/roster-format.js"></script>
+<script src="../control/player-title.js"></script>
+<script src="runtime.js"></script>
+<script src="motion-curves.js"></script>
+<script src="editor-tools.js"></script>
+<script>
+var STATE_URL=FBP.url;
+function $(id){return document.getElementById(id);}
+var S={};
+var ONLY=new URLSearchParams(location.search).get('only');
+if(['sb','clk','rst','card','ply','goal','sub','lineup'].indexOf(ONLY)>=0){
+  document.querySelectorAll('#canvas>.pos').forEach(function(el){if(el.id!==ONLY)el.classList.add('isolated-out');});
+}
+function fitBroadcastText(){
+  fitScoreboardWidth();
+  document.querySelectorAll('.nm,.cd-name,.ply-name,.gd-who .n,.lu-name,.lu-team-name,.swap-name,.rst-main,.lu-head .tm').forEach(function(el){
+    if(!el.getClientRects().length)return;
+    el.style.fontSize='';var size=parseFloat(getComputedStyle(el).fontSize),min=el.classList.contains('nm')?17:16;
+    while(el.scrollWidth>el.clientWidth+1&&size>min){size--;el.style.fontSize=size+'px';}
+  });
+}
+if(document.fonts)document.fonts.addEventListener('loadingdone',fitBroadcastText);
+
+function field(n,d){ if(S.hasOwnProperty(n)&&S[n]!==undefined&&S[n]!==null&&S[n]!=='')return S[n]; return d; }
+function setVar(name,h){ if(/^#[0-9a-fA-F]{6}$/.test(h||''))document.documentElement.style.setProperty(name,h); }
+function setCss(name,v){ if(v!==undefined&&v!==null)document.documentElement.style.setProperty(name,v); }
+/* ---------- 主题 / 皮肤（颜色、皮肤、背景、字体可定制） ---------- */
+var PANEL_SKINS={dark:'#263137',glass:'rgba(38,49,55,.95)',deep:'#1c2529',cyan:'#234c53',night:'#314450'};
+function applyTheme(){
+  var font=field('theme_font','Bahnschrift, Segoe UI, Microsoft YaHei, sans-serif');
+  document.body.style.fontFamily=font;
+  var accent=field('theme_accent','#FFD400');
+  if(/^#[0-9a-fA-F]{6}$/.test(accent)){setVar('--gold',accent);setVar('--clockAcc',accent);}
+  var skin=field('theme_skin','dark');
+  setCss('--panel',PANEL_SKINS[skin]||PANEL_SKINS.dark);
+  var bg=(field('theme_bg','')||'').trim();
+  document.body.style.background=/^data:image\//i.test(bg)?'url('+JSON.stringify(bg)+') center / cover no-repeat':(bg||'transparent');
+  injectFont();
+  var m=field('motion','smooth');
+  setCss('--ease',MOTION_EASE[m]||MOTION_EASE.smooth);
+  var wipeEase=m==='smooth'||m==='apple'||!MOTION_EASE[m]?FBPMotion.smooth:MOTION_EASE[m];
+  setCss('--wipe-ease-in',wipeEase);setCss('--wipe-ease-out',wipeEase);
+  var d=+field('animdur',1); if(!(d>0))d=1; d=Math.max(.4,Math.min(2.5,d));
+  setCss('--animdur',d);
+  setCss('--wipe-in',wipeSeconds('in')+'s');setCss('--wipe-out',wipeSeconds('out')+'s');
+}
+var MOTION_EASE={smooth:'cubic-bezier(.23,1,.32,1)',lively:'cubic-bezier(.16,1,.3,1)',soft:'cubic-bezier(.4,0,.2,1)',linear:'linear'};
+function injectFont(){
+  var data=(field('font_data','')||'').trim(), fam=(field('font_family','')||'').trim()||'CustomFont';
+  var st=document.getElementById('customFontStyle');
+  if(data&&data.indexOf('data:')===0){
+    if(!st){st=document.createElement('style');st.id='customFontStyle';document.head.appendChild(st);}
+    var fmt=''; if(/font\/woff2/.test(data))fmt="format('woff2')"; else if(/ttf|opentype|font\/ttf|font\/otf/.test(data))fmt="format('truetype')";
+    st.textContent="@font-face{font-family:'"+fam+"';src:url('"+data+"') "+fmt+";font-weight:normal;font-style:normal;}";
+    document.body.style.fontFamily=fam+', Bahnschrift, Segoe UI, Microsoft YaHei, sans-serif';
+  } else if(st){ st.textContent=''; }
+}
+function post(o){ return FBP.post(o).catch(function(e){console.error(e);if(EDIT){$('saveStatus').textContent='保存失败：'+e.message;}throw e;}); }
+function truthy(v){ return v===true||v===1||v==='1'||v==='true'; }
+
+/* ---------- 编辑模式 / 位置 / 缩放 / 拖拽 ---------- */
+var EDIT=(function(){try{return new URLSearchParams(location.search).get('edit')==='1';}catch(e){return false;}})();
+var POS_DEF={sb:{x:423,y:96,s:1},clk:{x:960,y:400,s:1},rst:{x:960,y:918,s:1},card:{x:960,y:500,s:1},ply:{x:390,y:918,s:1},goal:{x:960,y:500,s:1},sub:{x:960,y:500,s:1},logo:{x:1760,y:96,s:1},lineup:{x:960,y:540,s:1}};
+var DRAG={},SCALE={},PENDING={};
+function editValueMatches(actual,expected){
+  if(actual===expected)return true;
+  if(!actual||!expected||typeof actual!=='object'||typeof expected!=='object')return false;
+  var keys=Object.keys(expected);
+  return keys.length===Object.keys(actual).length&&keys.every(function(k){return Object.prototype.hasOwnProperty.call(actual,k)&&editValueMatches(actual[k],expected[k]);});
+}
+function saveEdit(id,o){
+  if(id==='lineup' && luIsAll()){var mapped={};Object.keys(o).forEach(function(k){mapped[k.replace(/^lineup_/, 'lineup_all_')]=o[k];});o=mapped;}
+  PENDING[id]=o;
+  $('saveStatus').textContent='保存中…';
+  return post(o).then(function(){
+    $('saveStatus').textContent='已保存';
+  }).catch(function(){
+    delete PENDING[id]; DRAG[id]=false; applyPos(id,id); updateSelUI();
+  }).then(function(){DRAG[id]=false;});
+}
+function applyPos(key,id){
+  if(DRAG[id])return;
+  if(PENDING[id]){
+    var waiting=Object.keys(PENDING[id]).some(function(k){return !editValueMatches(S[k],PENDING[id][k]);});
+    if(waiting)return;
+    delete PENDING[id];
+  }
+  var p=POS_DEF[key];if(key==='lineup' && luIsAll()){key='lineup_all';p={x:960,y:600,s:1};}var st=S[key+'_pos'];
+  if(st&&typeof st==='object'&&isFinite(+st.x)&&isFinite(+st.y)){p={x:+st.x,y:+st.y,s:p.s};}
+  var sc=isFinite(+S[key+'_scale'])?Math.max(.3,Math.min(3,+S[key+'_scale'])):p.s;
+  SCALE[id]=sc;
+  var el=$(id); el.style.left=p.x+'px'; el.style.top=p.y+'px';
+  el.style.transform='translate(-50%,-50%) scale('+sc+')';
+  var h=el.querySelector('.rsz'); if(h)h.style.transform='scale('+(1/sc)+')';
+}
+function makeDrag(key,id){
+  var el=$(id);
+  el.addEventListener('pointerdown',function(e){
+    if(!EDIT)return;
+    if(e.target.classList.contains('rsz'))return;
+    e.preventDefault(); selectEl(id);
+    var s={x:parseFloat(el.style.left)||POS_DEF[key].x,y:parseFloat(el.style.top)||POS_DEF[key].y};
+    var ox=e.clientX,oy=e.clientY,moved=false; DRAG[id]=true;FBPEditor.drag(true);
+    if(el.setPointerCapture)el.setPointerCapture(e.pointerId);
+    function mv(ev){moved=true;var dx=ev.clientX-ox,dy=ev.clientY-oy;s.x+=dx;s.y+=dy;ox=ev.clientX;oy=ev.clientY;var shown=FBPEditor.snap(s.x,s.y);el.style.left=shown.x+'px';el.style.top=shown.y+'px';FBPEditor.notify();}
+    function up(){window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);FBPEditor.drag(false);if(moved){var o={};o[key+'_pos']={x:Math.round(parseFloat(el.style.left)),y:Math.round(parseFloat(el.style.top))};saveEdit(id,o).then(FBPEditor.notify);}else DRAG[id]=false;}
+    window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
+  });
+}
+function makeResize(key,id){
+  var el=$(id),handle=el.querySelector('.rsz'); if(!handle)return;
+  handle.addEventListener('pointerdown',function(e){
+    if(!EDIT)return; e.preventDefault(); e.stopPropagation();
+    DRAG[id]=true; selectEl(id);FBPEditor.drag(true);
+    var r=el.getBoundingClientRect(); var cx=r.left+r.width/2, cy=r.top+r.height/2;
+    var dx=e.clientX-cx, dy=e.clientY-cy, startDist=Math.sqrt(dx*dx+dy*dy)||1, startScale=SCALE[id]||1;
+    function mv(ev){var ddx=ev.clientX-cx, ddy=ev.clientY-cy, d=Math.sqrt(ddx*ddx+ddy*ddy)||1;
+      var ns=Math.max(.3,Math.min(3,startScale*d/startDist)); SCALE[id]=ns;
+      el.style.transform='translate(-50%,-50%) scale('+ns+')';
+      handle.style.transform='scale('+(1/ns)+')';
+      if(scSlider&&id===selectedId){scSlider.value=ns;scVal.textContent=ns.toFixed(2);}
+      FBPEditor.notify();
+    }
+    function up(){window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
+      FBPEditor.drag(false);var o={}; o[key+'_scale']=Math.round((SCALE[id]||1)*100)/100; saveEdit(id,o).then(FBPEditor.notify);}
+    window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
+  });
+}
+function enterEdit(){
+  if(!EDIT)return; document.body.classList.add('edit');
+  Object.keys(POS_DEF).forEach(function(key){$(key).classList.add('on');});
+}
+function resetPos(){
+  post({posreset_tick:Date.now()}).catch(function(){});
+}
+function goPanel(){ window.open(new URL('/control/panel.html',STATE_URL).href,'_blank'); }
+
+/* ---------- 选中 + 无极缩放滑杆（编辑模式） ---------- */
+var selectedId=null, scSlider=null, scVal=null;
+function selectEl(id){ if(!EDIT)return; if(selectedId&&selectedId!==id){var ex=$(selectedId);if(ex)ex.classList.remove('sel');} selectedId=id; if($(id))$(id).classList.add('sel'); updateSelUI(); }
+function clearSel(){ if(selectedId){var ex=$(selectedId);if(ex)ex.classList.remove('sel');} selectedId=null; updateSelUI(); }
+function updateSelUI(){
+  if(!$('selLabel')||!scSlider||!scVal)return;
+  if(selectedId){ $('selLabel').textContent=selectedId.toUpperCase(); var v=SCALE[selectedId]||1; scSlider.value=v; scVal.textContent=v.toFixed(2); }
+  else { $('selLabel').textContent='无'; }
+  FBPEditor.notify();
+}
+function initSlider(){
+  scSlider=$('scSlider'); scVal=$('scVal');
+  if(!scSlider)return;
+  var slidingId=null;
+  function begin(){if(!slidingId&&selectedId){slidingId=selectedId;DRAG[slidingId]=true;}}
+  scSlider.addEventListener('pointerdown',begin);
+  scSlider.addEventListener('input',function(){
+    begin(); if(!slidingId)return;
+    var ns=parseFloat(scSlider.value); SCALE[slidingId]=ns;
+    var el=$(slidingId); el.style.transform='translate(-50%,-50%) scale('+ns+')';
+    var h=el.querySelector('.rsz'); if(h)h.style.transform='scale('+(1/ns)+')';
+    scVal.textContent=ns.toFixed(2);
+    FBPEditor.notify();
+  });
+  function finish(){
+    if(!slidingId)return;
+    var id=slidingId; slidingId=null;
+    var o={}; o[id+'_scale']=Math.round((SCALE[id]||1)*100)/100; saveEdit(id,o).then(FBPEditor.notify);
+  }
+  scSlider.addEventListener('change',finish);
+  window.addEventListener('pointerup',finish);
+  window.addEventListener('pointercancel',finish);
+  scSlider.addEventListener('blur',finish);
+}
+function resetSelScale(){
+  if(!selectedId)return;
+  var id=selectedId, s=POS_DEF[id].s; SCALE[id]=s; DRAG[id]=true;
+  $(id).style.transform='translate(-50%,-50%) scale('+s+')';
+  var h=$(id).querySelector('.rsz'); if(h)h.style.transform='scale(1)';
+  if(scSlider)scSlider.value=s; if(scVal)scVal.textContent=s.toFixed(2);
+  var o={}; o[id+'_scale']=s; saveEdit(id,o);
+}
+
+/* ---------- 重叠自动打断 ---------- */
+var OVERLAP=['goal','card','rst','ply','sub'];
+function rect(el){return el.getBoundingClientRect();}
+function intersects(a,b){var ra=rect(a),rb=rect(b);return !(ra.right<=rb.left||ra.left>=rb.right||ra.bottom<=rb.top||ra.top>=rb.bottom);}
+function interrupt(id){ if(EDIT)return; var el=$(id); OVERLAP.forEach(function(o){ if(o===id)return; var e=$(o);
+  if(e.classList.contains('on')&&intersects(e,el)){ hideGraphic(o,true); if(AUTO[o]){clearTimeout(AUTO[o]);AUTO[o]=null;} } }); }
+
+/* ---------- 通用：定时显示/退场 ---------- */
+var AUTO={};
+function wipeSeconds(direction){var n=Number(field('wipe_'+direction,direction==='in'?.45:.28));if(!isFinite(n))n=direction==='in'?.45:.28;return Math.max(.1,Math.min(5,n))*Math.max(.4,Math.min(2.5,+field('animdur',1)||1));}
+var WIPES={};
+function wipeEasing(direction){return getComputedStyle(document.documentElement).getPropertyValue('--wipe-ease-'+direction).trim()||FBPMotion.smooth;}
+function wipeOptions(direction){return {duration:wipeSeconds(direction)*1000,easing:wipeEasing(direction)};}
+function replayWipe(id){
+  var el=$(id),style=getComputedStyle(el),current=style.clipPath,opacity=style.opacity;
+  if(WIPES[id])WIPES[id].cancel();delete WIPES[id];
+  if(EDIT || matchMedia('(prefers-reduced-motion: reduce)').matches)return 0;
+  var closed=style.getPropertyValue('--wipe-closed').trim(),open=style.getPropertyValue('--wipe-open').trim(),incoming=wipeSeconds('in');
+  if(id==='sb'){
+    // Scorebar retains its previous curve, one-sided wipe and fade.
+    WIPES[id]=el.animate([{clipPath:closed,opacity:.15},{clipPath:open,opacity:1}],{duration:incoming*1000,easing:style.getPropertyValue('--ease').trim()});return incoming;
+  }
+  var outgoing=wipeSeconds('out'),total=outgoing+incoming;
+  // Replaying a visible graphic must close from the live mask first. Each phase
+  // has a smooth rest at the seam; no instant reset to the fully closed mask.
+  WIPES[id]=el.animate([
+    {clipPath:current,opacity:opacity,offset:0,easing:wipeEasing('out')},
+    {clipPath:closed,opacity:1,offset:outgoing/total,easing:wipeEasing('in')},
+    {clipPath:open,opacity:1,offset:1}
+  ],{duration:total*1000,easing:'linear'});
+  return total;
+}
+function hideGraphic(id,instant){
+  instant=instant===true;var el=$(id),animation=WIPES[id],from=null,style=getComputedStyle(el);
+  // A hide during a repeated reveal closes the currently visible portion,
+  // rather than cancelling back to the fully open panel for one frame.
+  if(!instant&&animation&&animation.playState!=='finished'&&!EDIT&&!matchMedia('(prefers-reduced-motion: reduce)').matches)from={clipPath:style.clipPath,opacity:style.opacity};
+  if(animation)animation.cancel();delete WIPES[id];
+  if(instant)el.style.transition='none';el.classList.remove('on');
+  if(instant){void el.offsetWidth;el.style.transition='';}
+  else if(from)WIPES[id]=el.animate([from,{clipPath:style.getPropertyValue('--wipe-closed').trim(),opacity:Number(style.getPropertyValue('--wipe-start-opacity'))}],wipeOptions('out'));
+}
+function setGraphicVisible(id,show){
+  var el=$(id);if(!show){if(el.classList.contains('on'))hideGraphic(id);return;}
+  if(!el.classList.contains('on')&&WIPES[id]){
+    var animation=WIPES[id],style=getComputedStyle(el),from={clipPath:style.clipPath,opacity:style.opacity},active=animation.playState!=='finished';
+    animation.cancel();delete WIPES[id];el.classList.add('on');
+    if(active&&!EDIT&&!matchMedia('(prefers-reduced-motion: reduce)').matches)WIPES[id]=el.animate([from,{clipPath:style.getPropertyValue('--wipe-open').trim(),opacity:1}],wipeOptions('in'));
+  }else el.classList.add('on');
+}
+function showFor(id,defMs){var el=$(id),was=el.classList.contains('on'),h=+field('hold_'+id,0),ms=h>0?h*1000:defMs;setGraphicVisible(id,true);var entrance=was?replayWipe(id):wipeSeconds('in');if(AUTO[id])clearTimeout(AUTO[id]);AUTO[id]=setTimeout(function(){hideGraphic(id);AUTO[id]=null;},ms+(EDIT||matchMedia('(prefers-reduced-motion: reduce)').matches?0:entrance*1000));}
+
+/* ================= 比分条时钟 ================= */
+var CB={mode:'up',running:false,accMs:0,base:0};
+function sbMs(){return FBP.clock(CB);}
+function timeText(ms){var t=Math.floor(Math.max(0,ms)/1000),m=Math.floor(t/60),s=t%60;return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
+function fitClock(el,max,min){el.style.fontSize=max+'px';while(el.scrollWidth>el.clientWidth && max>min)el.style.fontSize=(--max)+'px';}
+function sbTick(){var c=$('sbClock');c.textContent=timeText(sbMs());c.classList.toggle('paused',!CB.running);fitClock(c,25,14);}
+function sbBoot(){sbTick();setInterval(sbTick,250);}
+var SB_STATUS={running:'进行中',paused:'比赛暂停',half:'中场休息',over:'比赛结束'};
+function sbSetStatus(st){var b=$('sbBadge');b.classList.remove('in-bar');if(st==='running'){b.classList.remove('show','over');}else{b.classList.add('show');b.classList.toggle('over',st==='over');$('sbBadgeTx').textContent=SB_STATUS[st]||st;if(b.getBoundingClientRect().top<4)b.classList.add('in-bar');}}
+function setLogo(imgId,data){var img=$(imgId);var d=(data||'').trim();if(d&&d.indexOf('data:')===0){img.src=d;img.classList.remove('empty');}else{img.removeAttribute('src');img.classList.add('empty');}}
+var SB_MEASURE=document.createElement('canvas').getContext('2d');
+function fitScoreboardWidth(){
+  var wrap=$('sb').querySelector('.sb-wrap'),logos=truthy(field('sb_logos_show',true)),mid=logos?136:102,lane=logos?257:102;
+  wrap.classList.toggle('without-logos',!logos);
+  var scoreWidth=0;
+  $('sbMid').querySelectorAll('.sc > span').forEach(function(el){var style=getComputedStyle(el);SB_MEASURE.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;scoreWidth+=SB_MEASURE.measureText(el.textContent).width;});
+  mid=Math.min(800,Math.max(mid,Math.ceil(scoreWidth+18)));
+  ['sbHome','sbAway'].forEach(function(id){
+    var el=$(id);el.style.fontSize='';var style=getComputedStyle(el);
+    SB_MEASURE.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;
+    var spacing=parseFloat(style.letterSpacing)||0,text=el.textContent;
+    lane=Math.max(lane,Math.ceil(SB_MEASURE.measureText(text).width+Math.max(0,Array.from(text).length-1)*spacing+32+(logos?42:0)));
+  });
+  lane=Math.min(lane,(1824-mid)/2);
+  wrap.style.setProperty('--sb-width',(lane*2+mid)+'px');wrap.style.setProperty('--sb-mid',mid+'px');
+}
+function sbApply(){setVar('--home',field('colorHome','#C8102E'));setVar('--away',field('colorAway','#00529F'));$('sbHome').textContent=field('teamHome','主队');$('sbAway').textContent=field('teamAway','客队');$('sbH').textContent=field('scoreHome','0');$('sbA').textContent=field('scoreAway','0');$('sbPeriod').textContent=field('period','上半场');setLogo('sbLogoH',field('homeLogo',''));setLogo('sbLogoA',field('awayLogo',''));sbSetStatus(field('status','running'));$('sb').classList.toggle('on',truthy(field('scoreboard_show',true)));}
+
+/* ================= 计时器（正计/倒计） ================= */
+var CC={mode:'down',running:false,accMs:0,base:0};
+function ckMs(){return FBP.clock(CC);}
+function ckTick(){var ms=ckMs();var done=(CC.mode==='down'&&CC.accMs>0&&ms<=0);var el=$('clkTime');el.textContent=timeText(ms);fitClock(el,76,24);el.classList.toggle('paused',!CC.running);el.classList.toggle('done',done);$('clkMode').textContent=CC.mode==='down'?'倒计时':'正计时';}
+function ckBoot(){ckTick();setInterval(ckTick,200);}
+function ckApply(){setVar('--clockAcc',field('clock_color','#FFD400'));$('clkLabel').textContent=field('clock_label','中场休息');$('clkSub').textContent=field('clock_sub','COUNTDOWN');setGraphicVisible('clk',truthy(field('clock_show',false)));}
+
+/* ================= 发球 ================= */
+var RST={kickoff:{label:'开球'},throwin:{label:'界外球'},corner:{label:'角球'},goalkick:{label:'球门球'},freekick:{label:'任意球'},penalty:{label:'点球'}};
+function rstShow(type){var cfg=RST[type]||RST.kickoff;setVar('--rst',field('restart_color','#00C853'));$('rstMain').textContent=(field('restart_text','').trim()||cfg.label);$('rstBadge').querySelector('img').src='assets/icons/'+(RST[type]?type:'kickoff')+'.svg';var team=field('restart_team','').trim(),pl=field('restart_player','').trim(),te=$('rstTeam');if(team){te.innerHTML='<b>'+team.replace(/</g,'&lt;')+'</b>'+(pl?'  ·  '+pl.replace(/</g,'&lt;'):'');te.style.display='';}else te.style.display='none';var b=$('rstBadge'),p=$('rst').querySelector('.rst-pill');b.classList.remove('in');p.classList.remove('in');void b.offsetWidth;b.classList.add('in');p.classList.add('in');fitBroadcastText();showFor('rst',4500);interrupt('rst');}
+
+/* ================= 红黄牌 ================= */
+function cdShow(type){var red=(type==='red');setVar('--cardC',red?'#E53935':'#FFD400');setVar('--cardDk',red?'#8E0000':'#B8860B');$('cdType').textContent=red?'红牌':'黄牌';$('cdCn').textContent=red?'RED CARD':'YELLOW CARD';$('cdNum').textContent=field('card_num','').trim()||'--';$('cdName').textContent=field('card_name','球员姓名');$('cdTeam').textContent=field('card_team','');var rs=field('card_reason','').trim(),r=$('cdReason');if(rs){r.textContent=rs;r.classList.add('show');}else r.classList.remove('show');var c=$('cdCard'),i=$('card').querySelector('.cd-detail');c.classList.remove('in');i.classList.remove('in');void c.offsetWidth;c.classList.add('in');i.classList.add('in');fitBroadcastText();showFor('card',5000);interrupt('card');}
+
+/* ================= 球员条 ================= */
+function plyShow(){setVar('--plyr',field('player_color','#C8102E'));$('plyNum').textContent=field('player_num','').trim()||'--';$('plyName').textContent=field('player_name','球员姓名');$('plyTeam').textContent=field('player_team','');$('plyPos').textContent=field('player_pos','').trim();$('ply').querySelector('.ply-meta .dot').hidden=!$('plyTeam').textContent||!$('plyPos').textContent;var ev=FBPPlayerTitle.get(S),e=$('plyEv');$('ply').querySelector('.ply-bar').classList.add('has-event');e.textContent=ev;e.classList.add('show');fitBroadcastText();showFor('ply',4500);interrupt('ply');}
+
+/* ================= 进球 ================= */
+function goalShow(){setVar('--goalC',field('goal_color','#FFD400'));$('gdNum').textContent=field('goal_num','').trim()||'--';$('gdName').textContent=field('goal_name','进球球员');$('gdTeam').textContent=field('goal_team','');$('gdH').textContent=field('goal_scoreHome','0');$('gdA').textContent=field('goal_scoreAway','0');var g=$('gdWord'),i=$('goal').querySelector('.gd-info');g.classList.remove('in');i.classList.remove('in');void g.offsetWidth;g.classList.add('in');i.classList.add('in');fitBroadcastText();showFor('goal',5600);interrupt('goal');}
+
+function subShow(){setVar('--subColor',field('sub_color','#c8102e'));$('subTeam').textContent=field('sub_team','球队');$('subOffNum').textContent=field('sub_off_num','--');$('subOffName').textContent=field('sub_off_name','下场球员');$('subOnNum').textContent=field('sub_on_num','--');$('subOnName').textContent=field('sub_on_name','上场球员');fitBroadcastText();showFor('sub',5000);interrupt('sub');}
+
+/* ================= 名单（4 份，参数化） ================= */
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+/* 读取名单字段；主队首发(xiH)未单独设置时回退到旧版 lineup_* 键，兼容升级前的单名单 */
+function luV(pfx,key,d){
+  if(key==='players' && Object.prototype.hasOwnProperty.call(S,pfx+'_players') && S[pfx+'_players']!==null && S[pfx+'_players']!==undefined)return String(S[pfx+'_players']);
+  var direct=field(pfx+'_'+key,undefined);
+  if(direct!==undefined)return direct;
+  if(pfx==='xiH'){
+    var m={team:'lineup_team',subtitle:'lineup_subtitle',color:'lineup_color',players:'lineup_players'};
+    if(m[key]!==undefined){var lv=field(m[key],undefined);if(lv!==undefined)return lv;}
+  }
+  return d;
+}
+var LU_STATES=['xiH','xiA','subH','subA'];
+function luActive(){var a=field('lineup_active','xiH');return LU_STATES.indexOf(a)<0?'xiH':a;}
+function luIsAll(){return field('lineup_mode','all')!=='single';}
+function rosterLines(pfx){return String(luV(pfx,'players','')||'').split(/\r?\n/).map(function(s){return s.trim();}).filter(Boolean);}
+function rosterRows(list,raw,pfx){
+  list.innerHTML='';
+  raw.forEach(function(line){var num='',name=line,cap=false,gk=false,p=FBPRosterFormat.line(line);if(p){num=p.num;name=p.name;cap=p.captain;gk=p.goalkeeper;}
+    var row=document.createElement('div');row.className='lu-row';
+    var side=pfx.slice(-1)==='H'?'home':'away';row.dataset.player=side+'|'+Number(num)+'|'+name.trim();
+    row.innerHTML='<div class="lu-rn'+(num?'':' no-num')+'">'+(num||'·')+'</div><div class="lu-name">'+esc(name.trim())+'</div><div class="lu-badges">'+(gk?'<span class="lu-gk" title="守门员" aria-label="守门员">GK</span>':'')+'<span class="lu-cap'+(cap?' show':'')+'">队长</span></div>';list.appendChild(row);
+  });
+}
+function numberColors(el,color){
+  if(!/^#[0-9a-f]{6}$/i.test(color))color='#00529f';
+  var rgb=[1,3,5].map(function(i){var v=parseInt(color.slice(i,i+2),16)/255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);});
+  var lum=.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];el.style.setProperty('--number-bg',color);el.style.setProperty('--number-ink',lum>.179?'#000000':'#ffffff');
+}
+function luBuildAll(){
+  var root=$('lineupAll');root.innerHTML='<div class="lu-match-title">比赛阵容</div><div class="lu-teams"></div>';
+  var data=LU_STATES.map(rosterLines),columns=data.map(function(rows){return rows.length>12?Math.ceil(rows.length/12):1;}),counts=data.map(function(rows,i){return Math.ceil(rows.length/columns[i]);});
+  var starterRows=Math.max(counts[0],counts[1],1),subRows=Math.max(counts[2],counts[3],1),rowHeight=Math.max(24,Math.min(34,Math.floor(560/(starterRows+subRows))));
+  root.style.setProperty('--complete-row',rowHeight+'px');
+  var home=String(luV('xiH','color',field('colorHome','#c8102e'))),away=String(luV('xiA','color',field('colorAway','#00529f')));
+  if(home.toLowerCase()===away.toLowerCase())away=home.toLowerCase()==='#00529f'?'#c8102e':'#00529f';
+  ['H','A'].forEach(function(side,teamIndex){
+    var team=document.createElement('div');team.className='lu-team';numberColors(team,teamIndex?away:home);
+    var heading=document.createElement('div');heading.className='lu-team-title';
+    var logo=document.createElement('img'),src=field(teamIndex?'awayLogo':'homeLogo','');if(src)logo.src=src;else logo.className='empty';logo.alt='';
+    var name=document.createElement('span');name.className='lu-team-name';name.textContent=luV('xi'+side,'team',field(teamIndex?'teamAway':'teamHome',teamIndex?'客队':'主队'));
+    var label=document.createElement('span');label.className='lu-side-label';label.textContent=teamIndex?'客队':'主队';heading.append(logo,name,label);team.appendChild(heading);
+    ['xi','sub'].forEach(function(type,groupIndex){
+      var pfx=type+side,index=LU_STATES.indexOf(pfx),raw=data[index],rows=groupIndex?subRows:starterRows;
+      var title=document.createElement('div');title.className='lu-group-title';title.textContent=groupIndex?'替补':'首发';var count=document.createElement('span');count.textContent=raw.length+' 人';title.appendChild(count);team.appendChild(title);
+      var list=document.createElement('div');list.className='lu-team-list';list.dataset.roster=pfx;rosterRows(list,raw,pfx);
+      list.style.gridTemplateColumns='repeat('+columns[index]+',minmax(0,1fr))';list.style.gridTemplateRows='repeat('+rows+',var(--complete-row))';list.style.gridAutoFlow='column';
+      if(!raw.length){list.classList.add('empty');var empty=document.createElement('div');empty.className='lu-empty';empty.textContent='暂无名单';list.appendChild(empty);}team.appendChild(list);
+    });root.querySelector('.lu-teams').appendChild(team);
+  });
+}
+function luBuild(){
+  var pfx=luActive(), id='lineup';
+  var all=luIsAll(),lu=$(id).querySelector('.lu');lu.classList.toggle('complete',all);if(all){luBuildAll();return;}
+  $(id).style.setProperty('--acc',(luV(pfx,'color','#C8102E')||'#C8102E'));
+  $(id+'Team').textContent=luV(pfx,'team','球队');
+  $(id+'Sub').textContent=luV(pfx,'subtitle','首发阵容');
+  $('lineupRailTitle').textContent=luV(pfx,'subtitle','首发阵容');
+  var raw=rosterLines(pfx),list=$(id+'List');rosterRows(list,raw,pfx);
+  numberColors(lu,String(luV(pfx,'color',field(pfx.slice(-1)==='H'?'colorHome':'colorAway',pfx.slice(-1)==='H'?'#c8102e':'#00529f'))));
+  lu.classList.toggle('wide',raw.length>14);lu.style.setProperty('--roster-rows',Math.ceil(raw.length/2));
+}
+function luPlay(){fitBroadcastText();}
+function luApply(){
+  var pfx=luActive(), id='lineup';
+  var show=EDIT||truthy(field('lineup_show',false));
+  var was=$(id).classList.contains('on');
+  setGraphicVisible(id,show);
+  var list=$(id+'List');
+  var sig=JSON.stringify([luIsAll(),pfx,LU_STATES.map(function(k){return ['players','team','subtitle','color'].map(function(n){return luV(k,n,'');});}),S.colorHome,S.colorAway,S.teamHome,S.teamAway,S.homeLogo,S.awayLogo,S.lineup_tick]);
+  // 仅当 状态切换 / 从隐藏→显示 / 内容有变 时重建并重放，避免轮询导致文字闪烁消失
+  if(show && (!was || list.getAttribute('data-sig')!==sig)){
+    list.setAttribute('data-sig',sig);
+    luBuild();
+    luPlay();
+    if(was)replayWipe(id);
+  }
+}
+function luApplyAll(){luApply();}
+
+/* ================= Logo ================= */
+function logoApply(){var d=field('logo_data','');var img=$('logoImg');var show=truthy(field('logo_show',false))&&!!(d||'').trim();if(d){img.src=d;}else{img.removeAttribute('src');}setGraphicVisible('logo',show);}
+
+/* ================= 状态轮询 ================= */
+var prev={};
+function applyState(s,initial){
+  if(initial){Object.keys(s).forEach(function(k){if(/_tick$/.test(k))prev[k]=s[k];});}
+  S=s||{};
+  if(S.sb_clock_state){CB=S.sb_clock_state;sbTick();}
+  if(S.clock_state){CC=S.clock_state;ckTick();}
+  Object.keys(POS_DEF).forEach(function(key){applyPos(key,key);});
+  applyTheme();
+  sbApply();ckApply();luApplyAll();logoApply();
+  fitBroadcastText();
+
+  if(S.score_tick!==undefined&&S.score_tick!==prev.score_tick){prev.score_tick=S.score_tick;var mid=$('sbMid');mid.classList.remove('flash');void mid.offsetWidth;mid.classList.add('flash');}
+  if(S.restart_tick!==undefined&&S.restart_tick!==prev.restart_tick){prev.restart_tick=S.restart_tick;if(RST[S.restart_type])rstShow(S.restart_type);}
+  if(S.card_tick!==undefined&&S.card_tick!==prev.card_tick){prev.card_tick=S.card_tick;if(S.card_trigger==='red'||S.card_trigger==='yellow')cdShow(S.card_trigger);}
+  if(S.sub_tick!==undefined&&S.sub_tick!==prev.sub_tick){prev.sub_tick=S.sub_tick;if(S.sub_trigger==='show')subShow();}
+  if(S.player_tick!==undefined&&S.player_tick!==prev.player_tick){prev.player_tick=S.player_tick;plyShow();}
+  if(S.goal_tick!==undefined&&S.goal_tick!==prev.goal_tick){prev.goal_tick=S.goal_tick;goalShow();}
+  if(S.clear_events_tick!==undefined&&S.clear_events_tick!==prev.clear_events_tick){
+    prev.clear_events_tick=S.clear_events_tick;
+    OVERLAP.forEach(function(id){hideGraphic(id);if(AUTO[id])clearTimeout(AUTO[id]);AUTO[id]=null;});
+  }
+  if(EDIT){updateSelUI();FBPEditor.refresh();}
+}
+FBP.poll(applyState);
+
+/* 初始化：比分时钟 / 计时器 / 显示 / 位置 / 拖拽 / 缩放 / 编辑 */
+sbBoot();ckBoot();applyTheme();sbApply();ckApply();luApplyAll();logoApply();
+  fitBroadcastText();
+Object.keys(POS_DEF).forEach(function(key){applyPos(key,key);makeDrag(key,key);});
+Object.keys(POS_DEF).forEach(function(key){var el=$(key);var h=document.createElement('div');h.className='rsz';el.appendChild(h);makeResize(key,key);});
+enterEdit();
+initSlider();clearSel();
+FBPEditor.init();
+</script>
+<script src="premier.js"></script>
+</body>
+</html>

@@ -10,7 +10,16 @@ function Get-RosterPlayers($state,$side,$startingOnly=$false) {
             $normalized=[regex]::Replace($line.Trim().TrimStart([char]0xFEFF),'[０-９]',{param($m) [string]([int][char]$m.Value-65296)})
             if ($normalized -notmatch '^(?:#\s*|no\.?\s*|号码\s*[:：]?\s*)?(\d{1,3})(?!\d)([^\r\n]*)$') {continue}
             $num=$Matches[1];$name=$Matches[2].Trim() -creplace '^号(?:球员)?','' -replace '^[\s+＋\-－—–:：,，;；.．、·|/]+',''
-            $name=$name -replace '\s*[*#]+\s*$','' -replace '\s*[（(](?:c|队长)[）)]\s*$','';$name=$name.Trim()
+            while ($name) {
+                $star=[regex]::Match($name,'\s*[*#]+\s*$')
+                if ($star.Success) {$name=$name.Substring(0,$star.Index).Trim();continue}
+                $mark=[regex]::Match($name,'\s*[（(\[【]([^()（）\[\]【】]+)[）)\]】]\s*$')
+                if (-not $mark.Success) {$mark=[regex]::Match($name,'\s+(GK|goalkeeper|门将|守门员|队长)\s*$',[System.Text.RegularExpressions.RegexOptions]::IgnoreCase)}
+                if (-not $mark.Success) {break}
+                $tag=$mark.Groups[1].Value.Trim()
+                if ($tag -notmatch '^(c|captain|队长|gk|goalkeeper|门将|守门员|DF|MF|FW|ST|CF|LW|RW|AM|CAM|CM|CDM|DM|LM|RM|CB|LB|RB|LWB|RWB|前锋|中锋|边锋|中场|前腰|后腰|边前卫|后卫|中后卫|边后卫|左后卫|右后卫|自由人)$' -and $tag -notmatch '^位置\s*[:：]\s*.+$') {break}
+                $name=$name.Substring(0,$mark.Index).Trim()
+            }
             if (-not $name -or $name -notmatch '[A-Za-z\u00c0-\uffff]' -or $name -match '^[\d\s+\-:：,，;；.．、|/]') {continue};$id=$side+'|'+[int]$num+'|'+$name
             if ($seen.ContainsKey($id)) {continue};$seen[$id]=$true
             @{id=$id;num=$num;name=$name}

@@ -16,10 +16,10 @@
     if(changed||document.activeElement!==el('layoutY'))el('layoutY').value=s.y===null?'':Math.round(s.y);
     value('layoutScale',s.scale);el('layoutScaleText').textContent=Number(s.scale).toFixed(2)+'×';
     document.querySelectorAll('.selected-action,#layoutX,#layoutY,#layoutScale').forEach(function(control){control.disabled=!s.selected;});
-    el('layoutStatus').textContent=(s.status||'坐标与缩放会同步上屏。')+(s.selected?' · '+s.layers.find(function(k){return k.id===s.selected;}).name:' · 请选择栏目');
+    el('layoutStatus').textContent=s.status||'';
     var cfg=s.settings;value('previewRatio',cfg.ratio);value('ratioW',cfg.ratioW);value('ratioH',cfg.ratioH);value('gridStep',cfg.step);value('alignReference',cfg.alignTo);
     el('customRatio').hidden=cfg.ratio!=='custom';el('safetyGuides').checked=cfg.guides;el('showGrid').checked=cfg.grid;el('snapGrid').checked=cfg.snap;
-    el('compositionSize').textContent='构图范围 '+Math.round(s.frame.width)+' × '+Math.round(s.frame.height)+' px；只用于预览。';
+    el('compositionSize').textContent=Math.round(s.frame.width)+' × '+Math.round(s.frame.height)+' px';
     var sig=JSON.stringify(s.layers.map(function(k){return [k.id,k.name];}));
     if(signature!==sig){
       signature=sig;el('layoutLayers').replaceChildren();el('layoutElement').replaceChildren(new Option('选择一个栏目',''));layerButtons={};

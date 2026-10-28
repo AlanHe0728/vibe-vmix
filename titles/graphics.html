@@ -58,11 +58,11 @@
     <div class="ply-bar"><div class="ply-strip"></div><div class="ply-num num" id="plyNum">10</div>
       <div class="ply-main"><div class="ply-name" id="plyName">球员姓名</div>
         <div class="ply-meta"><span id="plyTeam">球队</span><span class="dot"></span><span id="plyPos">位置</span></div>
-        <div class="ply-ev" id="plyEv">进球</div></div></div></div>
+        <div class="ply-ev" id="plyEv">球员信息</div></div></div></div>
   </div>
 
   <div id="goal" class="pos wipe-horizontal"><div class="gd">
-    
+
     <div class="gd-word" id="gdWord"><img src="assets/icons/football.svg" alt=""><span>进球</span></div>
     <div class="gd-info"><div class="gd-num" id="gdNum">10</div>
       <div class="gd-who"><div class="n" id="gdName">球员姓名</div><div class="t" id="gdTeam">球队</div></div>
@@ -91,6 +91,7 @@
 </div>
 
 <script src="../control/roster-format.js"></script>
+<script src="../control/player-title.js"></script>
 <script src="runtime.js"></script>
 <script src="motion-curves.js"></script>
 <script src="editor-tools.js"></script>
@@ -364,7 +365,7 @@ function rstShow(type){var cfg=RST[type]||RST.kickoff;setVar('--rst',field('rest
 function cdShow(type){var red=(type==='red');setVar('--cardC',red?'#E53935':'#FFD400');setVar('--cardDk',red?'#8E0000':'#B8860B');$('cdType').textContent=red?'红牌':'黄牌';$('cdCn').textContent=red?'RED CARD':'YELLOW CARD';$('cdNum').textContent=field('card_num','').trim()||'--';$('cdName').textContent=field('card_name','球员姓名');$('cdTeam').textContent=field('card_team','');var rs=field('card_reason','').trim(),r=$('cdReason');if(rs){r.textContent=rs;r.classList.add('show');}else r.classList.remove('show');var c=$('cdCard'),i=$('card').querySelector('.cd-detail');c.classList.remove('in');i.classList.remove('in');void c.offsetWidth;c.classList.add('in');i.classList.add('in');fitBroadcastText();showFor('card',5000);interrupt('card');}
 
 /* ================= 球员条 ================= */
-function plyShow(){setVar('--plyr',field('player_color','#C8102E'));$('plyNum').textContent=field('player_num','').trim()||'--';$('plyName').textContent=field('player_name','球员姓名');$('plyTeam').textContent=field('player_team','');$('plyPos').textContent=field('player_pos','').trim();var ev=field('player_event','').trim(),e=$('plyEv');$('ply').querySelector('.ply-bar').classList.toggle('has-event',!!ev);if(ev){e.textContent=ev;e.classList.add('show');}else e.classList.remove('show');fitBroadcastText();showFor('ply',4500);interrupt('ply');}
+function plyShow(){setVar('--plyr',field('player_color','#C8102E'));$('plyNum').textContent=field('player_num','').trim()||'--';$('plyName').textContent=field('player_name','球员姓名');$('plyTeam').textContent=field('player_team','');$('plyPos').textContent=field('player_pos','').trim();$('ply').querySelector('.ply-meta .dot').hidden=!$('plyTeam').textContent||!$('plyPos').textContent;var ev=FBPPlayerTitle.get(S),e=$('plyEv');$('ply').querySelector('.ply-bar').classList.add('has-event');e.textContent=ev;e.classList.add('show');fitBroadcastText();showFor('ply',4500);interrupt('ply');}
 
 /* ================= 进球 ================= */
 function goalShow(){setVar('--goalC',field('goal_color','#FFD400'));$('gdNum').textContent=field('goal_num','').trim()||'--';$('gdName').textContent=field('goal_name','进球球员');$('gdTeam').textContent=field('goal_team','');$('gdH').textContent=field('goal_scoreHome','0');$('gdA').textContent=field('goal_scoreAway','0');var g=$('gdWord'),i=$('goal').querySelector('.gd-info');g.classList.remove('in');i.classList.remove('in');void g.offsetWidth;g.classList.add('in');i.classList.add('in');fitBroadcastText();showFor('goal',5600);interrupt('goal');}
@@ -390,12 +391,10 @@ function luIsAll(){return field('lineup_mode','all')!=='single';}
 function rosterLines(pfx){return String(luV(pfx,'players','')||'').split(/\r?\n/).map(function(s){return s.trim();}).filter(Boolean);}
 function rosterRows(list,raw,pfx){
   list.innerHTML='';
-  raw.forEach(function(line){var num='',name=line,cap=false,p=FBPRosterFormat.line(line);if(p){num=p.num;name=p.displayName;}
-    var star=name.match(/\s*[*#]+\s*$/);if(star){cap=true;name=name.slice(0,star.index);}
-    var cc=name.match(/\s*[\(\（](?:c|C|队长)[\)\）]\s*$/);if(cc){cap=true;name=name.slice(0,cc.index);}
+  raw.forEach(function(line){var num='',name=line,cap=false,gk=false,p=FBPRosterFormat.line(line);if(p){num=p.num;name=p.name;cap=p.captain;gk=p.goalkeeper;}
     var row=document.createElement('div');row.className='lu-row';
     var side=pfx.slice(-1)==='H'?'home':'away';row.dataset.player=side+'|'+Number(num)+'|'+name.trim();
-    row.innerHTML='<div class="lu-rn'+(num?'':' no-num')+'">'+(num||'·')+'</div><div class="lu-name">'+esc(name.trim())+'</div><div class="lu-cap'+(cap?' show':'')+'">队长</div>';list.appendChild(row);
+    row.innerHTML='<div class="lu-rn'+(num?'':' no-num')+'">'+(num||'·')+'</div><div class="lu-name">'+esc(name.trim())+'</div><div class="lu-badges">'+(gk?'<span class="lu-gk" title="守门员" aria-label="守门员">GK</span>':'')+'<span class="lu-cap'+(cap?' show':'')+'">队长</span></div>';list.appendChild(row);
   });
 }
 function numberColors(el,color){

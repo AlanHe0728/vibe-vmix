@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>⚽ 足球包装 · 预览监控</title>
+<title>足球包装 · 预览监控</title>
 <!--
 =====================================================================
  足球比赛包装系统 - 预览监控页 (不用进 vMix 就能看效果)
@@ -70,19 +70,19 @@
 </style>
 <link rel="stylesheet" href="glass-theme.css">
 <link rel="stylesheet" href="preview-tools.css">
+<link rel="stylesheet" href="preview-desk.css">
 </head>
-<body class="aux-controls preview-controls">
+<body class="aux-controls preview-controls preview-desk">
 <header>
-  <h1>⚽ 足球包装 · 预览监控</h1>
-  <span class="sub">1920×1080 画布 · 拖动排版，安全框与临时隐藏仅用于预览</span>
+  <h1>足球包装 · 预览监控</h1>
   <div class="sp">
     <button class="btn selected" id="layoutToggle" aria-controls="layoutInspector" aria-expanded="true" onclick="FBPPreviewTools.toggle()">布局工具</button>
-    <button class="btn" onclick="reload()">🔄 刷新模板</button>
+    <button class="btn" onclick="reload()">刷新模板</button>
     <button class="btn" onclick="openPanel()">打开控制面板</button>
   </div>
 </header>
 <div id="banner" class="hidden"></div>
-<nav id="tabs"></nav>
+<nav id="tabs" aria-label="预览栏目"></nav>
 <div id="workspace">
 <div id="wrap">
   <div id="pitch">
@@ -91,7 +91,6 @@
   <div id="player">
     <iframe class="frame" id="frame" title="模板预览"></iframe>
   </div>
-  <div class="overlay" id="ovl">加载中…</div>
 </div>
 <aside id="layoutInspector" aria-label="预览布局工具">
   <div class="inspector-heading"><h2>布局属性</h2><button onclick="FBPPreviewTools.toggle()" aria-label="收起布局工具">收起</button></div>
@@ -102,7 +101,7 @@
     <div class="scale-heading"><label for="layoutScale">缩放</label><output id="layoutScaleText" for="layoutScale">1.00×</output></div>
     <input id="layoutScale" type="range" min=".3" max="3" step=".01" value="1" disabled>
     <button id="resetLayerScale" class="selected-action" disabled>恢复该栏目大小</button>
-    <p id="layoutStatus" role="status">选择栏目后编辑；坐标、缩放会保存并同步上屏。</p>
+    <p id="layoutStatus" role="status"></p>
   </section>
   <section class="inspector-section">
     <h3>对齐</h3><label for="alignReference">对齐范围</label><select id="alignReference"><option value="title">文字安全框 · 90%</option><option value="action">画面安全框 · 95%</option><option value="frame">构图范围边界</option></select>
@@ -111,15 +110,15 @@
   <section class="inspector-section">
     <h3>构图与辅助线</h3><label for="previewRatio">预览比例</label><select id="previewRatio"><option value="16:9">16:9 · 横屏</option><option value="4:3">4:3</option><option value="1:1">1:1 · 方形</option><option value="9:16">9:16 · 竖屏</option><option value="21:9">21:9 · 宽屏</option><option value="custom">自定义比例</option></select>
     <div id="customRatio" class="inspector-pair" hidden><div><label for="ratioW">比例宽</label><input id="ratioW" type="number" min="1" max="10000" value="16"></div><div><label for="ratioH">比例高</label><input id="ratioH" type="number" min="1" max="10000" value="9"></div></div>
-    <p id="compositionSize">只调整预览构图范围，上屏画布由 vMix 决定。</p>
+    <p id="compositionSize"></p>
     <label class="inspector-switch" for="safetyGuides"><span>显示安全框</span><input id="safetyGuides" type="checkbox" checked></label>
     <label class="inspector-switch" for="showGrid"><span>始终显示网格</span><input id="showGrid" type="checkbox"></label>
     <label class="inspector-switch" for="snapGrid"><span>自动吸附网格</span><input id="snapGrid" type="checkbox"></label>
     <label for="gridStep">网格间距 · px</label><input id="gridStep" type="number" min="5" max="200" step="1" value="20">
-    <p>移动时自动显示网格。未开启吸附时可自由移动；坐标从画布左上角计算。</p>
+
   </section>
   <section class="inspector-section">
-    <h3>预览栏目</h3><p>开关仅影响此浏览器的编辑预览，不改变播出显示状态。点击名称可选中栏目。</p>
+    <h3>预览栏目</h3>
     <div id="layoutLayers"></div>
     <div class="inspector-pair"><button id="isolateLayer" class="selected-action" disabled>仅显示当前项</button><button id="restoreLayers">恢复全部</button></div>
   </section>
@@ -161,8 +160,7 @@ function select(i){
   var frame=$('frame');
   var q=t.file.indexOf('?')>=0?'&edit=1':'?edit=1';
   frame.src=BASE+'/titles/'+t.file+q;
-  $('ovl').textContent=t.label+' · '+t.file+'  (单链接可拖拽元素定位)';
-  Array.prototype.forEach.call(tabs.children,function(b,j){b.classList.toggle('on',j===i);});
+  Array.prototype.forEach.call(tabs.children,function(b,j){b.classList.toggle('on',j===i);b.setAttribute('aria-pressed',String(j===i));});
   fit();
 }
 function reload(){select(current);}

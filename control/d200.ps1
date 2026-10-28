@@ -43,6 +43,8 @@ function Get-D200Status($s) {
         visible=$visible;lineup=$(if ($s.lineup_mode -ne 'single') {'all'} elseif ($s.lineup_active) {$s.lineup_active} else {'xiH'});buttons=@{}}
     $result.controls=@{status=$(if ($s.status) {$s.status} else {'running'});restart_type=[string]$s.restart_type;card_type=[string]$s.card_type;scoreboard_show=$visible.scoreboard;clock_show=$visible.clock;lineup_show=$visible.lineup;logo_show=$visible.logo;lineup=$result.lineup;sb_clockrun=[bool]$s.sb_clock_state.running;clock_run=[bool]$s.clock_state.running}
     $now = Now-Ms
+    $result.controls.timing_version=1;$result.controls.period=if ($s.period) {$s.period} else {'上半场'}
+    $result.controls.match_timing=Get-MatchTiming $s.match_timing;$result.controls.match_break_until=$s.match_break_until;$result.controls.match_clock=$s.sb_clock_state
     foreach ($prefix in @('sb_clock','clock')) {
         $c = $s[$prefix+'_state'];$result[$prefix] = @{running=$c.running;mode=$c.mode;milliseconds=[Math]::Round((Clock-Value $c $now))}
     }

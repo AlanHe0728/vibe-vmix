@@ -5,13 +5,13 @@ const {CDP}=require('./browser'),{startServer,stop,delay}=require('./regression'
 async function main(){
   const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fbp-features-')),profile=path.join(temp,'edge');
   const file=path.join(temp,'state.json'),out=path.resolve(__dirname,'../docs/screenshots');
-  const starters='1 球员甲\n2 球员丁\n3 球员戊\n4 球员己\n5 球员庚\n6 球员辛\n7 球员壬\n8 球员癸\n9 球员12\n10 球员乙 (C)\n11 球员13';
-  const subs='12 球员23\n13 球员29\n14 球员30\n15 球员28\n16 球员32\n17 球员22\n18 球员31';
-  fs.writeFileSync(file,JSON.stringify({teamHome:'主队',teamAway:'客队',scoreHome:2,scoreAway:1,scoreboard_show:true,sb_clockacc:3825000,
+  const starters='1 颜骏凌\n2 蒋光太\n3 朱辰杰\n4 李磊\n5 张琳芃\n6 王上源\n7 武磊\n8 徐新\n9 张玉宁\n10 吴曦 (C)\n11 韦世豪';
+  const subs='12 刘殿座\n13 高准翼\n14 杨刘洋\n15 赵宏略\n16 黄政宇\n17 林良铭\n18 谢鹏飞';
+  fs.writeFileSync(file,JSON.stringify({teamHome:'测试队队',teamAway:'北京国安',scoreHome:2,scoreAway:1,scoreboard_show:true,sb_clockacc:3825000,
     lineup_show:true,lineup_active:'xiH',lineup_pos:{x:653,y:518},lineup_scale:.8,
-    xiH_team:'主队',xiA_team:'客队',xiH_color:'#c8102e',xiA_color:'#00529f',
+    xiH_team:'测试队队',xiA_team:'北京国安',xiH_color:'#c8102e',xiA_color:'#00529f',
     xiH_players:starters,xiA_players:starters,subH_players:subs,subA_players:subs,
-    clock_mm:15,clock_mode:'down',clock_show:true,goal_name:'球员乙',goal_num:'10',goal_team:'主队',player_name:'球员乙',player_num:'10',card_name:'球员12',card_num:'17'}));
+    clock_mm:15,clock_mode:'down',clock_show:true,goal_name:'吴曦',goal_num:'10',goal_team:'测试队队',player_name:'吴曦',player_num:'10',card_name:'张玉宁',card_num:'17'}));
   let server,browser,cdp;
   try{
     server=await startServer('node',file);
@@ -44,7 +44,7 @@ async function main(){
     await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]},page);
     await cdp.eval(page,'goalShow()');assert.equal(await cdp.eval(page,"getComputedStyle($('goal')).clipPath"),'none');
     assert.equal(fs.readFileSync(file,'utf8'),snapshot,'Rendering never writes match state');
-    const panel=await cdp.page(server.base+'/control/panel.html');await cdp.until(panel,"$('xiH_team').value==='主队'");
+    const panel=await cdp.page(server.base+'/control/panel.html');await cdp.until(panel,"$('xiH_team').value==='测试队队'");
     await cdp.eval(panel,"$('sb_clock_mm').value='45';$('sb_clock_ss').value='30';$('sb_clockmode').value='down';setMatchClock()");
     await cdp.until(panel,"$('writeStatus').textContent==='已保存'");let state=JSON.parse(fs.readFileSync(file));assert.equal(state.sb_clock_state.accMs,2730000);assert.equal(state.sb_clock_state.mode,'down');assert.equal(state.sb_clock_state.running,false);
     await cdp.eval(panel,"$('sb_clock_ss').value='70';setMatchClock()");await delay(100);assert.equal(JSON.parse(fs.readFileSync(file)).sb_clock_state.accMs,2730000,'Invalid seconds must not change clock');
@@ -63,21 +63,26 @@ async function main(){
     for(const period of ['上半场','下半场','加时赛','点球大战','中场休息','比赛结束']){
       await cdp.eval(panel,`$('period').value=${JSON.stringify(period)};$('period').dispatchEvent(new Event('change',{bubbles:true}));WRITE_QUEUE`);
       await cdp.until(page,`S.period===${JSON.stringify(period)} && $('sbPeriod').textContent===${JSON.stringify(period)}`);
-      state=JSON.parse(fs.readFileSync(file));assert.equal(state.period,period);assert.equal(state.teamHome,'主队','Phase changes must not save other drafts');assert.equal(state.sb_clock_state.accMs,5400000,'Phase changes must not reset time');
+      state=JSON.parse(fs.readFileSync(file));assert.equal(state.period,period);assert.equal(state.teamHome,'测试队队','Phase changes must not save other drafts');assert.equal(state.sb_clock_state.accMs,5400000,'Phase changes must not reset time');
     }
+    assert.deepEqual(await cdp.eval(panel,"Array.from($('matchStatus').options).map(o=>[o.value,o.textContent])"),[['running','进行中'],['paused','暂停']]);
     for(const status of ['running','paused','running','half','running','over']){
-      await cdp.eval(panel,`document.querySelector('[data-match-status="${status}"]').click();WRITE_QUEUE`);
+      if(status==='half'||status==='over'){
+        // Old clients and automatic transitions retain their saved semantics;
+        // the console exposes them as paused with the phase kept separate.
+        await fetch(server.base+'/state.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status,sb_clockcmd:'pause'})});await cdp.eval(panel,'fetchState()');
+      }else await cdp.eval(panel,`$('matchStatus').value='${status}';$('matchStatus').dispatchEvent(new Event('change',{bubbles:true}));WRITE_QUEUE`);
       await cdp.until(page,`S.status==='${status}' && CB.running===${status==='running'}`);
       state=JSON.parse(fs.readFileSync(file));assert.equal(state.status,status);assert.equal(state.sb_clock_state.running,status==='running');assert(Math.abs(state.sb_clock_state.accMs-5400000)<60000,'State changes preserve the accumulated clock while countdown continues');
-      assert.equal(await cdp.eval(panel,"document.querySelectorAll('[data-match-status][aria-pressed=true]').length"),1);
-      assert.equal(await cdp.eval(panel,`document.querySelector('[data-match-status="${status}"]').getAttribute('aria-pressed')`),'true');
+
+      assert.equal(await cdp.eval(panel,`$('matchStatus').value`),status==='running'?'running':'paused');
       if(status==='running')assert.equal(await cdp.eval(page,"$('sbBadge').classList.contains('show')"),false);
       else{
         assert.equal(await cdp.eval(page,"$('sbBadgeTx').textContent"),{paused:'比赛暂停',half:'中场休息',over:'比赛结束'}[status]);
         assert(await cdp.eval(page,"(()=>{var r=$('sbBadge').getBoundingClientRect();return $('sbBadge').classList.contains('in-bar')&&r.top>=0&&r.bottom<=1080&&r.left>=0&&r.right<=1920;})()"),'Status badge remains fully visible at the saved top-edge scorebar location');
       }
     }
-    await cdp.send('Page.reload',{},panel);await cdp.until(panel,"document.querySelector('[data-match-status=over]').getAttribute('aria-pressed')==='true'");assert.equal(await cdp.eval(panel,"$('period').value"),'比赛结束');
+    await cdp.send('Page.reload',{},panel);await cdp.until(panel,"$('matchStatus').value==='paused'");assert.equal(await cdp.eval(panel,"$('period').value"),'比赛结束');
     console.log('PASS actual phase change and status button bindings, clock start/pause without reset, draft preservation, current-state feedback, reload persistence and top-edge status badge visibility');
     assert.equal(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown').length,0);
     console.log('PASS default full lineup, all four sections, team colors, aligned starters/subs, stable polling, saved layout profiles, seven wipes, configurable hold timing, long clock fit, reduced motion, manual clock controls, saved wipe settings and single/full controls');

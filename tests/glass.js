@@ -4,9 +4,9 @@ const {CDP}=require('./browser'),{startServer,stop,delay}=require('./regression'
 async function main(){
   const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fbp-glass-')),profile=path.join(temp,'edge'),file=path.join(temp,'state.json');
   const out=path.resolve(__dirname,'../docs/screenshots');fs.mkdirSync(out,{recursive:true});
-  const xi=['10 球员一','23 球员乙','4 球员三','6 球员四','3 球员五','20 球员六','7 球员七','15 球员八','9 球员九','18 球员十','22 球员十一'];
-  const bench=['13 球员戊','24 球员40','1 球员34','2 球员35','5 球员37','8 球员14','11 球员十三','12 球员38','14 球员36','16 球员33','17 加纳乔'];
-  fs.writeFileSync(file,JSON.stringify({teamHome:'主队',teamAway:'客队',xiH_players:xi.join('\n'),subH_players:bench.join('\n'),scoreHome:2,scoreAway:1}));
+  const xi=['10 梅西','23 达米安·马丁内斯','4 蒙铁尔','6 罗梅罗','3 塔利亚菲科','20 麦卡利斯特','7 德保罗','15 尼古拉斯·冈萨雷斯','9 阿尔瓦雷斯','18 尼科·帕斯','22 劳塔罗'];
+  const bench=['13 利桑德罗·马丁内斯','24 恩佐','1 穆索','2 塞内西','5 帕雷德斯','8 巴尔科','11 迪马利亚','12 鲁利','14 帕拉西奥斯','16 莫利纳','17 加纳乔'];
+  fs.writeFileSync(file,JSON.stringify({teamHome:'阿根廷',teamAway:'法国',xiH_players:xi.join('\n'),subH_players:bench.join('\n'),scoreHome:2,scoreAway:1}));
   let server,browser,cdp;
   try{
     server=await startServer('node',file);
@@ -25,16 +25,16 @@ async function main(){
     async function shot(name){const r=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},panel);fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(r.data,'base64'));}
     await shot('control-transparent-nav');
     const initial=await cdp.eval(panel,"document.querySelector('.tab-indicator').style.clipPath");
-    await cdp.eval(panel,"selectPanelTab('events');window.scrollTo(0,0)");await delay(90);await shot('control-liquid-motion');
+    await cdp.eval(panel,"selectPanelTab('lineups');window.scrollTo(0,0)");await delay(90);await shot('control-liquid-motion');
     const moving=await cdp.eval(panel,"document.querySelector('.tab-indicator').style.clipPath");assert.notEqual(moving,initial,'Lens moves through intermediate contours');
-    const interruption=await cdp.eval(panel,"(()=>{var el=document.querySelector('.tab-indicator'),before=el.style.clipPath;selectPanelTab('devices');selectPanelTab('match');return before===el.style.clipPath;})()");
+    const interruption=await cdp.eval(panel,"(()=>{var el=document.querySelector('.tab-indicator'),before=el.style.clipPath;selectPanelTab('match');selectPanelTab('lineups');selectPanelTab('match');return before===el.style.clipPath;})()");
     assert(interruption,'Rapid reversal starts from the current visible contour');await delay(1200);
     assert.equal(await cdp.eval(panel,"document.querySelector('.tab-indicator').style.clipPath"),initial,'Lens returns to its unstretched shape');
     await cdp.eval(panel,"$('tab-match').focus()");
     await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'ArrowRight',code:'ArrowRight',windowsVirtualKeyCode:39},panel);
     const keyboard=await cdp.eval(panel,"document.querySelector('.tab-indicator').style.clipPath");await delay(300);
     assert.equal(await cdp.eval(panel,"document.querySelector('.tab-indicator').style.clipPath"),keyboard,'Keyboard tab changes are immediate');
-    assert.equal(await cdp.eval(panel,'document.activeElement.id'),'tab-events');
+    assert.equal(await cdp.eval(panel,'document.activeElement.id'),'tab-lineups');
     await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]},panel);
     await cdp.eval(panel,"selectPanelTab('devices')");const reduced=await cdp.eval(panel,"document.querySelector('.tab-indicator').style.clipPath");await delay(300);
     assert.equal(await cdp.eval(panel,"document.querySelector('.tab-indicator').style.clipPath"),reduced);
@@ -46,12 +46,12 @@ async function main(){
     for(const type of ['mousePressed','mouseReleased'])await cdp.send('Input.dispatchMouseEvent',{type,x:rect.x,y:rect.y,button:'left',buttons:type==='mousePressed'?1:0,clickCount:1},panel);
     await cdp.until(panel,"$('goal_roster_player').matches(':open')");
     const material=await cdp.eval(panel,"(()=>{var s=getComputedStyle($('goal_roster_player'),'::picker(select)');return {radius:s.borderRadius,background:s.backgroundColor,filter:s.backdropFilter,scrollbar:s.scrollbarWidth};})()");
-    assert.equal(material.radius,'22px');assert(material.filter.includes('blur'));assert.equal(material.scrollbar,'none');assert(material.background.endsWith('0.22)'));
+    assert.equal(material.radius,'18px');assert(material.filter.includes('blur'));assert.equal(material.scrollbar,'none');assert(material.background.endsWith('0.88)'));
     await shot('control-glass-roster');
     await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'ArrowDown',code:'ArrowDown',windowsVirtualKeyCode:40},panel);
     await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},panel);
     await cdp.until(panel,"!$('goal_roster_player').matches(':open')");
-    assert.deepEqual(await cdp.eval(panel,"[$('goal_num').value,$('goal_name').value]"),['10','球员一'],'Real keyboard selection triggers number/name linkage');
+    assert.deepEqual(await cdp.eval(panel,"[$('goal_num').value,$('goal_name').value]"),['10','梅西'],'Real keyboard selection triggers number/name linkage');
     // A real wheel still scrolls the menu after hiding its scrollbar.
     for(const type of ['mousePressed','mouseReleased'])await cdp.send('Input.dispatchMouseEvent',{type,x:rect.x,y:rect.y,button:'left',buttons:type==='mousePressed'?1:0,clickCount:1},panel);
     await cdp.until(panel,"$('goal_roster_player').matches(':open')");
@@ -60,10 +60,10 @@ async function main(){
     await cdp.send('Input.dispatchMouseEvent',{type:'mouseWheel',x:wheel.x,y:wheel.y,deltaX:0,deltaY:550},panel);await delay(300);
     assert(await cdp.eval(panel,"$('goal_roster_player').options[1].getBoundingClientRect().top")<before,'Hidden scrollbar does not disable wheel scrolling');
     await shot('control-glass-roster-scrolled');
-    const benchPoint=await cdp.eval(panel,"(()=>{var o=Array.from($('goal_roster_player').options).find(o=>o.value==='home|5|球员37'),r=o.getBoundingClientRect();return {x:r.x+45,y:r.y+20};})()");
+    const benchPoint=await cdp.eval(panel,"(()=>{var o=Array.from($('goal_roster_player').options).find(o=>o.value==='home|5|帕雷德斯'),r=o.getBoundingClientRect();return {x:r.x+45,y:r.y+20};})()");
     for(const type of ['mousePressed','mouseReleased'])await cdp.send('Input.dispatchMouseEvent',{type,x:benchPoint.x,y:benchPoint.y,button:'left',buttons:type==='mousePressed'?1:0,clickCount:1},panel);
     await cdp.until(panel,"!$('goal_roster_player').matches(':open')");
-    assert.deepEqual(await cdp.eval(panel,"[$('goal_num').value,$('goal_name').value]"),['5','球员37'],'Real mouse selection of an outside player retains linkage');
+    assert.deepEqual(await cdp.eval(panel,"[$('goal_num').value,$('goal_name').value]"),['5','帕雷德斯'],'Real mouse selection of an outside player retains linkage');
     // Escape dismisses a picker without committing a different player.
     for(const type of ['mousePressed','mouseReleased'])await cdp.send('Input.dispatchMouseEvent',{type,x:rect.x,y:rect.y,button:'left',buttons:type==='mousePressed'?1:0,clickCount:1},panel);
     await cdp.until(panel,"$('goal_roster_player').matches(':open')");
@@ -83,16 +83,16 @@ async function main(){
     await cdp.until(panel,"!$('goal_roster_player').matches(':open')");
     await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'}]},panel);
     assert.equal(await cdp.eval(panel,"getComputedStyle($('goal_roster_player'),'::picker(select)').backdropFilter"),'none');
-    assert.equal(await cdp.eval(panel,"getComputedStyle($('goal_roster_player'),'::picker(select)').backgroundColor"),'rgb(247, 248, 250)');
+    assert.equal(await cdp.eval(panel,"getComputedStyle($('goal_roster_player'),'::picker(select)').backgroundColor"),'rgb(255, 255, 255)');
     await cdp.send('Emulation.setEmulatedMedia',{features:[]},panel);
     // Exercise the glass switch and native slider with real keyboard/pointer input.
     await cdp.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false},panel);
-    await cdp.eval(panel,"$('goal_sync').scrollIntoView({block:'center'});$('goal_sync').focus()");
+    await cdp.eval(panel,"$('goal_sync').closest('details').open=true;$('goal_sync').scrollIntoView({block:'center'});$('goal_sync').focus()");
     const switchBefore=await cdp.eval(panel,"$('goal_sync').checked");
     async function key(key,code,n){for(const type of ['keyDown','keyUp'])await cdp.send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:n},panel);}
     async function switchMaterial(){return cdp.eval(panel,"(()=>{var e=$('goal_sync'),s=getComputedStyle(e),t=getComputedStyle(e,'::before');return {checked:e.checked,fill:s.backgroundColor,thumb:t.backgroundColor,blur:t.backdropFilter,transform:t.transform};})()");}
     await key(' ','Space',32);await delay(180);const changed=await switchMaterial();
-    assert.equal(changed.checked,!switchBefore);assert(changed.thumb.startsWith('rgba(')&&changed.blur.includes('blur'),'Switch lens stays translucent in both states');
+    assert.equal(changed.checked,!switchBefore);assert(changed.thumb.startsWith('rgba(')&&changed.blur==='none','Content switches use quiet standard material without nested blur');
     await shot('control-glass-switch');await key(' ','Space',32);await delay(180);const restored=await switchMaterial();
     assert.equal(restored.checked,switchBefore);assert.notEqual(changed.fill,restored.fill,'On/off use different white/transparent surfaces');assert.notEqual(changed.transform,restored.transform,'Thumb moves to the other end');
     await cdp.eval(panel,"selectPanelTab('appearance',true);$('animdur').scrollIntoView({block:'center'});$('animdur').focus()");
@@ -130,7 +130,7 @@ async function main(){
     assert.equal(fs.readFileSync(file,'utf8'),snapshot,'Glass interactions and player selection remain read-only drafts');
     for(const kind of ['node','powershell']){
       let other;try{other=kind==='node'?server:await startServer(kind,file);
-        for(const name of ['glass-theme.css','liquid-nav.js','vendor/motion.js'])assert.equal((await fetch(other.base+'/control/'+name)).status,200);
+        for(const name of ['glass-theme.css','liquid-nav.js','vendor/motion.js','assets/console-background.jpg'])assert.equal((await fetch(other.base+'/control/'+name)).status,200);
       }finally{if(kind==='powershell'&&other)await stop(other.child);}
     }
     assert.equal(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown').length,0);

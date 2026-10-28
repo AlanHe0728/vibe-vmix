@@ -50,8 +50,8 @@ async function main(){
     assert.equal(fs.readFileSync(file,'utf8'),snapshot,'Linked drafts and imports do not write match state');
     await cdp.eval(panel,'writeScoreboard();WRITE_QUEUE');let s=JSON.parse(fs.readFileSync(file));assert.equal(s.scoreHome,7);assert.equal(s.goal_scoreHome,7);assert.equal(s.goal_scoreAway,3);assert.equal(s.goal_team,'主队甲');
     await input('scoreHome','9');await input('goal_scoreAway','4');await cdp.eval(panel,"score('scoreHome',1);WRITE_QUEUE");s=JSON.parse(fs.readFileSync(file));assert.equal(s.scoreHome,10);assert.equal(s.scoreAway,4);assert.equal(s.goal_scoreHome,10);assert.equal(s.goal_scoreAway,4);
-    await input('scoreHome','5');await input('goal_scoreAway','2');await input('goal_side','home','change');await cdp.eval(panel,"$('goal_sync').checked=true;writeGoal();WRITE_QUEUE");s=JSON.parse(fs.readFileSync(file));assert.equal(s.scoreHome,6);assert.equal(s.scoreAway,2);assert.equal(s.goal_scoreHome,6);
-    await input('scoreHome','6');await input('scoreAway','8');await cdp.eval(panel,"quickGoal('away');WRITE_QUEUE");s=JSON.parse(fs.readFileSync(file));assert.equal(s.scoreHome,6);assert.equal(s.scoreAway,9);assert.equal(s.goal_team,'新客队');assert.equal(s.goal_color,'#123456');
+    await input('scoreHome','5');await input('goal_scoreAway','2');await input('goal_side','home','change');await cdp.eval(panel,"(async()=>{await applyScoreCorrection();$('goal_sync').checked=true;await writeGoal();})()");s=JSON.parse(fs.readFileSync(file));assert.equal(s.scoreHome,6);assert.equal(s.scoreAway,2);assert.equal(s.goal_scoreHome,6);
+    await input('scoreHome','6');await input('scoreAway','8');await cdp.eval(panel,"(async()=>{await applyScoreCorrection();await quickScore('away');})()");s=JSON.parse(fs.readFileSync(file));assert.equal(s.scoreHome,6);assert.equal(s.scoreAway,9);assert.equal(s.goal_team,'主队甲','Score-only change does not replace prepared event content');
     await input('scoreHome','7');await input('scoreAway','3');await input('goal_side','home','change');await cdp.eval(panel,'writeScoreboard();WRITE_QUEUE');
     await cdp.eval(panel,'lineupAllWrite(false);WRITE_QUEUE');
     await fetch(server.base+'/api/d200/action/home_score_plus',{method:'POST'});await cdp.until(panel,"$('scoreHome').value==='8'&&$('goal_scoreHome').value==='8'");
@@ -74,13 +74,14 @@ async function main(){
     const preview=await cdp.page(server.base+'/control/preview.html');await cdp.until(preview,"typeof TEMPLATES!=='undefined' && $('frame').contentWindow.EDIT===true");await cdp.eval(preview,"select(TEMPLATES.findIndex(t=>t.key==='sub'))");assert.equal(await cdp.eval(preview,"$('frame').src"),server.base+'/titles/graphics.html?only=sub&edit=1','Substitution preview retains editing controls');
     await cdp.send('Page.bringToFront',{},panel);await cdp.eval(panel,"selectPanelTab('match');setStatus('paused');WRITE_QUEUE");await delay(200);
     await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:2,y:2},panel);await delay(200);
-    const colors=await cdp.eval(panel,"Array.from(document.querySelectorAll('[data-match-status]')).map(b=>({selected:b.getAttribute('aria-pressed'),background:getComputedStyle(b).backgroundColor,color:getComputedStyle(b).color}))");assert.equal(colors.filter(c=>c.selected==='true').length,1);const idle=colors.filter(c=>c.selected==='false');assert(idle.every(c=>c.background===idle[0].background&&c.color===idle[0].color),'Unselected options use a uniform gray');assert.notEqual(colors.find(c=>c.selected==='true').background,idle[0].background);
-    await cdp.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false},panel);await cdp.eval(panel,"document.activeElement.blur();window.scrollTo(0,0)");await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:1400,y:2},panel);await delay(200);
-    const hoverRect=await cdp.eval(panel,"(()=>{var r=document.querySelector('.score-card').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};})()");
-    await cdp.until(panel,"getComputedStyle(document.querySelector('.score-card'),'::before').opacity==='0'");
+    assert.equal(await cdp.eval(panel,"$('matchStatus').value"),'paused');
+    await cdp.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false},panel);
+    await cdp.eval(panel,"window.scrollTo(0,0);FBPDesk.task('goal')");
+    const hoverRect=await cdp.eval(panel,"(()=>{var r=$('event-goal').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};})()");
     await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:hoverRect.x+20,y:hoverRect.y+20},panel);
-    await cdp.until(panel,"getComputedStyle(document.querySelector('.score-card'),'::before').opacity==='1'");
-    assert.deepEqual(await cdp.eval(panel,"(()=>{var r=document.querySelector('.score-card').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};})()"),hoverRect,'Card hover changes depth without shifting controls');
+    await delay(180);
+    assert.equal(await cdp.eval(panel,"getComputedStyle($('event-goal'),'::before').display"),'none','Content surface has no decorative hover elevation');
+    assert.deepEqual(await cdp.eval(panel,"(()=>{var r=$('event-goal').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};})()"),hoverRect);
     let styleShot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},panel);fs.writeFileSync(path.resolve(__dirname,'../docs/screenshots/control-selection-hover.png'),Buffer.from(styleShot.data,'base64'));
     await cdp.send('Page.bringToFront',{},viewer);await cdp.eval(viewer,"$('lineup').style.visibility='hidden';$('sub').style.visibility='hidden';$('goal').style.visibility='hidden';$('sb').classList.add('on')");await delay(500);const scoreClip=await cdp.eval(viewer,"(()=>{var r=$('sb').getBoundingClientRect();return {x:r.left-12,y:Math.max(0,r.top-25),width:r.width+24,height:r.height+50,scale:1};})()");styleShot=await cdp.send('Page.captureScreenshot',{format:'png',clip:scoreClip,captureBeyondViewport:true},viewer);fs.writeFileSync(path.resolve(__dirname,'../docs/screenshots/broadcast-score-shadow.png'),Buffer.from(styleShot.data,'base64'));
     if(process.env.FBP_REFERENCE_VIDEO){

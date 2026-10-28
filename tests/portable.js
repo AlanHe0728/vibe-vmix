@@ -13,7 +13,7 @@ const {delay}=require('./regression');
 const {createServer}=require('../control/serve');
 const {prepareData,listenPortable,pausedSnapshot}=require('../desktop/portable-data');
 const root=path.resolve(__dirname,'..');
-const release=path.resolve(process.argv[2]||path.join(root,'dist','足球转播控制台-1.0.0-Windows-x64-candidate'));
+const release=path.resolve(process.argv[2]||path.join(root,'dist','足球转播控制台-'+require('../desktop/package.json').version+'-Windows-x64'));
 const hash=bytes=>require('node:crypto').createHash('sha256').update(bytes).digest('hex');
 async function unit(temp) {
   const input={teamHome:'keep',font_data:'keep-font',sb_clock_state:{mode:'up',running:true,accMs:1000,base:1000}};
@@ -93,6 +93,7 @@ async function main() {
     const folder=path.join(temp,'另一台电脑 中文 空格','足球转播控制台');fs.mkdirSync(path.dirname(folder),{recursive:true});
     fs.cpSync(release,folder,{recursive:true});
     const seed=JSON.parse(fs.readFileSync(path.join(folder,'resources/app/desktop/seed-state.json')));
+    assert(Object.keys(seed).every(key=>['font_data','font_family','theme_font'].includes(key)),'Distributable seed only retains font settings');
     // Simulate an empty first-run data directory, in this test copy only.
     const copiedData=path.resolve(folder,'data');assert(copiedData.startsWith(path.resolve(temp)+path.sep));fs.rmSync(copiedData,{recursive:true,force:true});
     blocker=net.createServer(socket=>socket.end('occupied by another application'));
@@ -104,28 +105,37 @@ async function main() {
     assert.equal(saved.sb_clock_state.running,false);assert.equal(saved.clock_state.running,false);
     assert.equal(await cdp.eval(panel,"$('singleUrl').value"),base+'/titles/graphics.html');
     assert.deepEqual(await cdp.eval(panel,"[typeof require,typeof window.process,typeof XLSX.read,typeof FBPAssets.hydrate]"),['undefined','undefined','function','function']);
+    assert.deepEqual(await cdp.eval(panel,"[typeof FBPMatchTiming.clock,typeof FBPRosterPicker.save]"),['function','function']);
     await cdp.eval(panel,"localStorage.setItem('fbp_portable_test','saved choice')");
     const first=await fetch(base+'/state.json'),etag=first.headers.get('etag');await first.arrayBuffer();
     assert.equal((await fetch(base+'/state.json',{headers:{'If-None-Match':etag}})).status,304);
-    for(const url of ['/control/vendor/xlsx.full.min.js','/control/vendor/motion.js','/titles/motion-curves.js','/titles/assets/icons/football.svg']) {
+    for(const url of ['/control/vendor/xlsx.full.min.js','/control/vendor/motion.js','/control/match-config.js','/control/panel-match-config.js','/control/match-timing.js','/control/panel-roster-picker.js','/control/player-title.js','/control/match-controls.css','/titles/motion-curves.js','/titles/assets/icons/football.svg']) {
       const result=await fetch(base+url);assert.equal(result.status,200);await result.arrayBuffer();
     }
     assert.equal((await fetch(base+'/desktop/seed-state.json')).status,404);
+    assert.equal((await fetch(base+'/control/assets/console-background.jpg')).status,404,'Personal console background is excluded');
     console.log('PASS real EXE with empty PATH, Chinese/spaced path, first-run seed/assets/fonts, no Node in renderer, ETag, local dependencies, automatic occupied-port fallback');
     // A second double-click focuses the running instance instead of creating
     // another server or replacing its saved data.
     const second=spawn(path.join(folder,'足球转播控制台.exe'),[],{cwd:folder,windowsHide:true,env:app.env,stdio:'ignore'});
     await Promise.race([once(second,'exit'),delay(7000).then(()=>{if(second.exitCode===null){second.kill();throw Error('Single-instance lock failed');}})]);
     assert.equal(second.exitCode,0);assert(blocker.listening);
-    const viewer=await openPage(app,base+'/titles/graphics.html');await cdp.until(viewer,'!!S.teamHome');
+    const viewer=await openPage(app,base+'/titles/graphics.html');await cdp.until(viewer,'Object.keys(S).length>0');
     await cdp.eval(panel,"$('teamHome').value='便携测试队';$('teamHome').dispatchEvent(new Event('change',{bubbles:true}));WRITE_QUEUE");
     await cdp.until(viewer,"S.teamHome==='便携测试队'");
-    await cdp.eval(panel,'quickGoal("home");WRITE_QUEUE');await cdp.until(viewer,`S.scoreHome===${Number(seed.scoreHome||0)+1} && $('goal').classList.contains('on')`);
+    await cdp.eval(panel,'quickScore("home");WRITE_QUEUE');await cdp.until(viewer,`S.scoreHome===${Number(seed.scoreHome||0)+1}`);
     saved=JSON.parse(fs.readFileSync(path.join(folder,'data/state.json')));assert.equal(saved.teamHome,'便携测试队');
     const book=await cdp.eval(panel,"(()=>{var b=XLSX.utils.book_new();XLSX.utils.book_append_sheet(b,XLSX.utils.aoa_to_sheet([['号码','姓名'],[10,'测试前锋'],[1,'测试门将']]),'主队');return XLSX.write(b,{type:'base64',bookType:'xlsx'});})()");
     await cdp.eval(panel,`(()=>{var bytes=Uint8Array.from(atob(${JSON.stringify(book)}),c=>c.charCodeAt(0)),dt=new DataTransfer();dt.items.add(new File([bytes],'便携导入.xlsx'));$('xiH_import').files=dt.files;$('xiH_import').dispatchEvent(new Event('change',{bubbles:true}));})()`);
     await cdp.until(panel,"$('xiH_players').value==='10 测试前锋'+String.fromCharCode(10)+'1 测试门将'");
     await cdp.eval(panel,'lineupAllWrite(false);WRITE_QUEUE');
+    const matchFile=await cdp.eval(panel,"(async()=>{var s=await(await fetch(serverBase+'/state.json')).json();['teamHome','teamAway','colorHome','colorAway','xiH_players','xiA_players','subH_players','subA_players'].forEach(k=>s[k]=$(k).value);return FBPMatchConfig.stringify(FBPMatchConfig.fromState(s));})()");
+    async function importConfig(contents){await cdp.eval(panel,`(()=>{var dt=new DataTransfer();dt.items.add(new File([${JSON.stringify(contents)}],'便携比赛配置.txt',{type:'text/plain'}));$('matchConfigFile').files=dt.files;$('matchConfigFile').dispatchEvent(new Event('change',{bubbles:true}));})()`);await cdp.until(panel,"!$('matchConfigExport').disabled&&$('matchConfigStatus').textContent.startsWith('已载入')");}
+    const example=await cdp.eval(panel,'FBPMatchConfig.stringify(FBPMatchConfig.example())');await importConfig(example);assert.equal(await cdp.eval(panel,"$('teamHome').value"),'主队示例');assert(await cdp.eval(panel,"$('liveRosters').textContent.includes('GK')"));
+    await importConfig(matchFile);assert.equal(await cdp.eval(panel,"$('teamHome').value"),'便携测试队');
+    await cdp.eval(panel,"selectPanelTab('devices',true);FBPMatchTiming.clock('start')");assert.equal(JSON.parse(fs.readFileSync(path.join(folder,'data/state.json'))).sb_clock_state.running,true);
+    await cdp.eval(panel,"FBPMatchTiming.clock('pause')");assert.equal(JSON.parse(fs.readFileSync(path.join(folder,'data/state.json'))).sb_clock_state.running,false);
+    assert.equal(await cdp.eval(panel,"$('squad_home_rows').querySelectorAll('.squad-row').length"),2);
     await cdp.eval(panel,'editorOpen()');
     let preview;
     for(let i=0;i<80&&!preview;i++) {const {targetInfos}=await cdp.send('Target.getTargets');preview=targetInfos.find(t=>t.url===base+'/control/preview.html');if(!preview)await delay(100);}
@@ -149,7 +159,7 @@ async function main() {
     assert.equal(await app.cdp.eval(app.panel,"$('teamHome').value"),'便携测试队');
     assert.equal(await app.cdp.eval(app.panel,"localStorage.getItem('fbp_portable_test')"),'saved choice');
     assert.equal(await app.cdp.eval(app.panel,"$('xiH_players').value"),'10 测试前锋\n1 测试门将');
-    saved=await(await fetch(app.base+'/state.json')).json();assert.equal(saved.font_data,seed.font_data);assert.equal(saved.homeLogo,seed.homeLogo);
+    saved=await(await fetch(app.base+'/state.json')).json();assert.equal(saved.font_data,seed.font_data);assert.equal(saved.homeLogo||'',seed.homeLogo||'');
     await quit(app);app=null;
     console.log('PASS offline local UI, quit pauses clocks/stops service, folder relocation, persisted match/roster/images/font/browser settings');
     assert.equal(hash(fs.readFileSync(path.join(root,'control/state.json'))),stateHash,'Real match data is untouched');

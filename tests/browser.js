@@ -36,7 +36,7 @@ async function main(){
     sb_clockacc:45000,sb_clockrun:1,sb_clockcmd:'minus',sb_clock_tick:8,
     clock_mode:'down',clock_mm:2,clock_run:1,clock_show:true,clock_tick:16,clock_cmd:'reset',
     goal_tick:9,goal_trigger:'goal',card_tick:10,card_trigger:'red',player_tick:11,restart_tick:12,
-    lineup_mode:'single',lineup_active:'xiH',lineup_show:true,xiH_team:'测试主队',xiH_players:'1 测试球员\n2 李四 (C)',theme_bg:pixel}));
+    lineup_mode:'single',lineup_active:'xiH',lineup_show:true,xiH_team:'测试主队',xiH_players:'1 张三\n2 李四 (C)',theme_bg:pixel}));
   let server,browser,cdp;
   try {
     server=await startServer('node',stateFile);
@@ -71,14 +71,15 @@ async function main(){
     assert.equal(await cdp.eval(panel,"$('singleUrl').value"),server.base+'/titles/graphics.html');
     await cdp.eval(panel,"score('scoreHome',-1); WRITE_QUEUE");
     assert.equal((await (await fetch(server.base+'/state.json')).json()).scoreHome,0);
-    // New events still play repeatedly, even after panel reload.
-    await cdp.eval(panel,"quickGoal('home');WRITE_QUEUE");await cdp.until(a,"S.scoreHome===1 && $('goal').classList.contains('on')");
+    // Quick scoring stays silent across panel and viewer reloads.
+    await cdp.eval(panel,"quickScore('home');WRITE_QUEUE");await cdp.until(a,"S.scoreHome===1");
     await cdp.send('Page.reload',{},panel);await cdp.until(panel,"$('scoreHome').value==='1' && $('connDot').classList.contains('ok')");
-    await cdp.eval(panel,"quickGoal('home');WRITE_QUEUE");await cdp.until(a,'S.scoreHome===2');
+    assert(!await cdp.eval(a,"$('goal').classList.contains('on')"),'Top score-only action does not replay a goal');
+    await cdp.eval(panel,"quickScore('home');WRITE_QUEUE");await cdp.until(a,'S.scoreHome===2');
     await cdp.send('Page.reload',{},a);await cdp.until(a,'S.scoreHome===2');
     assert.equal(await cdp.eval(a,"$('goal').classList.contains('on')"),false);
     assert.equal(await cdp.eval(a,"$('sb').style.left"),'800px');
-    console.log('PASS custom port, nonnegative scores, repeated goal after panel reload, viewer refresh without replay/reset');
+    console.log('PASS custom port, nonnegative silent scoring across panel reloads, viewer refresh without replay/reset');
     const editor=await cdp.page(server.base+'/titles/graphics.html?edit=1');await cdp.until(editor,"S.scoreHome===2 && !!scSlider");
     await cdp.eval(editor,"selectEl('sb');scSlider.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));scSlider.value='1.73';scSlider.dispatchEvent(new Event('input',{bubbles:true}));");
     await delay(700);
