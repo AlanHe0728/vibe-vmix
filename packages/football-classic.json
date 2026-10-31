@@ -1,0 +1,16 @@
+{
+  "id": "football-classic",
+  "name": "足球经典包装",
+  "port": 8123,
+  "batchSubstitutions": false,
+  "accent": "#FFD400",
+  "font": "Bahnschrift, Segoe UI, Microsoft YaHei, sans-serif",
+  "wipeIn": 0.45,
+  "wipeOut": 0.28,
+  "lineupHeight": 620,
+  "positions": {
+    "sb": [423, 96], "clk": [960, 400], "rst": [960, 918], "card": [960, 500],
+    "ply": [390, 918], "goal": [960, 500], "sub": [960, 500], "logo": [1760, 96],
+    "lineup": [960, 540], "lineup_all": [960, 580]
+  }
+}

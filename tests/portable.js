@@ -86,7 +86,7 @@ async function openPage(app,url) {
 }
 async function main() {
   const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fbp-portable-'));
-  const stateHash=hash(fs.readFileSync(path.join(root,'control/state.json')));
+  const stateHash=(fs.existsSync(path.join(root,'control/state.json'))?hash(fs.readFileSync(path.join(root,'control/state.json'))):null);
   let app,blocker;
   try {
     await unit(temp);
@@ -162,7 +162,7 @@ async function main() {
     saved=await(await fetch(app.base+'/state.json')).json();assert.equal(saved.font_data,seed.font_data);assert.equal(saved.homeLogo||'',seed.homeLogo||'');
     await quit(app);app=null;
     console.log('PASS offline local UI, quit pauses clocks/stops service, folder relocation, persisted match/roster/images/font/browser settings');
-    assert.equal(hash(fs.readFileSync(path.join(root,'control/state.json'))),stateHash,'Real match data is untouched');
+    assert.equal((fs.existsSync(path.join(root,'control/state.json'))?hash(fs.readFileSync(path.join(root,'control/state.json'))):null),stateHash,'Real match data is untouched');
   } finally {
     if(app){await app.cdp.send('Browser.close').catch(()=>{});app.cdp.ws.close();if(app.child.exitCode===null)app.child.kill();await delay(1500);}
     if(blocker?.listening)await new Promise(resolve=>blocker.close(resolve));

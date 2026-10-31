@@ -2,6 +2,8 @@
 
 面向足球直播的 vMix 网页图形包装与控制台。比分、比赛时钟、进球、红黄牌、发球、球员条、换人和名单由一个控制界面管理，通过单个网页输入叠加到 vMix。
 
+源码仓库：[Gitee](https://gitee.com/alanhe0728/vibe-vmix) · [GitHub](https://github.com/AlanHe0728/vibe-vmix)。便携版安装包仍从下方 Gitee Releases 下载。
+
 **Windows 10/11 x64 便携版：**[前往 Gitee Releases 下载](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v1.1.0)。程序连同 Chromium 运行环境一起打包，解压后双击 `足球转播控制台.exe` 即可，不必另装 Node.js、Python、PowerShell、浏览器或 MicroKit 开发服务。首次使用需要本机已安装 vMix；D200 硬件按键需要 Ulanzi Studio。
 
 ## 开发中功能
@@ -71,6 +73,8 @@ TXT 只包含两队资料，比分、比赛时钟、布局和主题仍由当前�
 备份或迁移时，先退出软件，再复制整个 `data` 文件夹；换电脑时复制整个应用文件夹。升级时用旧版 `data` 替换新版空白 `data`，不要只复制 EXE，也不要让新版空白状态覆盖已有数据。
 
 ## 从源码运行与构建
+
+架构、目录职责和扩展步骤见 [架构设计](docs/ARCHITECTURE.md)，统一接口见 [API v1](docs/API.md)。核心位于 `core/`，足球规则位于 `modules/football/`，公共 UI 位于 `ui/`，两版通过 `packages/` 配置共用实现。新增赛事或舞台包装无需复制整套服务；`examples/stage/` 提供可运行的 API 示例。
 
 源码控制台可用 Node.js 启动：在项目根目录运行 `node control/serve.js`，然后打开终端显示的本地地址。Windows 上也可运行 `control/启动控制面板.bat`。PowerShell 启动脚本仍保留。
 

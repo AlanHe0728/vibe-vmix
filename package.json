@@ -1,0 +1,23 @@
+{
+  "name": "broadcast-pack-workspace",
+  "private": true,
+  "version": "1.1.0",
+  "description": "Shared broadcast core, event modules and presentation packages",
+  "scripts": {
+    "start": "node control/serve.js",
+    "start:v2": "node v2/control/serve.js",
+    "example:stage": "node examples/stage/serve.js",
+    "test": "node scripts/test.js",
+    "test:core": "node --test tests/core.test.js",
+    "test:ui": "node scripts/test.js --ui",
+    "check": "node scripts/check.js",
+    "format": "prettier --write core server/*.js modules ui/**/*.js scripts examples tests/core.test.js packaging/app-files.js control/*.js v2/control/*.js",
+    "format:check": "prettier --check core server/*.js modules ui/**/*.js scripts examples tests/core.test.js packaging/app-files.js control/*.js v2/control/*.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "prettier": "3.6.2"
+  }
+}

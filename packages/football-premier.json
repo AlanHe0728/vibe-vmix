@@ -1,0 +1,16 @@
+{
+  "id": "football-premier",
+  "name": "足球第二版包装",
+  "port": 8124,
+  "batchSubstitutions": true,
+  "accent": "#008c6b",
+  "font": "Outfit, Microsoft YaHei, sans-serif",
+  "wipeIn": 0.56,
+  "wipeOut": 0.32,
+  "lineupHeight": 560,
+  "positions": {
+    "sb": [430, 120], "clk": [960, 430], "rst": [440, 910], "card": [440, 910],
+    "ply": [440, 910], "goal": [960, 890], "sub": [490, 820], "logo": [1760, 96],
+    "lineup": [960, 540], "lineup_all": [960, 600]
+  }
+}

@@ -34,7 +34,7 @@ async function backend(kind,temp){
 const people=(count,label)=>Array.from({length:count},(_,i)=>(i+1)+' '+label+(i+1)+(i===0?' (GK)':'')+(i===9?' (C)':'')).join('\n');
 async function main(){
   unit();const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fbp-match-desk-')),profile=path.join(temp,'edge');let browser,cdp,server;
-  const real=path.resolve(__dirname,'../control/state.json'),original=fs.readFileSync(real);
+  const real=path.resolve(__dirname,'../control/state.json'),original=fs.existsSync(real)?fs.readFileSync(real):null;
   try{
     await backend('node',temp);if(process.platform==='win32')await backend('powershell',temp);
     const allHome=people(26,'主球员').split('\n'),allAway=people(20,'客球员').split('\n');
@@ -65,7 +65,7 @@ async function main(){
     await cdp.eval(panel,"FBPMatchTiming.toggle();selectPanelTab('lineups',true);$('squadPicker').scrollIntoView({block:'start'})");await cdp.eval(panel,'window.scrollBy(0,-250)');await delay(200);shot=await cdp.send('Page.captureScreenshot',{format:'png'},panel);fs.writeFileSync(path.join(shotDir,'control-starting-picker.png'),Buffer.from(shot.data,'base64'));
     await cdp.send('Page.reload',{},panel);await cdp.until(panel,"$('squad_home_rows').querySelectorAll('input:checked').length===11");assert.equal(await cdp.eval(panel,"$('matchHalfMinutes').value"),'40');assert.equal(await cdp.eval(panel,"$('player_event').value"),'最佳球员');
     await cdp.send('Emulation.setDeviceMetricsOverride',{width:620,height:900,deviceScaleFactor:1,mobile:false},panel);await cdp.eval(panel,"selectPanelTab('lineups',true);window.scrollTo(0,document.body.scrollHeight)");assert(await cdp.eval(panel,'document.documentElement.scrollWidth<=innerWidth'));await click('#topClockToggle',false);await cdp.until(panel,"!$('topClockToggle').disabled&&$('topClockToggle').getAttribute('aria-pressed')==='true'");await click('#topClockToggle',false);
-    assert.equal(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown').length,0);assert.deepEqual(fs.readFileSync(real),original);console.log('PASS sticky clocks in all tabs, real-pointer 11-player draft selection, failed/successful saves, role preservation, total Excel imports, corrected/custom player titles, settings persistence and mobile layout');
+    assert.equal(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown').length,0);assert.deepEqual(fs.existsSync(real)?fs.readFileSync(real):null,original);console.log('PASS sticky clocks in all tabs, real-pointer 11-player draft selection, failed/successful saves, role preservation, total Excel imports, corrected/custom player titles, settings persistence and mobile layout');
   }finally{
     if(cdp){await cdp.send('Browser.close').catch(()=>{});cdp.ws.close();}if(browser&&browser.exitCode===null){await delay(300);if(browser.exitCode===null)await stop(browser);}if(server)await stop(server.child);await delay(300);
     if(path.dirname(path.resolve(temp))!==path.resolve(os.tmpdir())||!path.basename(temp).startsWith('fbp-match-desk-'))throw Error('Unsafe cleanup');fs.rmSync(temp,{recursive:true,force:true,maxRetries:10,retryDelay:300});

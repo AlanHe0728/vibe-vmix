@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict'),{spawn}=require('node:child_process');
 const {CDP}=require('./browser'),{startServer,stop,delay}=require('./regression');
 async function main(){
-  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fbp-roster-editor-')),profile=path.join(temp,'edge'),real=path.resolve(__dirname,'../control/state.json'),original=fs.readFileSync(real);
+  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fbp-roster-editor-')),profile=path.join(temp,'edge'),real=path.resolve(__dirname,'../control/state.json'),original=fs.existsSync(real)?fs.readFileSync(real):null;
   let browser,cdp,server;
   try{
     browser=spawn(process.env.FBP_BROWSER||'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',['--headless=new','--window-size=1920,1080','--no-first-run','--disable-extensions','--disable-background-networking','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{windowsHide:true,stdio:'ignore'});
@@ -65,7 +65,7 @@ async function main(){
       }
       console.log('PASS '+backend+' unified imports, validated add, separate delete, non-destructive undo, draft/failed/successful save, GK/captain, reload/linked pickers, centered footers and 320–1440 layouts');await stop(server.child);server=null;
     }
-    assert.equal(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown').length,0,JSON.stringify(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown')));assert.deepEqual(fs.readFileSync(real),original,'Live custom data untouched');
+    assert.equal(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown').length,0,JSON.stringify(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown')));assert.deepEqual(fs.existsSync(real)?fs.readFileSync(real):null,original,'Live custom data untouched');
   }finally{
     if(cdp){await cdp.send('Browser.close').catch(()=>{});cdp.ws.close();}if(browser&&browser.exitCode===null){await delay(250);if(browser.exitCode===null)await stop(browser);}if(server)await stop(server.child);await delay(300);if(path.dirname(temp)!==os.tmpdir()||!path.basename(temp).startsWith('fbp-roster-editor-'))throw Error('Unsafe cleanup');fs.rmSync(temp,{recursive:true,force:true,maxRetries:10,retryDelay:300});
   }

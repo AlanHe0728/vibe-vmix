@@ -5,6 +5,7 @@ const crypto=require('node:crypto');
 const {spawnSync}=require('node:child_process');
 const {portableReleaseState}=require('../desktop/portable-data');
 const {makeIcon}=require('./make-icon');
+const {copyRuntime}=require('./app-files');
 const root=path.resolve(__dirname,'..'),version='44.7.0';
 const appVersion=require('../desktop/package.json').version;
 if(!/^\d+\.\d+\.\d+$/.test(appVersion))throw Error('Desktop version must be major.minor.patch');
@@ -25,19 +26,7 @@ const run=(command,args)=>{
 fs.mkdirSync(path.dirname(output),{recursive:true});
 run(process.env.FBP_BUILD_PYTHON||'python',[path.join(__dirname,'archive.py'),'extract',runtime,output]);
 const production=path.join(output,'resources','app');fs.mkdirSync(production,{recursive:true});
-for(const directory of ['control','titles']) {
-  for(const entry of fs.readdirSync(path.join(root,directory),{recursive:true,withFileTypes:true})) {
-    if(!entry.isFile())continue;
-    const source=path.join(entry.parentPath,entry.name),relative=path.relative(root,source);
-    if(relative==='control'+path.sep+'assets'+path.sep+'console-background.jpg')continue;
-    if(!/\.(html|js|css|svg|png|jpe?g|webp|ico|woff2?|ttf|otf)$/i.test(entry.name) && relative!=='control'+path.sep+'d200-actions.json')continue;
-    const target=path.join(production,relative);fs.mkdirSync(path.dirname(target),{recursive:true});
-    if(relative==='control'+path.sep+'glass-theme.css') {
-      const css=fs.readFileSync(source,'utf8').replace('linear-gradient(#ffffff66,#ffffff66),url("assets/console-background.jpg") center/cover fixed','linear-gradient(145deg,#edf1f6,#dfe5ec)');
-      fs.writeFileSync(target,css,'utf8');
-    } else fs.copyFileSync(source,target);
-  }
-}
+copyRuntime(root,production);
 fs.mkdirSync(path.join(production,'desktop'),{recursive:true});
 for(const file of ['main.js','portable-data.js'])fs.copyFileSync(path.join(root,'desktop',file),path.join(production,'desktop',file));
 fs.copyFileSync(path.join(root,'desktop','package.json'),path.join(production,'package.json'));

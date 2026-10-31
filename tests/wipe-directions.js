@@ -4,14 +4,14 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
 const {CDP}=require('./browser'),{startServer,stop,delay}=require('./regression');
 const vertical=['clk','lineup'],horizontal=['rst','card','ply','goal','sub','logo'],all=[...vertical,...horizontal];
 const logo='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="100"><rect width="120" height="100" fill="#e5eded"/><path d="M25 50h70M60 20v60" stroke="#263137" stroke-width="8"/></svg>');
-const fixture={teamHome:'测试队队',teamAway:'北京国安',scoreHome:2,scoreAway:1,scoreboard_show:true,sb_pos:{x:440,y:140},
+const fixture={teamHome:'上海申花',teamAway:'北京国安',scoreHome:2,scoreAway:1,scoreboard_show:true,sb_pos:{x:440,y:140},
   clock_show:false,clock_mm:15,clock_mode:'down',clock_pos:{x:1540,y:500},clk_pos:{x:1540,y:500},
   lineup_show:false,lineup_mode:'all',lineup_all_pos:{x:690,y:555},lineup_all_scale:.78,
-  xiH_team:'测试队队',xiA_team:'北京国安',xiH_color:'#c8102e',xiA_color:'#00529f',
+  xiH_team:'上海申花',xiA_team:'北京国安',xiH_color:'#c8102e',xiA_color:'#00529f',
   xiH_players:'1 颜骏凌\n2 蒋光太\n3 朱辰杰\n4 李磊\n5 张琳芃\n6 王上源\n7 武磊\n8 徐新\n9 张玉宁\n10 吴曦\n11 韦世豪',
   xiA_players:'1 韩佳琪\n2 马马杜\n3 恩加德乌\n4 李磊\n5 王刚\n6 池忠国\n7 林良铭\n8 张稀哲\n9 张玉宁\n10 古加\n11 曹永竞',
   subH_players:'12 刘殿座\n13 高准翼\n14 杨刘洋\n15 赵宏略',subA_players:'12 侯森\n13 江文豪\n14 方昊\n15 张源',
-  sub_pos:{x:960,y:950},sub_off_num:'10',sub_off_name:'吴曦',sub_on_num:'12',sub_on_name:'刘殿座',sub_team:'测试队队',
+  sub_pos:{x:960,y:950},sub_off_num:'10',sub_off_name:'吴曦',sub_on_num:'12',sub_on_name:'刘殿座',sub_team:'上海申花',
   goal_name:'吴曦',goal_num:'10',card_name:'张玉宁',card_num:'9',player_name:'吴曦',player_num:'10',logo_show:false,logo_data:logo,
   wipe_in:.8,wipe_out:.4,animdur:1,motion:'linear',hold_sub:10};
 // Convert computed inset(), including mixed calc(% +/- px), to actual mask bounds.
@@ -42,7 +42,7 @@ async function main(){
     cdp=new CDP(ws);
     for(const kind of ['node','powershell']){
       fs.writeFileSync(file,JSON.stringify(fixture));server=await startServer(kind,file);
-      const page=await cdp.page(server.base+'/titles/graphics.html');await cdp.until(page,"S.teamHome==='测试队队'&&$('logoImg').complete");await delay(950);
+      const page=await cdp.page(server.base+'/titles/graphics.html');await cdp.until(page,"S.teamHome==='上海申花'&&$('logoImg').complete");await delay(950);
       const saved=fs.readFileSync(file,'utf8');
       await cdp.eval(page,`window.maskMeasure=${measure};S.lineup_show=true;S.clock_show=true;S.logo_show=true;luApply();ckApply();logoApply();`);await delay(950);
       // Pause each entrance at 25%. Large panels retain full width; small strips retain full height.
@@ -116,7 +116,7 @@ async function main(){
       await cdp.eval(page,"allMotionIds=['clk','lineup','rst','card','ply','goal','sub','logo'];allMotionIds.forEach(id=>{hideGraphic(id,true);setGraphicVisible(id,true);replayWipe(id);})");
       assert(await cdp.eval(page,"allMotionIds.every(id=>getComputedStyle($(id)).clipPath==='none'&&getComputedStyle($(id)).opacity==='1'&&$(id).getAnimations().length===0)"),'Reduced motion is visible immediately');
       await cdp.eval(page,'allMotionIds.forEach(hideGraphic)');assert(await cdp.eval(page,"allMotionIds.every(id=>getComputedStyle($(id)).opacity==='0')"),'Reduced motion also hides immediately');
-      const editor=await cdp.page(server.base+'/titles/graphics.html?edit=1');await cdp.until(editor,"S.teamHome==='测试队队'&&EDIT");
+      const editor=await cdp.page(server.base+'/titles/graphics.html?edit=1');await cdp.until(editor,"S.teamHome==='上海申花'&&EDIT");
       assert(await cdp.eval(editor,"['clk','lineup','rst','card','ply','goal','sub','logo'].every(id=>{var s=getComputedStyle($(id));return s.clipPath==='none'&&s.opacity==='1'&&s.transitionDuration==='0s';})"),'Editor remains unmasked and still');
       assert.equal(fs.readFileSync(file,'utf8'),saved,'Wipe rendering never writes the match state');
       assert.equal(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown').length,0);

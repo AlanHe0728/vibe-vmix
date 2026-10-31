@@ -4,6 +4,8 @@
 
 ## 启动
 
+第二版与原版共用项目根目录的 `core/`、`server/`、`modules/`、`packages/` 和 `ui/`，仅保留自己的模板、动画与独立状态。运行源码时需保留完整项目，不能单独复制 `v2/`。架构见 [架构设计](../docs/ARCHITECTURE.md)，统一接口见 [API v1](../docs/API.md)。
+
 双击项目根目录的 `启动第二版.bat`。使用独立的 8124 端口，可与原版同时运行。
 
 - 控台：`http://localhost:8124/control/panel.html`

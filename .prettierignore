@@ -1,0 +1,8 @@
+**/vendor/**
+**/data/**
+**/state*.json
+node_modules/
+dist/
+.work/
+.impeccable/
+server/powershell/

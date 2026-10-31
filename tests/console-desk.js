@@ -6,7 +6,7 @@ const {CDP}=require('./browser');
 const {startServer,stop,delay}=require('./regression');
 async function main(){
   const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fbp-console-desk-')),profile=path.join(temp,'edge'),stateFile=path.join(temp,'state.json');
-  const real=path.resolve(__dirname,'../control/state.json'),original=fs.readFileSync(real);
+  const real=path.resolve(__dirname,'../control/state.json'),original=fs.existsSync(real)?fs.readFileSync(real):null;
   const pixel='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aGQAAAABJRU5ErkJggg==';
   fs.writeFileSync(stateFile,JSON.stringify({teamHome:'上海主队',teamAway:'北京客队',scoreHome:2,scoreAway:1,period:'上半场',scoreboard_show:true,colorHome:'#C8102E',colorAway:'#00529F',homeLogo:pixel,homeLogo_filename:'主队队徽.png',xiH_players:'1 主门将 (GK)\n10 主队长 (C)\n7 主前锋',subH_players:'12 主替补\n13 主替补二',xiA_players:'1 客门将 (GK)\n9 客前锋',subA_players:'20 客替补',goal_tick:0,score_tick:0}));
   let server,browser,cdp;
@@ -113,7 +113,7 @@ async function main(){
     await cdp.eval(panel,"selectPanelTab('match');$('task-goal').focus()");await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'ArrowRight',code:'ArrowRight'},panel);assert.equal(await cdp.eval(panel,'document.activeElement.id'),'task-card');
     await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'},{name:'prefers-reduced-motion',value:'reduce'}]},panel);assert.equal(await cdp.eval(panel,"getComputedStyle(document.querySelector('.console-chrome')).backdropFilter"),'none');
     assert.equal(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown').length,0,JSON.stringify(cdp.events.filter(e=>e.method==='Runtime.exceptionThrown')));
-    assert.deepEqual(fs.readFileSync(real),original,'Real match data stays byte-for-byte intact');
+    assert.deepEqual(fs.existsSync(real)?fs.readFileSync(real):null,original,'Real match data stays byte-for-byte intact');
     console.log('PASS score-only quick actions, atomic rapid clicks, isolated goal playback, one-use opt-in, cross-workspace clocks, phase/status, substitutions and number matching, failed-write recovery, responsive single-task UI, keyboard controls, accessibility preferences and untouched real data');
     console.log('Screenshots: '+out);
   }finally{

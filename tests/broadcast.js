@@ -7,15 +7,15 @@ async function main(){
   const stateFile=path.join(temp,'state.json'),out=path.resolve(__dirname,'../docs/screenshots');
   fs.mkdirSync(out,{recursive:true});
   const roster='1 颜骏凌\n2 蒋光太\n3 朱辰杰\n4 李磊\n5 张琳芃\n6 王上源\n7 武磊\n8 徐新\n9 张玉宁\n10 吴曦 (C)\n11 韦世豪';
-  fs.writeFileSync(stateFile,JSON.stringify({teamHome:'测试队队',teamAway:'北京国安',scoreHome:2,scoreAway:1,scoreboard_show:true,period:'下半场',sb_clockacc:3825000,
+  fs.writeFileSync(stateFile,JSON.stringify({teamHome:'上海申花',teamAway:'北京国安',scoreHome:2,scoreAway:1,scoreboard_show:true,period:'下半场',sb_clockacc:3825000,
     clock_show:true,clock_label:'中场休息',clock_sub:'HALF TIME',clock_mm:15,clock_mode:'down',
-    lineup_show:true,lineup_mode:'single',lineup_active:'xiH',xiH_team:'测试队队',xiH_players:roster,
-    xiA_team:'北京国安',xiA_players:roster,subH_team:'测试队队',subH_players:roster.split('\n').slice(0,7).join('\n'),subA_team:'北京国安',subA_players:roster.split('\n').slice(0,7).join('\n'),
+    lineup_show:true,lineup_mode:'single',lineup_active:'xiH',xiH_team:'上海申花',xiH_players:roster,
+    xiA_team:'北京国安',xiA_players:roster,subH_team:'上海申花',subH_players:roster.split('\n').slice(0,7).join('\n'),subA_team:'北京国安',subA_players:roster.split('\n').slice(0,7).join('\n'),
     subH_subtitle:'替补球员',subA_subtitle:'替补球员',xiH_subtitle:'首发阵容',xiA_subtitle:'首发阵容',
-    goal_name:'吴曦',goal_num:'10',goal_team:'测试队队',goal_scoreHome:2,goal_scoreAway:1,
+    goal_name:'吴曦',goal_num:'10',goal_team:'上海申花',goal_scoreHome:2,goal_scoreAway:1,
     card_num:'17',card_name:'张玉宁',card_team:'北京国安',card_reason:'犯规',
-    player_num:'10',player_name:'吴曦',player_team:'测试队队',player_pos:'中场',player_event:'队长',
-    restart_team:'测试队队',restart_player:'10 吴曦',hold_goal:30,hold_card:30,hold_rst:30,hold_ply:30}));
+    player_num:'10',player_name:'吴曦',player_team:'上海申花',player_pos:'中场',player_event:'队长',
+    restart_team:'上海申花',restart_player:'10 吴曦',hold_goal:30,hold_card:30,hold_rst:30,hold_ply:30}));
   let server,browser,cdp;
   try{
     server=await startServer('node',stateFile);
@@ -27,7 +27,7 @@ async function main(){
     const [port,endpoint]=fs.readFileSync(active,'utf8').trim().split(/\r?\n/);
     const ws=new WebSocket('ws://127.0.0.1:'+port+endpoint);await new Promise((res,rej)=>{ws.addEventListener('open',res,{once:true});ws.addEventListener('error',rej,{once:true});});
     cdp=new CDP(ws);const page=await cdp.page(server.base+'/titles/graphics.html');
-    await cdp.until(page,"S.teamHome==='测试队队' && $('lineupList').children.length===11");
+    await cdp.until(page,"S.teamHome==='上海申花' && $('lineupList').children.length===11");
     const snapshot=fs.readFileSync(stateFile,'utf8');
     assert.equal(await cdp.eval(page,'getComputedStyle(document.body).backgroundColor'),'rgba(0, 0, 0, 0)','Broadcast background stays transparent');
     assert.equal(await cdp.eval(page,"getComputedStyle(document.querySelector('.sb-bar')).backgroundColor"),'rgb(247, 249, 249)','Scoreboard has a neutral data surface');
@@ -65,7 +65,7 @@ async function main(){
     }
     for(const key of ['xiH','xiA','subH','subA']){
       await cdp.eval(page,`S.lineup_active='${key}';luApply();`);
-      assert.equal(await cdp.eval(page,"$('lineupTeam').textContent"),key.endsWith('H')?'测试队队':'北京国安');
+      assert.equal(await cdp.eval(page,"$('lineupTeam').textContent"),key.endsWith('H')?'上海申花':'北京国安');
       assert.equal(await cdp.eval(page,"$('lineupRailTitle').textContent"),key.startsWith('sub')?'替补球员':'首发阵容','Horizontal subtitle tracks the active roster');
       const captured=await cdp.eval(page,"window.savedRow=$('lineupList').firstChild;luApply();savedRow===$('lineupList').firstChild");
       assert(captured,'Repeated polling must preserve lineup DOM');
@@ -97,7 +97,7 @@ async function main(){
     assert.equal(await cdp.eval(page,"getComputedStyle($('sb')).transitionDuration"),'0s');
     for(const [file,id] of Object.entries({scoreboard:'sb',clock:'clk',restart:'rst',card:'card',player:'ply',goal:'goal',lineup:'lineup'})){
       const legacy=await cdp.page(server.base+'/titles/'+file+'.html?state='+encodeURIComponent(server.base+'/state.json'));
-      await cdp.until(legacy,`typeof S!=='undefined' && S.teamHome==='测试队队'`);
+      await cdp.until(legacy,`typeof S!=='undefined' && S.teamHome==='上海申花'`);
       assert.equal(await cdp.eval(legacy,"new URLSearchParams(location.search).get('only')"),id);
       assert.equal(await cdp.eval(legacy,"STATE_URL"),server.base+'/state.json');
       assert.deepEqual(await cdp.eval(legacy,"Array.from(document.querySelectorAll('#canvas>.pos')).filter(e=>getComputedStyle(e).display!=='none').map(e=>e.id)"),[id]);

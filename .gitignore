@@ -16,11 +16,11 @@ desktop/seed-state.json
 *.bak
 .DS_Store
 Thumbs.db
-
-# Local-only publication artifacts and personal material.
+examples/stage/data/
 .work/
+
+# Local visual reviews, test screenshots and user-provided backgrounds.
 .impeccable/
-.publish/
-docs/HANDOFF.md
+docs/screenshots/
 control/assets/console-background.jpg
 v2/control/assets/console-background.jpg

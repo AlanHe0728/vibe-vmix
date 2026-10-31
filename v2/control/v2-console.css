@@ -1,10 +1,5 @@
-/* V2 tool chrome stays quiet; the broadcast identity belongs to the output. */
-body.console-desk,body.preview-desk{--accent:#37003c;--focus:#7b2a86;--section-line:#d6ccd8;--row-line:#ebe6ec;--button-shadow:0 2px 5px #37003c16;--button-shadow-raised:0 3px 9px #37003c21;--button-shadow-hover:0 4px 12px #37003c26;--button-shadow-compact:0 1px 4px #37003c1c;--button-shadow-pressed:0 1px 2px #37003c20}
-.console-desk .brand::after{content:'  /  第二版';font-size:11px;font-weight:450;color:#746578}
-.console-desk .btn,.console-desk .event-nav button,.console-desk .settings-nav button,.preview-desk button{border-radius:8px}
-.console-desk .panel-nav{border-radius:10px}
-.console-desk .panel-nav button{border-radius:8px}
-.console-desk input[type=checkbox]:checked,.preview-desk input[type=checkbox]:checked{background:#e6d7ec;border-color:#a880b1}
+/* Keep the original console/preview appearance. V2 styling belongs to the broadcast output. */
+.console-desk .brand::after{content:'  /  第二版';font-size:11px;font-weight:450;color:var(--dim)}
 .console-desk .sub-batch-list{display:grid;gap:18px;margin-top:24px}
 .console-desk #event-sub .frow:has(#sub_off_num),.console-desk #event-sub .frow:has(#sub_off_name){display:none}
 .console-desk #event-sub .frow:has(#sub_off_player){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:16px}
