@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>AE 直播画面</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: transparent;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+      }
+      img {
+        width: 1920px;
+        height: 1080px;
+        object-fit: contain;
+        display: block;
+        transform-origin: 0 0;
+      }
+      img[hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <img id="frame" alt="" hidden />
+    <script src="graphics.js"></script>
+  </body>
+</html>

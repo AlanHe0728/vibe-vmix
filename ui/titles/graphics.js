@@ -24,6 +24,7 @@ function applyState(s, initial) {
   luApplyAll();
   logoApply();
   fitBroadcastText();
+  if (WORKSPACE_PREVIEW) requestAnimationFrame(workspaceGeometry);
 
   if (S.score_tick !== undefined && S.score_tick !== prev.score_tick) {
     prev.score_tick = S.score_tick;

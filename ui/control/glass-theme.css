@@ -2,7 +2,7 @@
 :root{
   color-scheme:light;
   --bg:#edf1f6;--card:#fff;--line:#d9dfe7;--ink:#172431;--dim:#253343;
-  --console-background:linear-gradient(145deg,#edf1f6,#dfe5ec);
+  --console-background:linear-gradient(#ffffff66,#ffffff66),url("assets/console-background.jpg") center/cover fixed;
   --accent:#0068c5;--accent-hover:#005caf;--accent-pressed:#00529d;--focus:#2877bd;
   --blue:var(--accent);--green:#557267;--red:#805761;--yellow:#6d6355;--gold:#6d6355;
   --mono:ui-monospace,SFMono-Regular,Consolas,monospace;

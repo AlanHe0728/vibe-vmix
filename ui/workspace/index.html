@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>转播包装工作台</title>
+    <link rel="stylesheet" href="workspace.css" />
+    <script defer src="workspace.js"></script>
+  </head>
+  <body>
+    <header>
+      <a href="#modules" class="brand">转播包装工作台</a
+      ><span class="edition" id="workspaceVersion">本地制作</span>
+      <div class="spacer"></div>
+      <button id="openPreview">预览与布局</button>
+      <button id="manage">管理模块</button>
+    </header>
+    <div class="app">
+      <aside>
+        <div class="aside-label">已加载模块</div>
+        <nav id="navigation" aria-label="模块"></nav>
+        <p class="aside-note">按需加载<br />数据保存在本机</p>
+      </aside>
+      <main id="modules">
+        <div class="intro">
+          <p class="eyebrow">工作空间</p>
+          <h1>为这场转播选择模块</h1>
+          <p>
+            启用需要的包装，未选择的模块不启动。取消勾选会停止该模块的上屏服务，保留已保存数据。
+          </p>
+        </div>
+        <form id="moduleForm">
+          <div id="catalog" class="catalog"></div>
+          <div class="form-actions">
+            <button type="submit" class="primary" id="apply">应用模块选择</button
+            ><span id="notice" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+        <div class="workspace-note">
+          <strong>独立桌面工作空间</strong>
+          <p>舞台和足球分别保存资料、提供上屏地址。vMix 仍通过本机输入接收包装画面。</p>
+        </div>
+      </main>
+      <section id="moduleView" hidden aria-label="模块控制台">
+        <div class="module-bar">
+          <strong id="moduleName"></strong><span id="moduleAddress"></span
+          ><button id="copyAddress">复制上屏地址</button>
+        </div>
+        <iframe id="moduleFrame" title="模块操作界面" allow="clipboard-write"></iframe>
+      </section>
+    </div>
+  </body>
+</html>

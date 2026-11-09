@@ -30,11 +30,13 @@ function clearLogoKey(key) {
   });
 }
 function resetAllPos() {
-  sendState({ posreset_tick: nTick() }).then(function (res) {
-    if (res) log('已重置所有元素位置（请在预览页确认）', true);
-  });
+  editorOpen();
 }
 function editorOpen() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'open-preview' }, '*');
+    return;
+  }
   var u = (serverBase || DEFAULT_BASE) + '/control/preview.html';
   window.open(u, '_blank');
   log('已打开 位置/大小 编辑器: ' + u, true);

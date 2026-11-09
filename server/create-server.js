@@ -16,6 +16,7 @@ function createServer({
   landingPage = '/api/v1/module',
   now,
   logger = console,
+  route,
 }) {
   const application = createApplication({ module: extension, stateFile, now });
   const serveStatic = createStaticHandler(mounts);
@@ -53,6 +54,7 @@ function createServer({
         return;
       }
       if (pathname.startsWith('/api/') || /^\/state(\.json)?\/?$/.test(pathname)) advance();
+      if (route && (await route(req, res, pathname, application))) return;
       if (await routeAPI(req, res, pathname, application)) return;
       if (await routeLegacy(req, res, pathname, application, extension.legacyCatalog)) return;
       if (pathname.startsWith('/api/')) throw new AppError('unknown API route', 404, 'NOT_FOUND');
@@ -83,8 +85,12 @@ function createServer({
   });
 
   server.pauseClocks = () => application.pause();
+  // The workspace uses the same synchronous transaction as the public API.
+  server.workspaceState = () => application.read();
+  server.workspaceUpdate = (patch) => application.update(patch);
   let timer;
   server.on('listening', () => {
+    if (!extension.advance) return;
     timer = setInterval(advance, 200);
     timer.unref();
   });

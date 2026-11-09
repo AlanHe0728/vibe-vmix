@@ -17,10 +17,12 @@ desktop/seed-state.json
 .DS_Store
 Thumbs.db
 examples/stage/data/
+data/
 .work/
 
 # Local visual reviews, test screenshots and user-provided backgrounds.
 .impeccable/
 docs/screenshots/
+docs/WORK_STATUS.md
 control/assets/console-background.jpg
 v2/control/assets/console-background.jpg

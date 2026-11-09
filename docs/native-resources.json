@@ -1,0 +1,34 @@
+{
+  "measuredAt": "2026-11-06T16:30:00.431Z",
+  "host": "Windows x64 · 原生 WebView2 · 无 AE/vMix",
+  "note": "本机短时空闲采样，汇总主程序与后代进程；工作集包含共享页重复计数。CPU 以单个逻辑核心为 100%。调试接口已开启，不代表播出或其他设备的性能。",
+  "measurements": [
+    {
+      "scenario": "未启用任何模块",
+      "processes": 9,
+      "privateMB": 248.1,
+      "workingSetMB": 493.3,
+      "cpuMs": 2156.25,
+      "sampledAt": 1793982588300,
+      "cpuPercentOfOneCore": 0
+    },
+    {
+      "scenario": "舞台控台开启，预览关闭",
+      "processes": 9,
+      "privateMB": 288,
+      "workingSetMB": 543.4,
+      "cpuMs": 2546.875,
+      "sampledAt": 1793982594174,
+      "cpuPercentOfOneCore": 3.9
+    },
+    {
+      "scenario": "三个模块启用，停留模块管理页",
+      "processes": 9,
+      "privateMB": 289,
+      "workingSetMB": 547.2,
+      "cpuMs": 2671.875,
+      "sampledAt": 1793982599910,
+      "cpuPercentOfOneCore": 1.3
+    }
+  ]
+}

@@ -6,6 +6,41 @@ var EDIT = (function () {
     return false;
   }
 })();
+var WORKSPACE_PREVIEW = new URLSearchParams(location.search).get('workspacePreview') === '1';
+var WORKSPACE_DRAFT = {};
+var WORKSPACE_ORIGIN = document.referrer ? new URL(document.referrer).origin : '';
+function workspaceGeometry() {
+  if (!WORKSPACE_PREVIEW || !WORKSPACE_ORIGIN || window.parent === window) return;
+  var boxes = {};
+  Object.keys(POS_DEF).forEach(function (id) {
+    var rect = $(id).getBoundingClientRect();
+    boxes[id === 'lineup' && luIsAll() ? 'lineup_all' : id] = {
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
+    };
+  });
+  parent.postMessage(
+    { type: 'preview-geometry', module: 'football', boxes: boxes },
+    WORKSPACE_ORIGIN,
+  );
+}
+if (WORKSPACE_PREVIEW)
+  window.addEventListener('message', function (event) {
+    if (
+      event.source !== parent ||
+      event.origin !== WORKSPACE_ORIGIN ||
+      event.data?.type !== 'preview-layout' ||
+      event.data.module !== 'football'
+    )
+      return;
+    WORKSPACE_DRAFT = event.data.layout || {};
+    Object.keys(POS_DEF).forEach(function (key) {
+      applyPos(key, key);
+    });
+    requestAnimationFrame(workspaceGeometry);
+  });
 var POS_DEF = {
   sb: { x: 423, y: 96, s: 1 },
   clk: { x: 960, y: 400, s: 1 },
@@ -72,11 +107,16 @@ function applyPos(key, id) {
     key = 'lineup_all';
     p = { x: PACKAGE.positions.lineup_all[0], y: PACKAGE.positions.lineup_all[1], s: 1 };
   }
-  var st = S[key + '_pos'];
+  var st = Object.prototype.hasOwnProperty.call(WORKSPACE_DRAFT, key + '_pos')
+    ? WORKSPACE_DRAFT[key + '_pos']
+    : S[key + '_pos'];
   if (st && typeof st === 'object' && isFinite(+st.x) && isFinite(+st.y)) {
     p = { x: +st.x, y: +st.y, s: p.s };
   }
-  var sc = isFinite(+S[key + '_scale']) ? Math.max(0.3, Math.min(3, +S[key + '_scale'])) : p.s;
+  var scaleValue = Object.prototype.hasOwnProperty.call(WORKSPACE_DRAFT, key + '_scale')
+    ? WORKSPACE_DRAFT[key + '_scale']
+    : S[key + '_scale'];
+  var sc = isFinite(+scaleValue) ? Math.max(0.3, Math.min(3, +scaleValue)) : p.s;
   SCALE[id] = sc;
   var el = $(id);
   el.style.left = p.x + 'px';

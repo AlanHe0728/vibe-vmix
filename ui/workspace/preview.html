@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>预览与布局 · 转播包装工作台</title>
+    <link rel="stylesheet" href="preview.css" />
+    <script defer src="preview.js"></script>
+  </head>
+  <body>
+    <header>
+      <div><strong>预览与布局</strong><span class="header-note">1920 × 1080</span></div>
+      <div class="view-switch" aria-label="画面显示方式">
+        <button data-view="dual" aria-pressed="true">双画面</button>
+        <button data-view="pvw" aria-pressed="false">仅 PVW</button>
+        <button data-view="pgm" aria-pressed="false">仅 PGM</button>
+      </div>
+    </header>
+    <nav id="tabs" aria-label="预览模块"></nav>
+    <main>
+      <div id="screens" class="screens">
+        <section id="pvwPanel" class="screen-panel" aria-label="预览画面">
+          <div class="screen-title">
+            <strong><i class="lamp preview-lamp"></i>PVW <span>预览</span></strong
+            ><span id="draftStatus">与播出位置一致</span>
+          </div>
+          <div class="screen-wrap" id="pvwWrap">
+            <div class="canvas" id="pvwCanvas"><div class="handles" id="handles"></div></div>
+          </div>
+        </section>
+        <section id="pgmPanel" class="screen-panel" aria-label="播出画面">
+          <div class="screen-title">
+            <strong><i class="lamp live-lamp"></i>PGM <span>播出</span></strong
+            ><span>当前模块输出</span>
+          </div>
+          <div class="screen-wrap" id="pgmWrap"><div class="canvas" id="pgmCanvas"></div></div>
+        </section>
+      </div>
+      <p class="screen-note" id="screenNote">
+        总预览按足球、舞台、AE 叠加；不包含 vMix 摄像机画面，实际叠放顺序以 vMix 为准。
+      </p>
+      <section class="controls" aria-label="调整画面元素">
+        <div class="controls-heading">
+          <div>
+            <h1>调整画面元素</h1>
+            <p>选择元素，在 PVW 拖动虚框或输入数值；应用后才改变播出位置。</p>
+          </div>
+          <span id="pending" class="pending" hidden>有未应用的调整</span>
+        </div>
+        <div class="control-row">
+          <label class="element-label">选择元素<select id="element"></select></label>
+          <label>X<input id="x" type="number" step="1" /></label>
+          <label>Y<input id="y" type="number" step="1" /></label>
+          <label id="sizeLabel">大小<input id="size" type="number" step="0.01" /></label>
+          <button id="reset" type="button">恢复播出位置</button>
+          <button id="apply" class="primary" type="button">将全部调整应用到播出</button>
+        </div>
+        <p class="hint">虚框标记选中的元素；未上屏的元素需要在对应模块中开启后才显示内容。</p>
+        <p id="notice" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+  </body>
+</html>

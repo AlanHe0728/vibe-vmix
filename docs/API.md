@@ -1,5 +1,7 @@
 # 统一 API v1
 
+2.0 工作台的 `GET /api/workspace` 发现模块和实际地址；`POST /api/workspace` 接收 `{ "enabled": ["stage", "football", "ae-live"] }`，允许空列表卸载全部。每个模块有独立地址，未启用时没有相应监听服务。以下 v1 API 适用于足球与舞台。舞台额外提供 `/api/stage/templates`、`library`、`upload`、`register`、`render`、`vmix`；AE 桥接使用 `/api/ae/state`、`pairing`、`command`、`output`、`settings`、`vmix` 以及需要 Bearer 密钥的 `/api/ae/agent/{hello,poll,result,frame}`。不要将 AE 控制接口当作无损视频协议；其画面为最新 PNG。新接口细节与限制见 [WORKSPACE_2.md](WORKSPACE_2.md)。
+
 Node 服务与便携软件提供同一组接口。默认原版 `http://localhost:8123`，第二版 `http://localhost:8124`；便携版端口被占用时会自动换端口，以实际地址为准。服务实例决定当前模块，客户端不通过请求临时切换赛事。
 
 | 方法 | 路径 | 用途 |

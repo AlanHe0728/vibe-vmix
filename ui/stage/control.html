@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>舞台节目包装</title>
+    <link rel="stylesheet" href="control.css" />
+    <script defer src="/stage-module/captions.js"></script>
+    <script defer src="control.js"></script>
+  </head>
+  <body>
+    <header>
+      <strong>舞台节目</strong>
+      <nav aria-label="舞台工作区">
+        <button data-tab="show" aria-pressed="true">节目与播出</button
+        ><button data-tab="design" aria-pressed="false">包装与模板</button
+        ><button data-tab="library" aria-pressed="false">素材与导入</button
+        ><button data-tab="connection" aria-pressed="false">vMix 连接</button>
+      </nav>
+      <span id="connection">正在连接</span><button class="danger" id="hideAll">全部下屏</button>
+    </header>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <main>
+      <section id="show" class="tab">
+        <div class="show-grid">
+          <section class="rundown">
+            <div class="section-heading">
+              <h1>节目单</h1>
+              <button id="addProgram">添加节目</button>
+            </div>
+            <ol id="programList"></ol>
+            <p id="emptyPrograms" class="empty">添加本场节目，然后选择节目编辑。</p>
+            <div class="list-actions">
+              <button id="exportShow">导出节目单</button
+              ><label class="file-button"
+                >导入节目单<input id="importShow" type="file" accept=".json"
+              /></label>
+            </div>
+          </section>
+          <section class="program-editor">
+            <div class="section-heading">
+              <h2>节目资料</h2>
+              <span id="draftState"></span>
+            </div>
+            <form id="programForm">
+              <label
+                >节目类型<select id="programType">
+                  <option>歌唱</option>
+                  <option>舞蹈</option>
+                  <option>武术</option>
+                  <option>器乐</option>
+                  <option>戏曲</option>
+                  <option>其他</option>
+                </select></label
+              ><label
+                >节目名称<input
+                  id="programTitle"
+                  maxlength="100"
+                  required
+                  placeholder="填写节目名称" /></label
+              ><label>表演者 / 演出单位<input id="programPerformer" maxlength="160" /></label
+              ><label>副标题<input id="programSubtitle" maxlength="160" /></label
+              ><label
+                >歌词 / 字幕<textarea
+                  id="programCaption"
+                  maxlength="30000"
+                  rows="5"
+                  placeholder="每行输入一句歌词或字幕"
+                  aria-describedby="captionInputHelp"
+                ></textarea>
+              </label>
+              <p id="captionInputHelp" class="hint caption-input-help">
+                每行一句，最多 500 句。保存节目后可逐句播出。
+              </p>
+              <div class="actions">
+                <button type="submit" class="primary">保存节目</button
+                ><button type="button" id="moveUp">上移</button
+                ><button type="button" id="moveDown">下移</button
+                ><button type="button" id="deleteProgram">删除</button>
+              </div>
+            </form>
+            <div class="take-area">
+              <div>
+                <span class="eyebrow">当前播出</span><strong id="liveTitle">尚未播出节目</strong>
+              </div>
+              <button class="primary" id="take">播出选中节目</button
+              ><button id="next">下一个</button>
+            </div>
+            <section class="caption-desk" aria-labelledby="captionDeskTitle">
+              <div class="section-heading">
+                <h2 id="captionDeskTitle">逐句字幕</h2>
+                <span id="captionCount">0 句</span>
+              </div>
+              <p id="captionHint" class="hint" role="status"></p>
+              <div class="actions" aria-label="字幕播出控制">
+                <button type="button" id="captionPrevious">上一句</button>
+                <button type="button" id="captionNext" class="primary">播出第一句</button>
+                <button type="button" id="captionHide">字幕下屏</button>
+              </div>
+              <ol id="captionList" aria-label="字幕句子"></ol>
+            </section>
+          </section>
+          <section class="monitor">
+            <div class="section-heading">
+              <h2>播出画面</h2>
+              <button id="togglePreview">打开预览与布局</button>
+            </div>
+            <div class="preview-wrap" id="previewWrap">
+              <p>在独立窗口预览各模块与组合画面</p>
+            </div>
+            <p class="hint">透明画布 · 1920 × 1080</p>
+            <h2 class="layer-title">上屏图层</h2>
+            <div id="layerControls" class="layers"></div>
+            <button id="transition" class="wide">播放包装转场</button>
+            <p class="hint">包装转场覆盖画面，不切换 vMix 摄像机。</p>
+          </section>
+        </div>
+      </section>
+      <section id="design" class="tab" hidden>
+        <div class="section-heading"><h1>包装与模板</h1></div>
+        <div id="templates" class="templates"></div>
+        <form id="designForm">
+          <div class="settings-grid">
+            <section>
+              <h2>品牌与赞助</h2>
+              <label>台标文字<input id="channelName" maxlength="120" /></label
+              ><label>活动名称<input id="eventName" maxlength="120" /></label
+              ><label>赞助商名称<input id="sponsorName" maxlength="120" /></label
+              ><label>台标图片<select id="channelAsset" data-assets="image"></select></label
+              ><label>活动 Logo<select id="eventAsset" data-assets="image"></select></label
+              ><label>赞助商图片<select id="sponsorAsset" data-assets="image"></select></label
+              ><label>转场视频<select id="transitionAsset" data-assets="video"></select></label>
+              <p class="hint">WebM / MP4 可用于内置转场；MOV / AVI 通过 vMix 原生播放。</p>
+            </section>
+            <section>
+              <h2>颜色与字幕</h2>
+              <label
+                >强调色<input
+                  id="accent"
+                  placeholder="留空沿用模板，例如 #d5b66e"
+                  pattern="#[a-fA-F0-9]{6}|"
+                  maxlength="7" /></label
+              ><label
+                >底色<input
+                  id="background"
+                  placeholder="留空沿用模板"
+                  pattern="#[a-fA-F0-9]{6}|"
+                  maxlength="7" /></label
+              ><label
+                >文字色<input
+                  id="foreground"
+                  placeholder="留空沿用模板"
+                  pattern="#[a-fA-F0-9]{6}|"
+                  maxlength="7" /></label
+              ><label
+                >字体<select id="font">
+                  <option value="template">沿用模板</option>
+                  <option value="sans-serif">黑体</option>
+                  <option value="serif">宋体</option>
+                </select></label
+              ><label>主标题字号<input id="fontSize" type="number" min="24" max="80" /></label
+              ><label
+                >转场时长（毫秒）<input
+                  id="transitionMs"
+                  type="number"
+                  min="400"
+                  max="5000" /></label
+              ><label class="check"><input id="motion" type="checkbox" />启用进出场动画</label>
+            </section>
+            <section>
+              <h2>位置与大小</h2>
+              <p class="hint">在预览窗口调整位置，确认后再应用到播出画面。</p>
+              <button type="button" id="designPreview">打开预览与布局</button>
+            </section>
+          </div>
+          <div class="sticky-actions">
+            <button type="submit" class="primary">保存包装设置</button
+            ><button type="button" id="resetColors">清除自定义配色</button>
+          </div>
+        </form>
+      </section>
+      <section id="library" class="tab" hidden>
+        <div class="section-heading">
+          <h1>素材与导入</h1>
+          <div class="actions">
+            <label class="file-button"
+              >导入文件<input
+                id="upload"
+                type="file"
+                accept=".png,.jpg,.jpeg,.webp,.webm,.mp4,.mov,.avi,.gtzip,.gtxml,.aep,.aepx,.nbtitle,.nbtlproj,.nbtlpkg"
+                multiple /></label
+            ><button id="registerSource">链接本地工程</button>
+          </div>
+        </div>
+        <p class="hint">
+          图片与视频复制到素材库；链接本地工程保留原路径与依赖。GT 交给 vMix 渲染；AE
+          可调用本机渲染引擎；NewBlue 工程在原软件编辑后导出视频。原工程不会转换成内置模板。
+        </p>
+        <div id="assetList" class="asset-list"></div>
+        <section class="render-section">
+          <h2>After Effects 离线渲染</h2>
+          <p class="hint">
+            需本机安装 AE。导出 MOV 后可添加到 vMix，是否透明取决于所选 AE 输出模块。
+          </p>
+          <form id="renderForm" class="render-form">
+            <label>AE 工程<select id="renderSource"></select></label
+            ><label>合成名称<input id="composition" required maxlength="200" /></label
+            ><label
+              >AE 输出模块模板<input
+                id="outputModule"
+                value="Lossless with Alpha"
+                required
+                maxlength="200" /></label
+            ><button type="submit">开始渲染</button>
+          </form>
+          <pre id="renderLog" aria-live="polite"></pre>
+        </section>
+      </section>
+      <section id="connectionTab" class="tab" hidden>
+        <div class="section-heading"><h1>vMix 连接</h1></div>
+        <div class="connection-grid">
+          <section>
+            <h2>内置舞台包装</h2>
+            <label>舞台上屏地址<input id="outputURL" readonly /></label>
+            <div class="actions">
+              <button id="copyURL">复制地址</button><button id="openOutput">打开独立预览</button>
+            </div>
+            <p class="hint">在本机 vMix 中添加网页浏览器输入，分辨率设为 1920 × 1080。</p>
+          </section>
+          <section>
+            <h2>GT 标题控制</h2>
+            <form id="vmixForm">
+              <label
+                >本机 Web API 端口<input
+                  id="vmixPort"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  required /></label
+              ><label>vMix 输入名称 / 编号 / GUID<input id="vmixInput" maxlength="200" /></label
+              ><label>主标题字段<input id="titleField" maxlength="200" required /></label
+              ><label>副标题字段<input id="subtitleField" maxlength="200" required /></label
+              ><label
+                >叠加通道<select id="overlay">
+                  <option>1</option>
+                  <option>2</option>
+                  <option>3</option>
+                  <option>4</option>
+                </select></label
+              ><button type="submit" class="primary">保存连接设置</button>
+            </form>
+            <div class="actions vmix-actions">
+              <button data-vmix="connect">测试连接</button
+              ><button data-vmix="text">同步当前节目到 GT</button
+              ><button data-vmix="show">GT 上屏</button><button data-vmix="hide">GT 下屏</button>
+            </div>
+            <p class="hint">
+              先在素材库添加 GT 到 vMix。字段名须与 GT 标题编辑器一致，文字字段以 .Text 结尾。
+            </p>
+          </section>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

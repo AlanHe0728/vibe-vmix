@@ -2,6 +2,8 @@
 
 本项目采用「共享核心 + 赛事/节目模块 + 视觉包装 + 运行适配器」。新增赛事写规则与所需界面，新增皮肤写包装差异；二者都复用状态保存、命令执行、API、计时、比分基础能力和浏览器传输。
 
+2.0 增加 `server/workspace-server.js` 的按需宿主。轻量目录不引用模块实现，启用后才导入 football / stage / ae-live 组装入口，各自使用独立回环端口和数据文件。关闭和卸载负责暂停计时、停止渲染、关闭连接及释放模块缓存。舞台模块在 `modules/stage`，AE 命令校验在 `modules/ae-live`；AE 的桥接会话与二进制画面由专用 HTTP 适配器处理，不进入通用状态 JSON。`desktop/native/Program.cs` 为新 WinForms/WebView2 宿主，`ae-plugin` 为 CEP 插件；原 Electron 入口只保留历史兼容。完整说明见 [WORKSPACE_2.md](WORKSPACE_2.md)。
+
 ## 检查结论与本次改造
 
 原版与 `v2/` 曾分别维护完整服务、计时、名单、硬件动作和大量相同的前端文件。`serve.js` 同时负责业务、文件保存、HTTP 与静态资源，`panel.html` 和 `graphics.html` 内嵌整段业务脚本。修改一个公共行为需要在两处同步，其他赛事也容易从复制足球目录开始。
@@ -14,18 +16,24 @@
 football-broadcast-pack/
 ├─ core/                    状态事务、原子保存、模块契约、通用 clock/score
 ├─ server/                  HTTP、v1 API、旧接口适配、静态资源、启动逻辑
-│  └─ powershell/            无 Node 环境的旧足球接口兼容后备实现
+│  └─ powershell/           无 Node 环境的旧足球接口兼容后备实现
 ├─ modules/
-│  └─ football/             足球规则、半场、名单、换人、动作目录、配置格式
+│  ├─ football/             足球规则、名单、换人、动作目录、配置格式
+│  ├─ stage/                节目单、图层、模板与播出状态
+│  └─ ae-live/              AE 直播命令校验
 ├─ packages/                经典/第二版的布局、主题、功能配置
 ├─ ui/
 │  ├─ shared/               通用 API 客户端，可供其他赛事/节目直接使用
+│  ├─ workspace/            按需模块选择和桌面工作区
+│  ├─ stage/、ae-live/      舞台和 AE 控制页面及播出画面
 │  ├─ control/              两版公共控台、预览脚本、样式与 vendor
 │  └─ titles/               公共渲染、编辑器、动效、图标与独立模板入口
 ├─ control/                 原版模板、旧导入/启动适配、本地 state.json
 ├─ titles/                  原版联合上屏 HTML
 ├─ v2/                      第二版模板、独有动画与独立本地数据
-├─ desktop/                 Electron 生命周期、便携数据与窗口
+├─ desktop/native/          Windows WebView2 桌面宿主
+├─ desktop/                 历史 Electron 入口和便携数据适配
+├─ ae-plugin/               After Effects CEP 面板与宿主脚本
 ├─ packaging/               构建、运行文件清单、发行数据清理
 ├─ examples/stage/          可运行的舞台 API 扩展示例
 ├─ scripts/                 语法、依赖方向、测试入口
@@ -44,11 +52,14 @@ flowchart TD
     APP --> STORE[原子状态保存与 ETag]
     APP --> CONTRACT[赛事 / 节目模块契约]
     CONTRACT --> FOOTBALL[足球模块]
-    CONTRACT --> STAGE[舞台示例 / 未来赛事模块]
+    CONTRACT --> STAGE[舞台模块]
     FOOTBALL --> COMMON[通用计时与比分]
     STAGE --> COMMON
     PACKAGE[包装配置与视觉模板] --> UI
-    HOST[CLI / Electron] --> API
+    HOST[Windows 桌面宿主 / CLI] --> WORKSPACE[按需模块管理]
+    WORKSPACE --> API
+    WORKSPACE --> AEBRIDGE[AE 直播桥接]
+    AEBRIDGE --> AEPLUGIN[AE CEP 插件]
 ```
 
 ## 依赖方向

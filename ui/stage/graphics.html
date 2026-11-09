@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>舞台包装 · 1920×1080</title>
+    <link rel="stylesheet" href="graphics.css" />
+    <script defer src="/stage-module/captions.js"></script>
+    <script defer src="graphics.js"></script>
+  </head>
+  <body>
+    <div id="canvas" data-template="gala">
+      <div id="channel" class="logo layer"><img alt="" /><span></span></div>
+      <div id="event" class="logo layer"><img alt="" /><span></span></div>
+      <div id="sponsor" class="logo sponsor layer">
+        <small>特别鸣谢</small><img alt="" /><span></span>
+      </div>
+      <section id="lower" class="layer lower">
+        <div class="type" id="type"></div>
+        <div class="lower-copy">
+          <div id="eventName" class="event-name"></div>
+          <h1 id="title"></h1>
+          <p id="subtitle"></p>
+        </div>
+      </section>
+      <div id="caption" class="layer caption"><span id="captionText"></span></div>
+      <div id="transition" aria-hidden="true">
+        <div id="wipe"></div>
+        <video id="transitionVideo" muted playsinline preload="none"></video>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AE 直播连接</title>
+    <link rel="stylesheet" href="/ae/control.css" />
+    <script defer src="/ae/control.js"></script>
+  </head>
+  <body>
+    <header>
+      <strong>AE 直播连接</strong><span id="status">尚未连接</span
+      ><button id="inspect">读取当前合成</button><button id="clear">清空待执行操作</button
+      ><button class="danger" id="hide">画面下屏</button>
+    </header>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <main>
+      <section class="pairing">
+        <div>
+          <h1>连接 After Effects</h1>
+          <p>在 AE 的「转播包装 · Live Bridge」插件中填写以下地址和配对密钥，然后连接。</p>
+        </div>
+        <label>连接地址<input id="endpoint" readonly /></label
+        ><label>配对密钥<input id="token" type="password" readonly /></label
+        ><button id="copyPair">复制连接信息</button>
+      </section>
+      <div class="desk">
+        <section>
+          <div class="section-heading">
+            <h2 id="compName">当前合成</h2>
+            <span id="compInfo"></span>
+          </div>
+          <div id="controls" class="live-controls">
+            <p class="empty">连接插件并读取合成后显示直播控件。</p>
+          </div>
+          <p class="hint">
+            AE 中以 LIVE:
+            开头的文本图层、滑块、颜色与复选框会显示在这里。修改后点击应用，不会自动改动其他图层。
+          </p>
+          <div class="actions">
+            <button id="frame">生成当前画面</button><button id="show">画面上屏</button
+            ><button id="markers">添加 IN / HOLD / OUT 标记</button>
+          </div>
+          <label class="seek"
+            >时间位置（秒）
+            <div class="actions">
+              <input id="seconds" type="number" min="0" value="0" step="0.1" /><button id="seek">
+                定位
+              </button>
+            </div></label
+          >
+        </section>
+        <section>
+          <h2>画面输出</h2>
+          <label>vMix 网页输入地址<input id="output" readonly /></label
+          ><button id="copyOutput">复制地址</button><button id="openPreview">打开预览与布局</button>
+          <div class="preview">
+            <img id="framePreview" alt="AE 当前画面" hidden /><span id="previewEmpty"
+              >尚无 AE 画面</span
+            >
+          </div>
+          <p class="hint">
+            插件可持续刷新当前帧或按时间推进。复杂合成的帧率取决于 AE
+            渲染速度；此通道用于交互画面，不保证广播帧率。流畅动画请使用下方的动画缓存。
+          </p>
+          <span id="frameInfo" class="hint"></span>
+          <h2 class="subheading">待执行与结果</h2>
+          <div id="queue" class="queue"></div>
+        </section>
+      </div>
+      <section class="cache">
+        <div class="section-heading">
+          <h2>动画缓存与播出</h2>
+          <span class="hint">先渲染，检查完成后再上屏</span>
+        </div>
+        <div class="cache-grid">
+          <section>
+            <form id="renderForm">
+              <label
+                >AE 输出模块模板<input
+                  id="outputModule"
+                  value="Lossless with Alpha"
+                  maxlength="200"
+                  required /></label
+              ><button type="submit">渲染当前工作区到缓存</button>
+            </form>
+            <p class="hint">
+              需在 AE 内生成 MOV；该操作会占用 AE
+              渲染队列，请在节目准备时运行。输出模块模板须存在。已生成的缓存可由 vMix 持续播放，AE
+              后续编辑不会改动正在播出的缓存。
+            </p>
+            <div id="clips"></div>
+          </section>
+          <section>
+            <form id="vmixForm">
+              <div class="connection-fields">
+                <label
+                  >本机 vMix Web API 端口<input
+                    id="port"
+                    type="number"
+                    min="1"
+                    max="65535"
+                    required
+                    value="8088" /></label
+                ><label
+                  >叠加通道<select id="overlay">
+                    <option>1</option>
+                    <option>2</option>
+                    <option>3</option>
+                    <option>4</option>
+                  </select></label
+                >
+              </div>
+              <label>vMix 动画输入名 / 编号<input id="input" maxlength="200" /></label
+              ><button type="submit">保存播放设置</button>
+            </form>
+            <div class="playback actions">
+              <button data-action="play">播放</button
+              ><button data-action="pause">暂停 / 保持</button
+              ><button data-action="restart">从头播放</button
+              ><button data-action="loop">循环</button><button data-action="unloop">取消循环</button
+              ><button data-action="show">动画上屏</button
+              ><button data-action="hide">动画下屏</button>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

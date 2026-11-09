@@ -1,0 +1,227 @@
+:root {
+  --accent: #d5b66e;
+  --background: #721d2b;
+  --foreground: #fff9e9;
+  --font: serif;
+  --title-size: 48px;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: transparent;
+}
+body {
+  font-family: 'Microsoft YaHei', sans-serif;
+}
+#canvas {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  color: var(--foreground);
+}
+body.preview {
+  background: #26313b;
+}
+.layer {
+  position: absolute;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 220ms ease,
+    transform 260ms ease;
+  pointer-events: none;
+}
+.layer.visible {
+  opacity: 1;
+  visibility: visible;
+}
+.logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: var(--logo-size, 160px);
+  text-align: center;
+  color: white;
+  text-shadow: 0 1px 4px #000b;
+  font-weight: 600;
+  font-size: 27px;
+  overflow-wrap: anywhere;
+}
+.logo img {
+  width: 100%;
+  max-height: var(--logo-size, 160px);
+  object-fit: contain;
+  display: none;
+}
+.logo img[src] {
+  display: block;
+}
+.logo small {
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+.logo span:empty {
+  display: none;
+}
+.lower {
+  display: flex;
+  width: 1240px;
+  min-height: 176px;
+  background: var(--background);
+  color: var(--foreground);
+  border-bottom: 5px solid var(--accent);
+  transform: translateY(14px);
+}
+.lower.visible {
+  transform: translateY(0);
+}
+.type {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 155px;
+  padding: 20px 30px;
+  color: var(--background);
+  background: var(--accent);
+  font-size: 27px;
+  font-weight: 600;
+}
+.lower-copy {
+  padding: 23px 34px;
+  min-width: 0;
+  flex: 1;
+}
+.event-name {
+  font-size: 18px;
+  color: var(--accent);
+  margin-bottom: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  letter-spacing: 0.05em;
+}
+.lower h1 {
+  font: 600 var(--title-size) / 1.25 var(--font);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lower p {
+  font-size: 24px;
+  line-height: 1.4;
+  margin: 9px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.caption {
+  left: 96px;
+  bottom: 58px;
+  max-width: 1728px;
+  padding: 10px 22px;
+  background: var(--background);
+  font-size: 29px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+#canvas[data-template='concert'] .lower {
+  border: 0;
+  background: transparent;
+  gap: 10px;
+}
+#canvas[data-template='concert'] .lower-copy {
+  background: var(--background);
+  border-top: 3px solid var(--accent);
+}
+#canvas[data-template='concert'] .type {
+  background: var(--accent);
+  transform: skewX(-8deg);
+  margin-left: 12px;
+}
+#canvas[data-template='ink'] .lower {
+  border: 1px solid var(--accent);
+  border-bottom: 0;
+}
+#canvas[data-template='ink'] .type {
+  writing-mode: vertical-rl;
+  min-width: 96px;
+  font-family: serif;
+  font-size: 31px;
+  letter-spacing: 0.18em;
+  color: var(--foreground);
+  background: transparent;
+  border-right: 1px solid var(--accent);
+  margin: 20px 0;
+}
+#canvas[data-template='ink'] .lower-copy {
+  padding-left: 30px;
+}
+#canvas[data-template='ink'] .event-name {
+  font-size: 17px;
+}
+#canvas[data-template='minimal'] .lower {
+  border: 0;
+  background: transparent;
+  gap: 0;
+}
+#canvas[data-template='minimal'] .type {
+  align-self: flex-start;
+  padding: 9px 18px;
+  min-width: 96px;
+  font-size: 20px;
+}
+#canvas[data-template='minimal'] .lower-copy {
+  background: var(--background);
+  padding: 22px 30px;
+}
+#canvas[data-template='minimal'] .event-name {
+  font-size: 15px;
+}
+#transition {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  visibility: hidden;
+  z-index: 20;
+  overflow: hidden;
+}
+#transition.playing {
+  visibility: visible;
+}
+#wipe {
+  position: absolute;
+  inset: 0;
+  background: var(--background);
+  border-left: 24px solid var(--accent);
+  transform: translateX(-110%);
+}
+#transitionVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: none;
+}
+#canvas.no-motion .layer {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    transition: none;
+  }
+}
