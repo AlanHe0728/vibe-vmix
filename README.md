@@ -2,9 +2,17 @@
 
 用于 vMix 的足球比赛图形包装。可以在控台操作比分、计时、进球、判罚、换人和名单，再通过一个网页输入叠加到直播画面。
 
-[下载](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v1.1.0) | [使用说明](docs/USAGE.md) | [更新记录](docs/CHANGELOG.md) | [问题反馈](https://github.com/AlanHe0728/vibe-vmix/issues)
+[正式版下载](https://github.com/AlanHe0728/vibe-vmix/releases/latest) | [Beta 测试版下载](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v2.0.0-beta.1) | [历史版本（含浏览器源码）](https://github.com/AlanHe0728/vibe-vmix/releases) | [使用说明](docs/USAGE.md) | [问题反馈](https://github.com/AlanHe0728/vibe-vmix/issues)
 
 ![比赛操作界面，使用示例数据](docs/images/control.png)
+
+## 正式版与 Beta 渠道
+
+- **正式版 1.1.0**：足球转播控制台，[下载正式版](https://github.com/AlanHe0728/vibe-vmix/releases/latest)，另有 [Gitee 镜像](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v1.1.0)。
+- **Beta 2.0.0-beta.1**：舞台、足球和 AE 直播模块，[下载 Beta](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v2.0.0-beta.1)。作者尚未充分测试，实际直播及 AE、vMix、NewBlue 联动需要在自己的设备上验证。
+- [全部历史版本](https://github.com/AlanHe0728/vibe-vmix/releases)包含浏览器源码版。
+
+正式代码在 `main` 分支，测试代码在 [`beta` 分支](https://github.com/AlanHe0728/vibe-vmix/tree/beta)。Beta 使用预发行标记，不替代最新正式版；目前通过发行页手动下载更新，不包含自动更新器。
 
 ## 功能
 
@@ -18,7 +26,7 @@
 
 ## 下载和使用
 
-[下载 Windows 便携版 1.1.0](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v1.1.0)
+[下载 Windows 便携版 1.1.0](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v1.1.0)
 
 支持 Windows 10/11 64 位，无需另装 Node.js 或浏览器。vMix 需要自行安装；使用 D200 时还需要 Ulanzi Studio。
 
@@ -27,7 +35,7 @@
 3. 打开设置中的设备连接，复制联合上屏地址，在 vMix 添加网页浏览器输入。画布设为 1920×1080。
 4. 回到比赛操作，使用顶部按钮控制比分和计时，在下方操作进球、判罚等事件。
 
-如果下载的是 `.001`、`.002` 分卷，把所有分卷和发布页提供的合并脚本放在同一文件夹，合并后再解压。便携包目前在 Gitee 发布，GitHub 同步源码和版本标签。
+如果下载的是 `.001`、`.002` 分卷，把所有分卷和发布页提供的合并脚本放在同一文件夹，合并后再解压。GitHub 和 Gitee 提供发行版；浏览器源码版也可从 GitHub Releases 下载。
 
 比赛期间请保持程序运行，关闭主窗口会停止服务。顶部加分按钮只修改比分，不播放进球动画。其他操作见[使用说明](docs/USAGE.md)。
 
