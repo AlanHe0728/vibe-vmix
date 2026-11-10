@@ -1,36 +1,59 @@
-# 转播包装工作台 2.0.0-beta.1
+# 转播包装工作台
 
-> **Beta 测试版：我尚未对本版本进行充分测试。** 尤其是真实直播环境，以及 AE、vMix 和 NewBlue 的连接与播出流程，仍需实际验证。程序可能存在问题；用于重要播出前，请先备份数据并在自己的设备上完整测试。
+面向 vMix 的转播包装项目，覆盖足球比赛、歌唱、舞蹈、武术与综合演出。新版采用 Windows 独立窗口，舞台、足球和 AE 直播连接分别作为可选模块，按需加载。
 
-面向 vMix 的 Windows 桌面包装程序。首次选择模块，未选择的模块不加载；双击 EXE 使用，无需打开浏览器或另装 Node。需要系统的 .NET Framework 4.7.2+ 与 WebView2。
+**当前正式版为足球转播控制台 1.1.0；包含舞台与 AE 功能的 2.0.0-beta.1 为 Beta 测试版。**
 
-## 下载渠道
+> **我尚未对 Beta 版本进行充分测试。** 真实直播环境，以及 AE、vMix、NewBlue 的连接与播出流程仍需验证。使用前请备份数据，并在自己的设备上完整测试。
 
-| 渠道 | 版本 | 下载 | 适用情况 |
-| --- | --- | --- | --- |
-| 正式版 | 1.1.0 足球转播控制台 | [正式版下载](https://github.com/AlanHe0728/vibe-vmix/releases/latest) | 已公开的足球包装；[Gitee 镜像](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v1.1.0) |
-| Beta 测试版 | 2.0.0-beta.1 转播包装工作台 | [Beta 下载](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v2.0.0-beta.1) | 舞台、足球与 AE 模块；尚未充分测试 |
+## 下载
 
-历史版（包括浏览器源码版）见 [全部 Releases](https://github.com/AlanHe0728/vibe-vmix/releases)。`main` 为正式版分支，`beta` 为测试版分支；Beta 使用 GitHub 的预发行标记，不会替代最新正式版。两个渠道目前通过发行页手动下载更新，不包含自动更新器。
+| 渠道        | 当前版本                      | GitHub                                                                          | Gitee                                                                    |
+| ----------- | ----------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| 正式版      | 1.1.0 · 足球转播控制台        | [下载正式版](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v1.1.0)       | [下载正式版](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v1.1.0) |
+| Beta 测试版 | 2.0.0-beta.1 · 转播包装工作台 | [下载 Beta](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v2.0.0-beta.1) | [Beta 源码分支](https://gitee.com/alanhe0728/vibe-vmix/tree/beta)        |
 
-- **舞台节目**：歌唱、舞蹈、武术等节目单，四套模板、自定义颜色和坐标，台标、活动 Logo、赞助商、逐句歌词字幕与转场。
-- **足球赛事**：保留现有比分、计时、名单、球员事件和 D200。
-- **AE 直播连接**：随包 CEP 开发版插件，提供文字、数值、颜色、开关、交互画面刷新、动画缓存与 vMix 播放控制。需 AE 真机联调，不保证复杂合成的广播帧率。
+[GitHub 历史版本（含浏览器源码版）](https://github.com/AlanHe0728/vibe-vmix/releases) · [Gitee 发行版本](https://gitee.com/alanhe0728/vibe-vmix/releases)
 
-GT 文件由 vMix 原生渲染；AE 原工程可链接、打开并调用本机引擎渲染；NewBlue 原工程在原软件编辑后导出视频。专有工程不会直接转为内置模板。
+`main` 维护正式版，`beta` 维护测试版。Beta 使用预发行标记，不会替代最新正式版。两个渠道目前均通过发行页手动下载更新，尚无自动更新器。
 
-[2.0 使用与构建说明](docs/WORKSPACE_2.md) · [AE 插件安装](ae-plugin/README.md) · [资源采样](docs/native-resources.json)
+Windows 便携包需完整解压后运行 EXE。浏览器源码版需安装 Node.js 并按对应版本说明启动；GitHub 历史发行页中的 `browser-source.zip` 是源码包。
 
-预览与布局在独立窗口中提供模块标签和总览，可切换双画面、仅 PVW 或仅 PGM。拖动或输入坐标只改变 PVW，点击“将全部调整应用到播出”后才更新对应模块输出。总览按足球、舞台、AE 顺序叠加，不包含 vMix 摄像机，实际叠放以 vMix 为准。
+## 2.0 Beta 包含什么
 
-也可以按[构建说明](docs/WORKSPACE_2.md#开发与验证)自行构建 Beta：执行 `npm run build:workspace` 生成 EXE 文件夹和 ZIP，随后用 `npm start` 启动；`npm run start:workspace` 用于开发服务。
+| 模块        | 功能                                                                                                  |
+| ----------- | ----------------------------------------------------------------------------------------------------- |
+| 舞台节目    | 歌唱、舞蹈、武术等节目单；四套模板；自定义颜色、字体与布局；台标、活动 Logo、赞助商、节目字幕条与转场 |
+| 足球赛事    | 比分、比赛时钟、名单、进球、红黄牌、球员信息、换人及 D200 控制                                        |
+| AE 直播连接 | 配套 CEP 开发版插件；文字、数值、颜色和开关控件；交互画面刷新、动画缓存及 vMix 播放控制               |
 
-数据保存在程序文件夹的 `data`，关闭后备份。旧版可迁入原 `data/state.json` 后启用足球；外部工程另行备份。已运行部分自动化测试，但尚未完成真实 AE / NewBlue / vMix 环境联调。
+- **逐句歌词**：每行录入一句，保存后可直接选句、播放上一句或下一句；编辑不会自动覆盖正在播出的句子。
+- **统一独立预览**：模块标签、所有已加载模块的组合预览，以及双画面、仅 PVW、仅 PGM 三种显示方式。
+- **先预览，再应用**：在 PVW 拖动或输入坐标，点击“将全部调整应用到播出”后才更新模块输出。组合预览不包含 vMix 摄像机，实际叠放顺序以 vMix 为准。
+- **按需加载**：未选模块不启动；关闭预览或卸载闲置模块可减少占用。实际性能取决于画面、素材与本机设备。
 
-## 其他文档
+GT 文件交由 vMix 原生渲染；AE 工程可链接、打开或调用本机引擎渲染；NewBlue 工程需在原软件编辑后导出视频。AE 交互画面不保证复杂合成的广播帧率。
 
-- [足球功能与操作](docs/USAGE.md)、[比赛配置格式](docs/MATCH_CONFIG.md)、[D200 按键设置](docs/D200_SETUP.md)
-- [架构说明](docs/ARCHITECTURE.md)、[API 文档](docs/API.md)、[更新记录](docs/CHANGELOG.md)
-- [足球 1.1.0 历史便携版](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v1.1.0)、[第二版足球包装](v2/README.md)
+## 开始使用 Beta
 
-项目许可证见 [LICENSE](LICENSE)。源码：[GitHub](https://github.com/AlanHe0728/vibe-vmix) 和 [Gitee](https://gitee.com/alanhe0728/vibe-vmix)。
+1. 下载 Beta Windows x64 便携包，完整解压后运行 `转播包装工作台.exe`。需要系统的 .NET Framework 4.7.2+ 与 WebView2；无需另装 Node.js 或打开浏览器。
+2. 勾选需要的模块并应用，从左侧进入。未选择的模块不加载。
+3. 在模块中准备内容，打开“预览与布局”检查画面。舞台歌词每行一句，保存后逐句播出。
+4. 复制模块的上屏地址，在本机 vMix 中添加网页浏览器输入，分辨率设为 1920×1080。播出期间保持工作台运行。
+
+vMix、AE、NewBlue 及其字体、模板、插件需要自行安装。正式版 1.1.0 的操作见[足球使用说明](docs/USAGE.md)。
+
+## 资料与开发
+
+- [Beta 使用、数据迁移与构建](https://github.com/AlanHe0728/vibe-vmix/blob/beta/docs/WORKSPACE_2.md)
+- [AE 插件安装与能力范围](https://github.com/AlanHe0728/vibe-vmix/blob/beta/ae-plugin/README.md)
+- [足球使用说明](docs/USAGE.md) · [比赛配置格式](docs/MATCH_CONFIG.md) · [D200 设置](docs/D200_SETUP.md)
+- [Beta 更新记录](https://github.com/AlanHe0728/vibe-vmix/blob/beta/docs/CHANGELOG.md) · [架构](https://github.com/AlanHe0728/vibe-vmix/blob/beta/docs/ARCHITECTURE.md) · [API](https://github.com/AlanHe0728/vibe-vmix/blob/beta/docs/API.md)
+
+数据保存在便携程序的 `data` 目录。备份、升级或迁移前请先退出软件，保留旧数据；外部链接的工程与素材另行备份。正式版与 Beta 请放在不同目录使用。
+
+开发时使用 Node.js 22+。克隆 `beta` 分支后执行 `npm ci`、`npm run start:workspace` 启动开发服务；构建 Windows EXE 的依赖与步骤见 Beta 构建文档。`main` 分支的足球浏览器版使用 `npm start` 启动。
+
+源码：[GitHub](https://github.com/AlanHe0728/vibe-vmix) · [Gitee](https://gitee.com/alanhe0728/vibe-vmix)。问题反馈：[GitHub Issues](https://github.com/AlanHe0728/vibe-vmix/issues) · [Gitee Issues](https://gitee.com/alanhe0728/vibe-vmix/issues)。
+
+项目许可证见 [LICENSE](LICENSE)，第三方组件遵循各自随附许可。
