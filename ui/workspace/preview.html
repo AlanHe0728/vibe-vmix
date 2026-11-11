@@ -6,58 +6,160 @@
     <title>预览与布局 · 转播包装工作台</title>
     <link rel="stylesheet" href="preview.css" />
     <script defer src="preview.js"></script>
+    <script defer src="preview-tools.js"></script>
   </head>
   <body>
     <header>
-      <div><strong>预览与布局</strong><span class="header-note">1920 × 1080</span></div>
+      <div class="window-brand">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="16" rx="3" />
+          <path d="M3 10h18M15 10v10" />
+        </svg>
+        <div>
+          <strong>预览与布局</strong><span class="header-note">转播包装工作台 · 1920 × 1080</span>
+        </div>
+      </div>
       <div class="view-switch" aria-label="画面显示方式">
         <button data-view="dual" aria-pressed="true">双画面</button>
         <button data-view="pvw" aria-pressed="false">仅 PVW</button>
         <button data-view="pgm" aria-pressed="false">仅 PGM</button>
       </div>
+      <div class="header-actions">
+        <button id="reloadFrames">刷新画面</button
+        ><button id="inspectorToggle" aria-expanded="true" aria-controls="inspector">
+          布局工具
+        </button>
+      </div>
     </header>
     <nav id="tabs" aria-label="预览模块"></nav>
-    <main>
-      <div id="screens" class="screens">
-        <section id="pvwPanel" class="screen-panel" aria-label="预览画面">
-          <div class="screen-title">
-            <strong><i class="lamp preview-lamp"></i>PVW <span>预览</span></strong
-            ><span id="draftStatus">与播出位置一致</span>
-          </div>
-          <div class="screen-wrap" id="pvwWrap">
-            <div class="canvas" id="pvwCanvas"><div class="handles" id="handles"></div></div>
-          </div>
-        </section>
-        <section id="pgmPanel" class="screen-panel" aria-label="播出画面">
-          <div class="screen-title">
-            <strong><i class="lamp live-lamp"></i>PGM <span>播出</span></strong
-            ><span>当前模块输出</span>
-          </div>
-          <div class="screen-wrap" id="pgmWrap"><div class="canvas" id="pgmCanvas"></div></div>
-        </section>
-      </div>
-      <p class="screen-note" id="screenNote">
-        总预览按足球、舞台、AE 叠加；不包含 vMix 摄像机画面，实际叠放顺序以 vMix 为准。
-      </p>
-      <section class="controls" aria-label="调整画面元素">
-        <div class="controls-heading">
-          <div>
-            <h1>调整画面元素</h1>
-            <p>选择元素，在 PVW 拖动虚框或输入数值；应用后才改变播出位置。</p>
-          </div>
-          <span id="pending" class="pending" hidden>有未应用的调整</span>
+    <div class="editor-shell">
+      <main class="workspace-area">
+        <div class="canvas-toolbar">
+          <div id="categoryTabs" aria-label="栏目预览"></div>
+          <label class="compact-label"
+            >预览内容<select id="previewMode">
+              <option value="live">跟随播出</option>
+              <option value="layout">排版预览</option>
+            </select></label
+          >
         </div>
-        <div class="control-row">
+        <div id="screens" class="screens">
+          <section id="pvwPanel" class="screen-panel" aria-label="预览画面">
+            <div class="screen-title">
+              <strong><i class="lamp preview-lamp"></i>PVW <span>预览</span></strong
+              ><span id="draftStatus">与播出位置一致</span>
+            </div>
+            <div class="screen-wrap" id="pvwWrap">
+              <div class="canvas" id="pvwCanvas"><div class="handles" id="handles"></div></div>
+            </div>
+          </section>
+          <section id="pgmPanel" class="screen-panel" aria-label="播出画面">
+            <div class="screen-title">
+              <strong><i class="lamp live-lamp"></i>PGM <span>播出</span></strong
+              ><span>当前模块输出</span>
+            </div>
+            <div class="screen-wrap" id="pgmWrap"><div class="canvas" id="pgmCanvas"></div></div>
+          </section>
+        </div>
+        <p class="screen-note" id="screenNote">
+          总预览按足球、舞台、AE 叠加；不包含 vMix 摄像机画面，实际叠放顺序以 vMix 为准。
+        </p>
+        <div class="canvas-caption">
+          <span id="modeHint">PVW 可拖动调整 · PGM 跟随实际播出</span
+          ><span>方向键微调 1 px · Shift 加速</span>
+        </div>
+      </main>
+      <aside id="inspector" class="controls" aria-label="调整画面元素">
+        <div class="inspector-heading">
+          <h1>布局属性</h1>
+          <span class="inspector-badge">仅编辑 PVW</span>
+        </div>
+        <section class="inspector-section">
           <label class="element-label">选择元素<select id="element"></select></label>
-          <label>X<input id="x" type="number" step="1" /></label>
-          <label>Y<input id="y" type="number" step="1" /></label>
+          <div class="coordinate-labels">
+            <span id="anchorHint">1080p 坐标</span><span>px</span>
+          </div>
+          <div class="coordinate-row">
+            <label>X<input id="x" type="number" step="1" /></label>
+            <label>Y<input id="y" type="number" step="1" /></label>
+          </div>
           <label id="sizeLabel">大小<input id="size" type="number" step="0.01" /></label>
-          <button id="reset" type="button">恢复播出位置</button>
-          <button id="apply" class="primary" type="button">将全部调整应用到播出</button>
-        </div>
-        <p class="hint">虚框标记选中的元素；未上屏的元素需要在对应模块中开启后才显示内容。</p>
-        <p id="notice" role="status" aria-live="polite"></p>
-      </section>
-    </main>
+          <input
+            id="sizeSlider"
+            type="range"
+            min="0.3"
+            max="3"
+            step="0.01"
+            aria-label="调整所选元素大小"
+          />
+          <button id="restoreElement" class="wide">恢复所选元素</button>
+        </section>
+        <section class="inspector-section">
+          <h2>对齐</h2>
+          <label
+            >对齐范围<select id="alignTo">
+              <option value="title">文字安全框 · 90%</option>
+              <option value="action">画面安全框 · 95%</option>
+              <option value="frame">预览构图范围</option>
+            </select></label
+          >
+          <div class="align-buttons">
+            <button data-align="left">靠左</button><button data-align="centerX">水平居中</button
+            ><button data-align="right">靠右</button><button data-align="top">靠上</button
+            ><button data-align="centerY">垂直居中</button><button data-align="bottom">靠下</button>
+          </div>
+        </section>
+        <section class="inspector-section">
+          <h2>构图与辅助线</h2>
+          <label
+            >预览构图比例<select id="compositionRatio">
+              <option value="16:9">16:9 · 横屏</option>
+              <option value="4:3">4:3 · 传统画幅</option>
+              <option value="1:1">1:1 · 方形</option>
+              <option value="9:16">9:16 · 竖屏</option>
+              <option value="21:9">21:9 · 宽银幕</option>
+              <option value="custom">自定义比例</option>
+            </select></label
+          >
+          <div id="customRatio" class="coordinate-row" hidden>
+            <label>宽<input id="ratioWidth" type="number" value="16" min="1" max="100" /></label
+            ><label>高<input id="ratioHeight" type="number" value="9" min="1" max="100" /></label>
+          </div>
+          <label class="switch-row"
+            >显示安全框<input id="showGuides" type="checkbox" checked /></label
+          ><label class="switch-row">始终显示网格<input id="showGrid" type="checkbox" /></label
+          ><label class="switch-row">自动吸附网格<input id="snapGrid" type="checkbox" /></label
+          ><label
+            >网格间距 · px<input id="gridStep" type="number" value="20" min="5" max="200" /></label
+          ><label
+            >预览背景<select id="previewBackground">
+              <option value="checker">透明棋盘</option>
+              <option value="pitch">球场示意</option>
+              <option value="dark">深色背景</option>
+              <option value="light">浅色背景</option>
+            </select></label
+          >
+        </section>
+        <section class="inspector-section">
+          <h2>预览栏目</h2>
+          <p class="hint">开关仅影响 PVW，不控制上屏。</p>
+          <div id="layerList"></div>
+          <button id="showAllLayers" class="wide">显示全部预览栏目</button>
+        </section>
+        <p class="inspector-footnote">
+          构图比例、辅助线和背景仅用于监看。上屏画布始终为 1920 × 1080。
+        </p>
+      </aside>
+    </div>
+    <footer>
+      <div class="footer-status">
+        <span id="pending" class="pending" hidden>有未应用的调整</span>
+        <p id="notice" role="status" aria-live="polite">拖动 PVW 中的选框，确认后再应用到播出。</p>
+      </div>
+      <div class="footer-actions">
+        <button id="reset" type="button">恢复播出位置</button
+        ><button id="apply" class="primary" type="button">将全部调整应用到播出</button>
+      </div>
+    </footer>
   </body>
 </html>

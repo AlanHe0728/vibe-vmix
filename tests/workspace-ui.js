@@ -247,6 +247,75 @@ async function main() {
         .captionX,
       moved,
     );
+    await fetch(stageOrigin + '/api/v1/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ layers: { sponsor: false } }),
+    });
+    const untouchedStage = await fetch(stageOrigin + '/api/v1/state').then((response) =>
+      response.json(),
+    );
+    await cdp.eval(
+      preview,
+      'document.querySelector(\'#categoryTabs [data-element="stage:sponsor"]\').click()',
+    );
+    await delay(400);
+    assert.equal(
+      await frameValue(
+        '/stage/graphics.html?workspacePreview=1',
+        "document.getElementById('sponsor').classList.contains('visible')",
+      ),
+      true,
+    );
+    assert.equal(
+      await frameValue(
+        stageOrigin + '/stage/graphics.html',
+        "document.getElementById('sponsor').classList.contains('visible')",
+        true,
+      ),
+      false,
+    );
+    await cdp.eval(preview, "document.querySelector('[data-align=left]').click()");
+    assert.equal(await cdp.eval(preview, "Number(document.getElementById('x').value)"), 96);
+    await cdp.eval(
+      preview,
+      "document.getElementById('compositionRatio').value='9:16';document.getElementById('compositionRatio').dispatchEvent(new Event('change'));document.getElementById('showGrid').click();document.getElementById('previewBackground').value='pitch';document.getElementById('previewBackground').dispatchEvent(new Event('change'))",
+    );
+    assert.equal(
+      await cdp.eval(preview, "document.querySelector('.composition-frame').style.width"),
+      '607.5px',
+    );
+    assert.equal(await cdp.eval(preview, "document.querySelector('.preview-grid').hidden"), false);
+    assert.equal(
+      await cdp.eval(preview, "document.getElementById('pvwWrap').dataset.background"),
+      'pitch',
+    );
+    await cdp.eval(
+      preview,
+      'document.querySelector(\'#layerList input[aria-label="预览中显示舞台节目赞助商"]\').click()',
+    );
+    await delay(300);
+    assert.equal(
+      await frameValue(
+        '/stage/graphics.html?workspacePreview=1',
+        "document.getElementById('sponsor').classList.contains('visible')",
+      ),
+      false,
+    );
+    assert.deepEqual(
+      await fetch(stageOrigin + '/api/v1/state').then((response) => response.json()),
+      untouchedStage,
+      'preview content and guides never modify output state',
+    );
+    await cdp.eval(preview, "document.getElementById('reset').click()");
+    await cdp.until(
+      preview,
+      "document.getElementById('notice').textContent==='已恢复当前播出位置。'",
+    );
+    await cdp.eval(
+      preview,
+      "document.getElementById('showAllLayers').click();document.getElementById('compositionRatio').value='16:9';document.getElementById('compositionRatio').dispatchEvent(new Event('change'));document.getElementById('showGrid').click();document.getElementById('previewBackground').value='checker';document.getElementById('previewBackground').dispatchEvent(new Event('change'));document.getElementById('previewMode').value='live';document.getElementById('previewMode').dispatchEvent(new Event('change'))",
+    );
     await cdp.eval(preview, "document.querySelector('[data-tab=football]').click()");
     await cdp.until(preview, "document.getElementById('element').value==='football:sb'");
     await delay(500);
@@ -283,6 +352,99 @@ async function main() {
       (await fetch(footballOrigin + '/api/v1/state').then((response) => response.json())).sb_pos.x,
       701,
     );
+    const untouchedFootball = await fetch(footballOrigin + '/api/v1/state').then((response) =>
+      response.json(),
+    );
+    await cdp.eval(
+      preview,
+      'document.querySelector(\'#categoryTabs [data-element="football:card"]\').click()',
+    );
+    await delay(500);
+    assert.equal(
+      await frameValue(
+        '/titles/graphics.html?workspacePreview=1',
+        "getComputedStyle(document.getElementById('card')).opacity",
+      ),
+      '1',
+    );
+    assert.equal(
+      await frameValue(
+        footballOrigin + '/titles/graphics.html',
+        "document.getElementById('card').classList.contains('on')",
+        true,
+      ),
+      false,
+    );
+    await cdp.eval(
+      preview,
+      "document.getElementById('sizeSlider').value='1.5';document.getElementById('sizeSlider').dispatchEvent(new Event('input'))",
+    );
+    await delay(250);
+    assert(
+      (
+        await frameValue(
+          '/titles/graphics.html?workspacePreview=1',
+          "document.getElementById('card').style.transform",
+        )
+      ).includes('1.5'),
+    );
+    await cdp.eval(
+      preview,
+      "document.getElementById('restoreElement').click();document.getElementById('previewMode').value='live';document.getElementById('previewMode').dispatchEvent(new Event('change'))",
+    );
+    assert.deepEqual(
+      await fetch(footballOrigin + '/api/v1/state').then((response) => response.json()),
+      untouchedFootball,
+    );
+    await cdp.eval(
+      preview,
+      "document.querySelector('#categoryTabs [data-element=\"football:sb\"]').click();document.querySelector('.handle').focus();document.querySelector('.handle').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}))",
+    );
+    assert.equal(Number(await cdp.eval(preview, "document.getElementById('x').value")), 702);
+    await delay(200);
+    assert.equal(
+      await cdp.eval(preview, "document.activeElement.classList.contains('handle')"),
+      true,
+    );
+    await cdp.eval(preview, "document.getElementById('snapGrid').click()");
+    const snapPoint = await cdp.eval(
+      preview,
+      "(()=>{const r=document.querySelector('.handle').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()",
+    );
+    for (const [type, x, y, buttons] of [
+      ['mousePressed', snapPoint.x, snapPoint.y, 1],
+      ['mouseMoved', snapPoint.x + 12, snapPoint.y + 5, 1],
+      ['mouseReleased', snapPoint.x + 12, snapPoint.y + 5, 0],
+    ])
+      await cdp.send(
+        'Input.dispatchMouseEvent',
+        { type, x, y, button: 'left', buttons, clickCount: 1 },
+        preview,
+      );
+    assert.equal(Number(await cdp.eval(preview, "document.getElementById('x').value")) % 20, 0);
+    assert.equal(
+      (await fetch(footballOrigin + '/api/v1/state').then((response) => response.json())).sb_pos.x,
+      701,
+    );
+    await cdp.eval(
+      preview,
+      "document.getElementById('reset').click();document.getElementById('snapGrid').click()",
+    );
+    await cdp.until(
+      preview,
+      "document.getElementById('notice').textContent==='已恢复当前播出位置。'",
+    );
+    await cdp.eval(
+      preview,
+      "document.getElementById('previewMode').value='live';document.getElementById('previewMode').dispatchEvent(new Event('change'))",
+    );
+    const initialWidth = await cdp.eval(preview, "document.getElementById('pvwWrap').clientWidth");
+    await cdp.eval(preview, "document.getElementById('inspectorToggle').click()");
+    await delay(100);
+    assert(
+      (await cdp.eval(preview, "document.getElementById('pvwWrap').clientWidth")) > initialWidth,
+    );
+    await cdp.eval(preview, "document.getElementById('inspectorToggle').click()");
     await cdp.eval(
       preview,
       "document.querySelector('[data-tab=all]').click();document.querySelector('[data-view=pvw]').click()",
@@ -341,13 +503,48 @@ async function main() {
     );
     const pixel = await cdp.eval(
       preview,
-      `new Promise(resolve=>{const image=new Image();image.onload=()=>{const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const ctx=c.getContext('2d');ctx.drawImage(image,0,0);const r=document.getElementById('pvwWrap').getBoundingClientRect();resolve([...ctx.getImageData(Math.round(r.x+r.width/2),Math.round(r.y+r.height/2),1,1).data])};image.src='data:image/jpeg;base64,${captured.data}'})`,
+      `new Promise(resolve=>{const image=new Image();image.onload=()=>{const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const ctx=c.getContext('2d');ctx.drawImage(image,0,0);const r=document.getElementById('pvwWrap').getBoundingClientRect();resolve([...ctx.getImageData(Math.round(r.x+r.width*.43),Math.round(r.y+r.height*.35),1,1).data])};image.src='data:image/jpeg;base64,${captured.data}'})`,
     );
     assert(
       pixel.slice(0, 3).every((value) => value < 100),
       'combined preview retains transparent module backgrounds',
     );
-    if (process.argv.includes('--inspect-preview')) console.log('PREVIEW_IMAGE:' + captured.data);
+    await cdp.eval(
+      preview,
+      "document.querySelector('[data-tab=football]').click();document.querySelector('[data-view=pvw]').click();document.querySelector('#categoryTabs [data-element=\"football:lineup_all\"]').click()",
+    );
+    await delay(500);
+    assert.equal(
+      await frameValue(
+        '/titles/graphics.html?workspacePreview=1',
+        "document.querySelectorAll('#lineupAll .lu-row').length>0",
+      ),
+      true,
+    );
+    if (process.argv.includes('--inspect-preview')) {
+      const image = await cdp.send(
+        'Page.captureScreenshot',
+        { format: 'jpeg', quality: 65 },
+        preview,
+      );
+      console.log('PREVIEW_IMAGE:' + image.data);
+    }
+    await cdp.send(
+      'Emulation.setDeviceMetricsOverride',
+      { width: 920, height: 780, deviceScaleFactor: 1, mobile: false },
+      preview,
+    );
+    await cdp.eval(preview, "document.querySelector('[data-view=dual]').click()");
+    await delay(250);
+    assert.equal(await cdp.eval(preview, 'document.documentElement.scrollWidth>innerWidth'), false);
+    if (process.argv.includes('--inspect-preview')) {
+      const image = await cdp.send(
+        'Page.captureScreenshot',
+        { format: 'jpeg', quality: 65 },
+        preview,
+      );
+      console.log('PREVIEW_NARROW:' + image.data);
+    }
     const pairing = await fetch(aeOrigin + '/api/ae/pairing').then((response) => response.json());
     async function agent(route, data) {
       return fetch(aeOrigin + '/api/ae/agent/' + route, {

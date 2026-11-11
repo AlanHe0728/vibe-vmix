@@ -112,6 +112,8 @@ components:
 
 # 控制台主页面设计
 
+工作台的独立预览窗口沿用下述浅色 control 视觉。模块标签与栏目快捷项置于顶部，画布居中，布局属性在右侧独立滚动，应用与恢复操作固定在底部。PVW 用绿色状态点，PGM 用红色状态点；背景与辅助线仅用于监看。桌面双画面始终并排，工具面板可收起。字段、缩放、对齐、安全框、网格与预览显隐应有清楚分组；禁止以空旷暗色画布和一个底部表单替代完整编辑器。
+
 ## Overview
 
 适用于 `control/panel.html`，实现来源为 `control/console-desk.css`、`control/console-desk.js` 与保留的基础控件。`control/preview.html` 的工具界面通过 `control/preview-desk.css` 沿用同一套 control 配色、字段与操作规范；不覆盖观众端或 D200 页面。主页面以纯白底、清楚的任务层级和常驻比赛操作为核心；具体工作流见 `.impeccable/surfaces/control-panel.md`。

@@ -98,7 +98,12 @@ function sendDraft(id) {
   const module = modules.find((item) => item.id === id);
   if (frame && module)
     frame.contentWindow.postMessage(
-      { type: 'preview-layout', module: id, layout: draft[id] || {} },
+      {
+        type: 'preview-layout',
+        module: id,
+        layout: draft[id] || {},
+        presentation: window.previewTools?.presentation(id),
+      },
       module.url,
     );
 }
@@ -145,6 +150,7 @@ function fillControls() {
     $('size').value = '';
     $('sizeLabel').hidden = true;
     updateActions();
+    window.previewTools?.sync();
     return;
   }
   const point = coordinate(element),
@@ -163,12 +169,14 @@ function fillControls() {
     $('sizeLabel').firstChild.textContent = element.id === 'stage' ? '宽度 / 尺寸' : '缩放';
   }
   updateActions();
+  window.previewTools?.sync();
 }
 function setPoint(point) {
   if (busy) return;
   const element = currentElement();
   if (!element || !base[element.id]) return;
   const range = limits(element);
+  point = window.previewTools?.snap(point) || point;
   const x = Math.round(Math.max(range.minX, Math.min(range.maxX, point.x)));
   const y = Math.round(Math.max(range.minY, Math.min(range.maxY, point.y)));
   if (element.fields.position) setDraft(element.id, element.fields.position, { x, y });
@@ -181,6 +189,7 @@ function setPoint(point) {
 }
 function drawHandle() {
   const host = $('handles');
+  const restoreFocus = host.contains(document.activeElement);
   host.replaceChildren();
   const element = currentElement();
   if (!element || !base[element.id] || view === 'pgm' || busy) return;
@@ -216,9 +225,24 @@ function drawHandle() {
       : point.y - (element.id === 'football' ? height / 2 : 0)) + 'px';
   handle.style.width = width + 'px';
   handle.style.height = height + 'px';
+  handle.tabIndex = 0;
+  handle.setAttribute('role', 'group');
+  handle.setAttribute('aria-label', handle.dataset.label + '，方向键微调位置');
+  handle.onkeydown = (event) => {
+    const delta = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[
+      event.key
+    ];
+    if (!delta) return;
+    event.preventDefault();
+    const p = coordinate(element),
+      step = event.shiftKey ? 10 : 1;
+    setPoint({ x: p.x + delta[0] * step, y: p.y + delta[1] * step });
+    host.firstChild?.focus({ preventScroll: true });
+  };
   handle.onpointerdown = (event) => {
     if (event.button !== 0) return;
     event.preventDefault();
+    window.previewTools?.drag(true);
     const start = { x: event.clientX, y: event.clientY, point: coordinate(element) };
     const move = (ev) =>
       setPoint({
@@ -226,6 +250,7 @@ function drawHandle() {
         y: start.point.y + (ev.clientY - start.y) / scales.pvw,
       });
     const end = () => {
+      window.previewTools?.drag(false);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', end);
       window.removeEventListener('pointercancel', end);
@@ -234,7 +259,38 @@ function drawHandle() {
     window.addEventListener('pointerup', end);
     window.addEventListener('pointercancel', end);
   };
+  if (element.fields.size) {
+    const corner = document.createElement('span');
+    corner.className = 'resize-handle';
+    corner.onpointerdown = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (busy) return;
+      const initial = layoutValue(element.id, element.fields.size),
+        startX = event.clientX;
+      const reference = Math.max(width * scales.pvw, 50);
+      const move = (ev) => {
+        const range = limits(element);
+        const value = Math.max(
+          range.minSize,
+          Math.min(range.maxSize, initial * (1 + (ev.clientX - startX) / reference)),
+        );
+        setDraft(element.id, element.fields.size, Math.round(value * 100) / 100);
+        fillControls();
+      };
+      const end = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', end);
+        window.removeEventListener('pointercancel', end);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', end);
+      window.addEventListener('pointercancel', end);
+    };
+    handle.append(corner);
+  }
   host.append(handle);
+  if (restoreFocus) handle.focus({ preventScroll: true });
 }
 function resize() {
   for (const kind of ['pvw', 'pgm']) {
@@ -303,6 +359,7 @@ function renderScreens() {
   $('element').value = selected;
   fillControls();
   drawHandle();
+  window.previewTools?.render();
   requestAnimationFrame(resize);
 }
 async function refresh() {
@@ -328,7 +385,7 @@ async function refresh() {
       renderTabs();
       renderScreens();
     } else {
-      if (!['x', 'y', 'size'].includes(document.activeElement?.id)) fillControls();
+      if (!['x', 'y', 'size', 'sizeSlider'].includes(document.activeElement?.id)) fillControls();
       drawHandle();
     }
     if (!modules.length) $('notice').textContent = '请先在主窗口加载需要的模块。';
@@ -348,6 +405,7 @@ $('element').onchange = () => {
   selected = $('element').value;
   fillControls();
   drawHandle();
+  window.previewTools?.selectionChanged();
 };
 for (const axis of ['x', 'y'])
   $(axis).onchange = () => {

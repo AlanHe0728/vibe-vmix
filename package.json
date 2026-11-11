@@ -1,7 +1,7 @@
 {
   "name": "broadcast-pack-workspace",
   "private": true,
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0-beta.2",
   "description": "Shared broadcast core, event modules and presentation packages",
   "scripts": {
     "start:workspace": "node server/workspace-entry.js",

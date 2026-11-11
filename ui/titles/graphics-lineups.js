@@ -33,6 +33,10 @@ function luActive() {
   return LU_STATES.indexOf(a) < 0 ? 'xiH' : a;
 }
 function luIsAll() {
+  if (WORKSPACE_PREVIEW && WORKSPACE_PRESENTATION.mode === 'layout') {
+    if (WORKSPACE_PRESENTATION.only === 'lineup') return false;
+    if (WORKSPACE_PRESENTATION.only === 'lineup_all') return true;
+  }
   return field('lineup_mode', 'all') !== 'single';
 }
 function rosterLines(pfx) {

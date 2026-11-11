@@ -4,7 +4,8 @@ let revision = 0;
 const workspacePreview = new URLSearchParams(location.search).get('workspacePreview') === '1';
 const workspaceOrigin = document.referrer ? new URL(document.referrer).origin : '';
 let liveLayout = { x: 0, y: 0, scale: 1 },
-  draftLayout = {};
+  draftLayout = {},
+  previewHidden = false;
 function applyLayout() {
   const layout = { ...liveLayout, ...draftLayout };
   frame.style.transform = `translate(${layout.x}px, ${layout.y}px) scale(${layout.scale})`;
@@ -19,6 +20,10 @@ if (workspacePreview)
     )
       return;
     draftLayout = event.data.layout || {};
+    previewHidden =
+      event.data.presentation?.only === '__none__' ||
+      Boolean(event.data.presentation?.hidden?.includes('frame'));
+    if (previewHidden) frame.hidden = true;
     applyLayout();
   });
 async function poll() {
@@ -28,7 +33,7 @@ async function poll() {
     const state = await response.json();
     liveLayout = state.layout || liveLayout;
     applyLayout();
-    frame.hidden = !state.visible || !state.connected || !state.frameRevision;
+    frame.hidden = previewHidden || !state.visible || !state.connected || !state.frameRevision;
     if (!frame.hidden && state.frameRevision !== revision) {
       revision = state.frameRevision;
       const image = new Image();

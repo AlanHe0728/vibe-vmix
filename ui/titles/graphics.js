@@ -65,6 +65,7 @@ function applyState(s, initial) {
     updateSelUI();
     FBPEditor.refresh();
   }
+  if (WORKSPACE_PREVIEW) workspaceDecorate(true);
 }
 FBP.poll(applyState);
 

@@ -14,7 +14,7 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: System.Reflection.AssemblyTitle("转播包装工作台")]
 [assembly: System.Reflection.AssemblyProduct("转播包装工作台")]
 [assembly: System.Reflection.AssemblyVersion("2.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersion("2.0.0-beta.1")]
+[assembly: System.Reflection.AssemblyInformationalVersion("2.0.0-beta.2")]
 
 internal static class Program {
     internal static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;

@@ -4,7 +4,8 @@ const preview = new URLSearchParams(location.search).has('preview');
 const workspacePreview = new URLSearchParams(location.search).get('workspacePreview') === '1';
 const workspaceOrigin = document.referrer ? new URL(document.referrer).origin : '';
 let latestState,
-  draftStyle = {};
+  draftStyle = {},
+  previewPresentation = { mode: 'live', only: '', hidden: [] };
 if (workspacePreview)
   window.addEventListener('message', (event) => {
     if (
@@ -15,6 +16,7 @@ if (workspacePreview)
     )
       return;
     draftStyle = event.data.layout || {};
+    previewPresentation = event.data.presentation || { mode: 'live', only: '', hidden: [] };
     if (latestState) render(latestState);
   });
 if (preview) document.body.classList.add('preview');
@@ -100,6 +102,38 @@ function renderCaption(state) {
 function render(state) {
   latestState = state;
   if (workspacePreview) state = { ...state, style: { ...state.style, ...draftStyle } };
+  if (workspacePreview) {
+    const config = previewPresentation,
+      layers = { ...state.layers };
+    const layout = config.mode === 'layout';
+    for (const key of ['channel', 'event', 'sponsor', 'lower', 'caption'])
+      layers[key] =
+        (layout || layers[key]) &&
+        (!config.only || config.only === key) &&
+        !(config.hidden || []).includes(key);
+    state = { ...state, layers };
+    if (layout) {
+      const item = state.live || state.programs[0];
+      state = {
+        ...state,
+        channelName: state.channelName || '台标',
+        eventName: state.eventName || '活动名称',
+        sponsorName: state.sponsorName || '赞助商',
+        live: item?.title
+          ? item
+          : {
+              type: '歌唱',
+              title: '节目名称',
+              performer: '表演者',
+              subtitle: '排版预览示例',
+            },
+        captionLive: state.captionLive || {
+          caption: item?.caption || '歌词字幕 · 排版预览示例',
+          index: 0,
+        },
+      };
+    }
+  }
   const template = templates.find((item) => item.id === state.templateId) || templates[0];
   const style = state.style,
     root = $('canvas');
