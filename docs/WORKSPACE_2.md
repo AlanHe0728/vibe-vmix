@@ -1,6 +1,6 @@
 # 转播包装工作台 2.0.0-beta.2
 
-**Beta 测试版：我尚未充分测试此版本。** 请先在自己的设备和直播流程中验证，重要数据使用前应备份。
+本版本未完全验证，可能存在BUG，如遇BUG请与开发者联系
 
 Windows 独立桌面程序。完整解压后双击 `转播包装工作台.exe`；自带服务运行环境，不打开浏览器。需要系统的 .NET Framework 4.7.2+ 与 Microsoft Edge WebView2。vMix、AE、NewBlue 需自行安装。
 
@@ -66,8 +66,6 @@ GT 字段须与 vMix 标题编辑器一致，文字字段通常以 `.Text` 结�
 
 WinForms + 系统共享 WebView2，不随新工作台携带 Electron / Chromium；只打包服务用 Node。业务页面使用原生 HTML/CSS/JS，没有新增前端框架。最小化尝试暂停控台 WebView，模块服务继续工作。
 
-本机短时空闲采样：未启用模块时私有内存约 248 MB；舞台控台开启、预览关闭时约 288 MB；三个模块启用、停留管理页时约 289 MB。对应 CPU 约为单个逻辑核心的 0%、3.9%、1.3%。这是开启调试接口、无 AE/vMix 的单机采样，不代表实际播出、解码、渲染或其他设备的占用。原始数据见 [native-resources.json](native-resources.json)。程序目录构建时约 93 MiB，不含系统 WebView2；压缩大小以实际文件为准。
-
 降低占用可关闭预览、卸载闲置模块、降低 AE 刷新率/分辨率、避免播出时运行全片渲染。
 
 | 位置 | 数据 |
@@ -81,7 +79,7 @@ WinForms + 系统共享 WebView2，不随新工作台携带 Electron / Chromium�
 
 关闭后备份整个 `data`，外部链接工程另行备份。新发行包不含真实比赛/节目数据。旧版迁移：退出旧程序，把旧 `data/state.json` 复制到新目录，再启用足球；不要覆盖新版已编辑资料。构建不会覆盖旧发行版或修改源项目的真实状态。
 
-## 开发与验证
+## 从源码运行与构建
 
 `npm start` 启动已构建的当前版本 EXE；`npm run start:workspace` 只启动开发服务；`npm run start:football` 保留旧足球入口。`npm run build:workspace` 使用 Windows x64、Node.js 22+、Python 3.9+、本机 .NET Framework 编译器和微软 WebView2 NuGet SDK。已有输出目录或 ZIP 时拒绝覆盖。
 
@@ -97,9 +95,5 @@ npm run build:workspace
 ```
 
 Node 运行文件取自构建机器正在使用的 Node EXE。若其目录已有 `LICENSE` 或 `LICENSE.txt`，构建也可直接使用该许可。SDK 原始包和许可需要与所用版本对应；SDK 解压目录会在构建时自动生成，构建清单记录原始包 SHA256。构建输出为 `dist/转播包装工作台-2.0.0-beta.2-Windows-x64` 和同名 ZIP。
-
-运行 `npm test`、`npm run check`、`node tests/workspace-ui.js`、`node tests/native-workspace.js <发行目录>`。覆盖事务、足球 Node/PowerShell、按需加载与卸载、舞台业务、导入和模拟 vMix、AE 协议、ExtendScript 模拟宿主、CEP 面板通信、Chromium UI，以及真实 Windows EXE 的空 PATH 启动、原生窗口退出与端口释放。
-
-本机没有 AE / NewBlue / vMix，无法真机联调或实测 AE 帧率。模拟测试不能替代实际安装，正式播出前需验证文件依赖、模板、透明度、输出编码和设备性能。
 
 实现依据：[vMix HTTP API](https://www.vmix.com/help29/DeveloperAPI.html)、[vMix 输入函数](https://images.vmix.com/help29/ShortcutFunctionReference.html)、[NewBlue 文件格式](https://newbluefx.zendesk.com/hc/en-us/articles/4408894698267-Save-and-package-graphics-or-projects-to-your-computer)、[微软 WebView2 分发](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/evergreen-vs-fixed-version)。
