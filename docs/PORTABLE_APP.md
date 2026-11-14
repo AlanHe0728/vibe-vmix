@@ -36,12 +36,4 @@ Windows 10/11 x64 的完整文件夹应用，内置 Electron 44.7.0 的 Chromium
 
 框架分发方式依据 [Electron 官方手动分发文档](https://www.electronjs.org/docs/latest/tutorial/application-distribution)，运行环境来自 [Electron 44.7.0 官方发布](https://github.com/electron/electron/releases/tag/v44.7.0)。页面使用沙箱、上下文隔离并禁用 renderer Node；外部链接仅允许已提供的官方说明站点，依据 [Electron 安全文档](https://www.electronjs.org/docs/latest/tutorial/security)。
 
-## 验证
-
-`node tests/regression.js`：Node 与 PowerShell 的 HTTP 200/302/304、时钟、状态保存、失败回滚与重启。
-
-`node tests/match-desk.js`：正倒计时的自动半场与终场、精确锚点、无人打开网页时的 Node/PowerShell 调度、五页签固定时钟、真实鼠标快速选 11 人、草稿与失败保存保护、总名单 Excel 导入、默认/自定义球员标题和窄屏布局。
-
-`node tests/portable.js <发布文件夹路径>`：复制发布文件夹到临时中文/空格路径，运行真正的 EXE，清空 PATH 排除外部 Node/Python/PowerShell；检查首次快照、字体与图片、同实例重复启动、端口冲突、ETag、页面运行环境、队名同步、进球动画、Excel 导入、原生预览窗口、无外部界面资源请求、正常关闭释放端口并暂停计时、文件夹移动后数据与浏览器设置恢复。通过主进程调试协议调用原生窗口关闭，模拟标题栏 X，不将 Chromium 调试 target 关闭误认为桌面退出。
-
-所有测试使用独立临时数据和动态端口，不向真实 `control/state.json` 写入，也不关闭用户已运行的 8123 服务。验证环境为本机 Windows，未在第二台实体电脑上实测。
+本版本未完全验证，可能存在BUG，如遇BUG请与开发者联系
