@@ -1,46 +1,11 @@
-# 足球转播控制台
+# 足球转播控制台 1.0.0
 
-面向足球直播的 vMix 网页图形包装与控制台。比分、比赛时钟、进球、红黄牌、发球、球员条、换人和名单由一个控制界面管理，通过单个网页输入叠加到 vMix。
+面向 vMix 的足球转播控制台，支持比分、计时、名单和比赛事件。
 
-**Windows 10/11 x64 便携版：**[前往 Gitee Releases 下载](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v1.0.0)。程序连同 Chromium 运行环境一起打包，解压后双击 `足球转播控制台.exe` 即可，不必另装 Node.js、Python、PowerShell、浏览器或 MicroKit 开发服务。首次使用需要本机已安装 vMix；D200 硬件按键需要 Ulanzi Studio。
+[GitHub 下载](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v1.0.0) · [Gitee 下载](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v1.0.0)
 
-## 快速开始
+解压后运行「足球转播控制台.exe」。从源码启动可运行 `node control/serve.js`。 把模块的上屏地址添加为 vMix 网页输入，画布设为 1920 × 1080。
 
-1. 从 Releases 下载便携包。如果页面将 ZIP 分成 `.001`、`.002` 等分卷，请把两个分卷与 Release 附带的 `合并便携版.bat` 放在同一文件夹，双击 BAT 生成 ZIP，再完整解压。
-2. 双击解压目录中的 `足球转播控制台.exe`。控制台会在本机启动，若默认端口正被占用，会自动切换端口。
-3. 打开「设备连接」，复制「联合上屏 · 单链接 Graphic」地址，在 vMix 添加一个网页浏览器输入并粘贴该地址。
-4. 在控制台录入主客队、比分和名单，设置画面后即可操作直播图形。播出期间保持控制台运行；关闭主窗口会退出服务。
+[便携版说明](docs/PORTABLE_APP.md) · [D200 按键](docs/D200_SETUP.md) · [反馈问题](https://github.com/AlanHe0728/vibe-vmix/issues)
 
-vMix 输入画布建议设为 1920×1080。控制台内的预览比例、安全框和辅助网格只影响预览排版，最终播出画布仍由 vMix 决定。vMix 输入、摄像机与 Ulanzi Studio 不包含在本软件中。
-
-## 功能
-
-- 一条 vMix 网页链接统一显示比分条、比赛时钟、独立计时器、进球、红黄牌、发球、球员条、换人和名单。
-- 比分、球队、阶段和比赛状态联动；动画支持渐入、退场与自定义时长。
-- 名单支持粘贴、TXT、CSV、TSV 和 Excel 导入，自动识别号码与姓名；球员事件支持从名单选择或输入号码匹配。
-- 换人后自动更新场内与场外球员；完整名单优先同时显示两队首发和替补，也保留单项显示。
-- 预览编辑器提供安全框、画面比例、坐标、对齐、网格吸附、拖动缩放和仅在预览中隐藏元素。
-- 自定义主题、颜色、队徽、角标、背景和字体；Ulanzi D200 可通过 Studio 的 API Request 调用常用操作。
-- 控制服务仅监听本机回环地址，桌面端不依赖外部开发服务。
-
-## 数据与隐私
-
-公开便携包不带队名、比赛比分、球员名单、队徽、角标、赛事预设或自定义背景；包内只保留允许分发的自定义字体。首次运行后，你填写的比赛信息保存在便携目录的 `data/state.json`，预览偏好保存在 `data/browser`。这些数据不会自动上传。
-
-备份或迁移时，先退出软件，再复制整个 `data` 文件夹；换电脑时复制整个应用文件夹。升级时用旧版 `data` 替换新版空白 `data`，不要只复制 EXE，也不要让新版空白状态覆盖已有数据。
-
-## 从源码运行与构建
-
-源码控制台可用 Node.js 启动：在项目根目录运行 `node control/serve.js`，然后打开终端显示的本地地址。Windows 上也可运行 `control/启动控制面板.bat`。PowerShell 启动脚本仍保留。
-
-构建 Windows 便携版需要开发电脑安装 Node.js 与 Python，并准备官方 Electron 运行包和 `rcedit` 到 `packaging/cache`；完整步骤见 [便携版构建说明](docs/PORTABLE_APP.md)。发布构建会从比赛状态中只提取字体相关字段，队名、名单、Logo、比分和其他用户数据不会进入生成的便携包。`control/state.json` 属于本地运行数据，已加入忽略规则；仓库中的 `control/state.example.json` 是不含比赛数据的示例种子。
-
-D200 配置见 [Ulanzi D200 按键设置](docs/D200_SETUP.md)。Motion、SheetJS 和 MicroKit 适配的第三方许可随源码及便携包提供。项目尚未指定开源许可证；未经作者许可，请勿将源码另行商用或再分发。
-
-## 支持环境
-
-- Windows 10/11，64 位
-- 本机 vMix（需要上屏时）
-- Ulanzi Studio 与 D200（需要实体按键时）
-
-如果控制台无法启动，先把整个应用目录解压到可写入的位置，再查看 `data/desktop-error.log`。升级或搬迁之前请备份 `data`。
+本版本未完全验证，可能存在BUG，如遇BUG请与开发者联系
