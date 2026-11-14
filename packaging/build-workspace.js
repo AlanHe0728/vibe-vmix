@@ -49,10 +49,6 @@ fs.writeFileSync(
     .readFileSync(path.join(root, 'docs/WORKSPACE_2.md'), 'utf8')
     .replace('../ae-plugin/README.md', 'AE插件/README.md'),
 );
-fs.copyFileSync(
-  path.join(root, 'docs/native-resources.json'),
-  path.join(output, 'native-resources.json'),
-);
 // System UI engines are shared. Only the service runtime is bundled.
 fs.mkdirSync(path.join(output, 'runtime'));
 fs.copyFileSync(process.execPath, path.join(output, 'runtime/node.exe'));
@@ -109,28 +105,13 @@ fs.writeFileSync(
   '\uFEFF' +
     [
       '转播包装工作台 ' + version + ' · Windows x64',
-      'Beta 测试版：作者尚未充分测试，正式播出前请先验证并备份数据。',
       '',
-      '完整解压后双击“转播包装工作台.exe”。无需打开浏览器，无需安装 Node。请保留整个文件夹。',
-      '依赖 Windows 的 .NET Framework 4.7.2+ 与 Microsoft Edge WebView2 运行时。缺少 WebView2 时请从微软官方网站安装。',
-      '首次勾选需要的模块，再点击“应用模块选择”，从左侧进入。未选择的模块不加载。',
-      '舞台：节目单、四套模板、自定义配色与坐标、台标、活动 Logo、赞助、字幕、转场。预览按需开启。',
-      '足球：保留原有比分、计时、名单、球员事件与 D200。',
-      'AE 直播连接：可选模块，配合随包 AE插件 使用；文字、颜色、滑块、开关、交互 PNG 画面、离线动画缓存与 vMix 播放控制。',
-      'AE 插件为未签名 CEP 开发版，未在本机 AE 真机实测；安装与边界见 AE插件/README.md。交互画面不保证广播帧率。',
-      '各模块有独立的 vMix 上屏地址，在本机 vMix 添加网页浏览器输入，设为 1920×1080。',
-      'GT 文件可发送到已安装的 vMix 并控制文字；GT 的字体、特效由 vMix 负责。',
-      'AE 工程保留原文件，可在本机 AE 打开或调用 aerender 离线导出 MOV。输出模块模板必须存在，透明度取决于模板。',
-      'NewBlue 工程保留原文件并调用系统关联软件打开；需从 NewBlue 导出视频后导入。程序不包含 AE/NewBlue 的专有渲染器。',
-      '“链接本地工程”保持原路径和素材依赖；导入工程只复制所选文件，不会自动收集关联素材。',
-      '关闭预览可减少资源占用；最小化暂停控台渲染，模块服务继续播出。卸载模块会停止它的上屏服务。',
-      '正式播出时保持程序运行。关闭主窗口会停止所有模块并暂停足球计时。',
-      '数据位于 data：workspace.json 为选择，state.json 为足球，stage 为舞台与素材，webview 为界面缓存。',
-      '旧版升级：退出旧程序，将旧 data/state.json 复制到新版 data/state.json，再启用足球模块。不要覆盖已有数据。',
-      '备份时退出软件，复制整个 data。链接在外部的工程与依赖需另行备份。',
-      '运行问题查看 data/desktop-error.log 和 data/service-error.log。',
+      '本版本未完全验证，可能存在BUG，如遇BUG请与开发者联系',
       '',
-      'WebView2 安装：https://developer.microsoft.com/microsoft-edge/webview2/',
+      '完整解压后运行「转播包装工作台.exe」，保留同目录文件。需要 .NET Framework 4.7.2+ 和 WebView2。',
+      '勾选模块并应用。把模块的上屏地址添加为 vMix 网页输入，画布设为 1920 × 1080。',
+      '使用说明见「使用说明.md」，AE 插件安装见「AE插件/README.md」。',
+      '',
     ].join('\r\n'),
 );
 const sha = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
