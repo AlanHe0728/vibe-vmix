@@ -1,4 +1,8 @@
 'use strict';
+document.body.classList.toggle(
+  'embedded',
+  new URLSearchParams(location.search).get('workspace') === '1',
+);
 const $ = (id) => document.getElementById(id);
 const fields = [
   'programType',
@@ -16,6 +20,7 @@ const layerLabels = {
 };
 const numericStyles = ['fontSize', 'transitionMs'];
 let state,
+  collaboration,
   templates = [],
   assets = [],
   selected = '',
@@ -28,14 +33,14 @@ let state,
 function notice(message = '') {
   $('notice').textContent = message;
 }
-async function api(url, payload) {
+async function api(url, payload, headers = {}) {
   const response = await fetch(
     url,
     payload === undefined
       ? { cache: 'no-store' }
       : {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...headers },
           body: JSON.stringify(payload),
         },
   );
@@ -58,7 +63,7 @@ async function write(patch) {
   if (writing) throw Error('正在保存，请稍后再操作');
   writing = true;
   try {
-    await api('/api/v1/state', patch);
+    await api('/api/v1/state', patch, patch.programs && etag ? { 'If-Match': etag } : {});
     etag = '';
     await read();
   } finally {
@@ -67,8 +72,68 @@ async function write(patch) {
 }
 async function command(id, payload = {}) {
   await api('/api/v1/commands/' + id, payload);
-  etag = '';
-  await read();
+  await Promise.all([read(), readCollaboration()]);
+}
+const collaborationURL = '/api/stage/collaboration';
+async function readCollaboration(payload) {
+  const next = await api(collaborationURL, payload);
+  if (JSON.stringify(collaboration) === JSON.stringify(next)) return;
+  collaboration = next;
+  renderCollaboration();
+  renderCaptions();
+}
+function replaceOptions(select, entries) {
+  const prior = select.value;
+  select.replaceChildren(...entries.map(([value, label]) => new Option(label, value)));
+  if (entries.some(([value]) => value === prior)) select.value = prior;
+}
+function canTake() {
+  return (
+    collaboration &&
+    !collaboration.busy &&
+    (!collaboration.session.active || collaboration.session.owns)
+  );
+}
+function renderCollaboration() {
+  const { session, live, prepared, native, busy } = collaboration;
+  $('captionOnAir').textContent = live.uncertain
+    ? '请在 vMix 中确认播出状态'
+    : live.visible
+      ? live.text + (live.operator ? ' · ' + live.operator : '')
+      : '已下屏';
+  $('captionOwner').textContent = session.active ? session.owner || '等待接手' : '导播主机';
+  $('captionPrepared').textContent = prepared
+    ? prepared.text + ' · ' + prepared.operator
+    : '尚未选句';
+  $('captionTake').disabled = !prepared || !canTake();
+  $('openLan').hidden = session.active;
+  $('openLan').disabled = !session.addresses.length || busy;
+  $('stopLan').hidden = !session.active;
+  $('stopLan').disabled = busy;
+  $('lanInvite').hidden = !session.active;
+  $('lanAddress').disabled = session.active;
+  $('joinUrl').value = session.url || '';
+  $('joinCode').value = session.code || '';
+  replaceOptions(
+    $('lanAddress'),
+    session.addresses.map((value) => [value, value]),
+  );
+  replaceOptions(
+    $('lanTarget'),
+    session.clients.map((client) => [client.id, client.name]),
+  );
+  $('lanTransfer').disabled = !session.owns || !session.clients.length || busy;
+  $('lanClaim').disabled = session.owns || busy;
+  $('layer-caption').disabled = !canTake();
+  $('layer-caption').setAttribute('aria-pressed', String(live.visible));
+  $('applyGtLayer').disabled = !canTake();
+  $('captionHide').disabled = !canTake() || !(live.visible || live.uncertain);
+  for (const id of ['take', 'next', 'hideAll'])
+    $(id).disabled =
+      !canTake() || (id === 'take' && !selected) || (id === 'next' && !state?.programs.length);
+  document.querySelectorAll('[data-vmix]').forEach((button) => {
+    button.disabled = !canTake() || (native && ['text', 'show'].includes(button.dataset.vmix));
+  });
 }
 function run(action) {
   return async (event) => {
@@ -107,37 +172,34 @@ function fillProgram() {
   dirty = false;
   $('draftState').textContent = '';
   renderCaptions();
+  syncDockPreview();
 }
 function renderCaptions() {
   if (!state) return;
   const item = state.programs.find((program) => program.id === selected);
   const entries = StageCaptions.lines($('programCaption').value);
-  const active = state.captionLive;
+  const live = collaboration?.live;
+  const active = collaboration?.native ? live : state.captionLive;
+  const visible = collaboration?.native ? live.visible : state.layers.caption;
   const sameProgram = Boolean(item && active?.programId === item.id);
-  const sameLyrics = Boolean(sameProgram && active.caption === item.caption && !dirty);
+  const sameLyrics = Boolean(
+    sameProgram &&
+      !dirty &&
+      (collaboration?.native
+        ? entries[active.index] === live.text
+        : active.caption === item.caption),
+  );
   $('captionCount').textContent = entries.length + ' 句';
-  $('captionHint').textContent = !item
-    ? '先添加节目，再录入歌词或字幕。'
-    : dirty
-      ? '保存节目后，可以逐句播出。'
-      : !entries.length
-        ? '在上方输入歌词，每行一句。'
-        : sameProgram && !sameLyrics
-          ? '字幕已修改，请点选一句播出新内容。'
-          : sameLyrics
-            ? (state.layers.caption ? '正在播出第 ' : '已下屏，当前为第 ') +
-              (active.index + 1) +
-              ' 句。'
-            : '点选任意一句，或从第一句开始播出。';
-  $('captionPrevious').disabled = !sameLyrics || active.index <= 0;
+  $('captionPrevious').disabled = !canTake() || !sameLyrics || active.index <= 0;
   $('captionNext').disabled =
+    !canTake() ||
     !item ||
     dirty ||
     !entries.length ||
     (sameProgram && !sameLyrics) ||
     (sameLyrics && active.index >= entries.length - 1);
   $('captionNext').textContent = sameProgram ? '下一句' : '播出第一句';
-  $('captionHide').disabled = !state.layers.caption;
+  $('captionHide').disabled = !canTake() || !(visible || live?.uncertain);
   const list = $('captionList');
   const scrollTop = list.scrollTop;
   const focused = document.activeElement?.dataset?.captionIndex;
@@ -152,7 +214,7 @@ function renderCaptions() {
     button.disabled = !item || dirty;
     const current = sameLyrics && active.index === index;
     button.setAttribute('aria-current', String(current));
-    button.setAttribute('aria-label', '播出第 ' + (index + 1) + ' 句：' + line);
+    button.setAttribute('aria-label', '准备第 ' + (index + 1) + ' 句：' + line);
     const number = document.createElement('span');
     number.className = 'caption-row-number';
     number.textContent = String(index + 1).padStart(2, '0');
@@ -160,13 +222,21 @@ function renderCaptions() {
     content.className = 'caption-row-text';
     content.textContent = line;
     button.append(number, content);
-    if (current) {
+    const queued = collaboration?.prepared;
+    if (current || (queued?.programId === programId && queued.index === index)) {
       const status = document.createElement('span');
       status.className = 'caption-row-state';
-      status.textContent = state.layers.caption ? '上屏' : '已下屏';
+      status.textContent =
+        current && visible
+          ? '上屏'
+          : queued?.index === index && queued.programId === programId
+            ? '待播'
+            : '已下屏';
       button.append(status);
     }
-    button.onclick = run(() => command('caption.take', { programId, index }));
+    button.onclick = run(() =>
+      readCollaboration({ action: 'prepare', programId, caption: item.caption, index }),
+    );
     li.append(button);
     list.append(li);
   });
@@ -220,17 +290,25 @@ function fillDesign() {
     'transitionAsset',
   ])
     $(key).value = state[key];
-  for (const key of ['accent', 'background', 'foreground', 'font', ...numericStyles])
+  document.querySelectorAll('[data-assets]').forEach(renderAssetTarget);
+  for (const key of ['accent', 'background', 'foreground', ...numericStyles])
     $(key).value = state.style[key];
+  if (typeof renderFonts === 'function') {
+    renderFonts(state.style.fontAsset || state.style.font);
+    syncPalette();
+  }
   $('motion').checked = state.style.motion;
   for (const [key, id] of [
     ['port', 'vmixPort'],
     ['input', 'vmixInput'],
     ['titleField', 'titleField'],
     ['subtitleField', 'subtitleField'],
+    ['captionField', 'captionField'],
+    ['animation', 'gtAnimation'],
     ['overlay', 'overlay'],
   ])
     $(id).value = state.vmix[key];
+  $('captionMode').checked = state.vmix.captionMode;
 }
 function renderState() {
   if (!selected || !state.programs.some((item) => item.id === selected)) {
@@ -254,6 +332,8 @@ function renderState() {
       button.setAttribute('aria-pressed', String(button.dataset.id === state.templateId)),
     );
   if (!designDirty) fillDesign();
+  syncDockPreview();
+  if (collaboration) renderCollaboration();
 }
 for (const [key, title] of Object.entries(layerLabels)) {
   const button = document.createElement('button');
@@ -261,8 +341,22 @@ for (const [key, title] of Object.entries(layerLabels)) {
   button.textContent = title;
   button.setAttribute('aria-pressed', 'false');
   button.onclick = run(() => {
-    if (key === 'caption' && !state.layers.caption && !state.captionLive)
-      return command('caption.take', { programId: selected, index: 0 });
+    if (key === 'caption') {
+      if (collaboration?.live.visible || collaboration?.live.uncertain)
+        return command('caption.hide');
+      const active = collaboration?.live;
+      const item = state.programs.find((entry) => entry.id === selected);
+      return readCollaboration({
+        action: 'caption.take',
+        programId: selected,
+        caption: item?.caption,
+        index:
+          active?.programId === selected &&
+          active.text === StageCaptions.lines(item?.caption)[active.index]
+            ? active.index
+            : 0,
+      });
+    }
     return write({ layers: { [key]: !state.layers[key] } });
   });
   $('layerControls').append(button);
@@ -274,8 +368,9 @@ document.querySelectorAll('[data-tab]').forEach((button) => {
       .forEach((entry) => entry.setAttribute('aria-pressed', String(entry === button)));
     document.querySelectorAll('.tab').forEach((section) => {
       section.hidden =
-        section.id !== (button.dataset.tab === 'connection' ? 'connectionTab' : button.dataset.tab);
+        section.id !== (button.dataset.tab === 'connection' ? 'connectionTab' : 'show');
     });
+    if (button.dataset.tab === 'design') showDesignPanel();
   };
 });
 fields.forEach((id) => $(id).addEventListener('input', markDirty));
@@ -302,6 +397,10 @@ $('addProgram').onclick = run(async () => {
   $('programTitle').focus();
 });
 $('programForm').onsubmit = run(async () => {
+  if (
+    JSON.stringify(state.programs.find((entry) => entry.id === selected) || null) !== formSignature
+  )
+    throw Error('此节目已被其他操作员更新，请复制草稿后刷新页面');
   const item = {
     id: selected,
     type: $('programType').value,
@@ -313,6 +412,16 @@ $('programForm').onsubmit = run(async () => {
   await write({ programs: state.programs.map((entry) => (entry.id === selected ? item : entry)) });
   fillProgram();
   $('draftState').textContent = '已保存';
+});
+$('importLyrics').onchange = run(async () => {
+  const file = $('importLyrics').files[0];
+  $('importLyrics').value = '';
+  if (!file) return;
+  const programId = selected;
+  const value = await StageCaptions.readLyrics(file);
+  if (selected !== programId) throw Error('节目已切换，请重新导入');
+  $('programCaption').value = value;
+  markDirty();
 });
 for (const [id, direction] of [
   ['moveUp', -1],
@@ -356,6 +465,10 @@ $('next').onclick = run(() => command('program.next'));
 $('captionPrevious').onclick = run(() => command('caption.previous', { programId: selected }));
 $('captionNext').onclick = run(() => command('caption.next', { programId: selected }));
 $('captionHide').onclick = run(() => command('caption.hide'));
+$('captionTake').onclick = run(async () => {
+  await readCollaboration({ action: 'take', ...collaboration.prepared });
+  await read();
+});
 $('hideAll').onclick = run(() => command('all.hide'));
 $('transition').onclick = run(() => command('transition.play'));
 function openPreview() {
@@ -376,7 +489,10 @@ $('designForm').onsubmit = run(async () => {
     'transitionAsset',
   ])
     patch[key] = $(key).value;
-  for (const key of ['accent', 'background', 'foreground', 'font']) patch.style[key] = $(key).value;
+  for (const key of ['accent', 'background', 'foreground']) patch.style[key] = $(key).value;
+  const font = $('font').value;
+  patch.style.fontAsset = $('font').selectedOptions[0]?.dataset.file || '';
+  patch.style.font = patch.style.fontAsset ? 'template' : font;
   for (const key of numericStyles) patch.style[key] = Number($(key).value);
   patch.style.motion = $('motion').checked;
   await write(patch);
@@ -388,6 +504,7 @@ $('resetColors').onclick = () => {
     $(key).value = '';
   });
   designDirty = true;
+  syncPalette();
 };
 $('exportShow').onclick = () => {
   const blob = new Blob(
@@ -443,6 +560,11 @@ function assetOptions() {
         select.add(new Option(item.name, item.file));
       });
     select.value = value;
+    if (value && select.value !== value) {
+      select.add(new Option('文件不可用', value));
+      select.value = value;
+    }
+    renderAssetTarget(select);
   });
   const prior = $('renderSource').value;
   $('renderSource').replaceChildren(new Option('选择 AE 工程', ''));
@@ -450,91 +572,67 @@ function assetOptions() {
     .filter((item) => item.kind === 'ae' && item.available)
     .forEach((item) => $('renderSource').add(new Option(item.name, item.id)));
   $('renderSource').value = prior;
+  renderFonts($('font').value);
 }
-const formatLabels = {
-  image: '图片 · 内置包装可用',
-  video: '视频 · 可添加到 vMix',
-  gt: 'GT 标题 · vMix 原生渲染',
-  ae: 'AE 工程 · 需 AE 渲染',
-  newblue: 'NewBlue 工程 · 需原软件导出',
-};
 async function loadAssets() {
   assets = (await api('/api/stage/library')).assets;
-  $('assetList').replaceChildren();
-  if (!assets.length) {
-    const p = document.createElement('p');
-    p.className = 'empty';
-    p.textContent = '尚未导入素材';
-    $('assetList').append(p);
-  }
-  assets.forEach((item) => {
-    const row = document.createElement('div');
-    row.className = 'asset-row';
-    const text = document.createElement('div');
-    const title = document.createElement('strong');
-    title.textContent = item.name;
-    const info = document.createElement('small');
-    info.textContent =
-      (item.bytes / 1024 / 1024).toFixed(1) +
-      ' MB · ' +
-      (item.sourcePath ? '链接原文件' : '已复制到素材库');
-    text.append(title, info);
-    const status = document.createElement('small');
-    status.textContent = item.available ? formatLabels[item.kind] : '文件已移动或不存在';
-    const actions = document.createElement('div');
-    actions.className = 'actions';
-    if (['gt', 'image', 'video'].includes(item.kind)) {
-      const add = document.createElement('button');
-      add.textContent = '添加到 vMix';
-      add.disabled = !item.available;
-      add.onclick = run(async () => {
-        await api('/api/stage/vmix', { action: 'add', id: item.id });
-        notice('已发送到 vMix。请在 vMix 中检查输入。');
-      });
-      actions.append(add);
-    }
-    if (['ae', 'newblue', 'gt'].includes(item.kind)) {
-      const open = document.createElement('button');
-      open.textContent = '原软件打开';
-      open.disabled = !item.available;
-      open.onclick = () => {
-        const file = item.sourcePath;
-        window.parent.postMessage(
-          {
-            type: 'open-source',
-            path: file || '',
-            assetId: item.id,
-            moduleOrigin: location.origin,
-          },
-          '*',
-        );
-        if (window.parent === window && !window.chrome?.webview)
-          notice('请在桌面程序中使用原软件打开，或从素材库文件夹手动打开。');
-      };
-      actions.append(open);
-    }
-    row.append(text, status, actions);
-    $('assetList').append(row);
-  });
+  renderLibrary();
   assetOptions();
+}
+function assetActions(item) {
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  if (['gt', 'image', 'video'].includes(item.kind)) {
+    const add = document.createElement('button');
+    add.textContent = '添加到 vMix';
+    add.disabled = !item.available;
+    add.onclick = run(async () => {
+      await api('/api/stage/vmix', { action: 'add', id: item.id });
+      notice('已发送到 vMix。请在 vMix 中检查输入。');
+    });
+    actions.append(add);
+  }
+  if (['ae', 'newblue', 'gt'].includes(item.kind)) {
+    const open = document.createElement('button');
+    open.textContent = '原软件打开';
+    open.disabled = !item.available;
+    open.onclick = () => {
+      window.parent.postMessage(
+        {
+          type: 'open-source',
+          assetId: item.id,
+          moduleOrigin: location.origin,
+        },
+        '*',
+      );
+      if (window.parent === window && !window.chrome?.webview)
+        notice('请在桌面程序中使用原软件打开，或从素材库文件夹手动打开。');
+    };
+    actions.append(open);
+  }
+  return actions;
+}
+async function uploadAsset(file) {
+  if (file.size > 512 * 1024 * 1024) throw Error('单个素材最多 512 MB');
+  const response = await fetch('/api/stage/upload?name=' + encodeURIComponent(file.name), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: file,
+  });
+  const result = await response.json();
+  if (!response.ok) throw Error(result.error);
+  return result.asset;
 }
 $('upload').onchange = run(async () => {
   const input = $('upload');
   input.disabled = true;
   try {
     for (const file of input.files) {
-      if (file.size > 512 * 1024 * 1024) throw Error('单个素材最多 512 MB');
       notice('正在导入：' + file.name);
-      const response = await fetch('/api/stage/upload?name=' + encodeURIComponent(file.name), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: file,
-      });
-      const result = await response.json();
-      if (!response.ok) throw Error(result.error);
+      await uploadAsset(file);
     }
     await loadAssets();
-    notice('导入完成。AE / NewBlue 工程的关联素材请保持可访问；推荐使用“链接本地工程”。');
+    notice('已导入素材');
   } finally {
     input.value = '';
     input.disabled = false;
@@ -551,10 +649,12 @@ window.addEventListener('message', (event) => {
   if (
     event.source !== window.parent ||
     !/^http:\/\/127\.0\.0\.1:\d+$/.test(event.origin) ||
-    event.data?.type !== 'native-source'
+    !['native-source', 'native-folder', 'native-fonts'].includes(event.data?.type)
   )
     return;
   run(async () => {
+    if (event.data.type === 'native-folder') return browseFolder({ path: event.data.path });
+    if (event.data.type === 'native-fonts') return setInstalledFonts(event.data.fonts);
     await api('/api/stage/register', { path: event.data.path });
     await loadAssets();
     notice('工程已链接，保留原路径。');
@@ -596,25 +696,51 @@ $('openOutput').onclick = openPreview;
 $('vmixForm').onsubmit = run(async () => {
   await write({
     vmix: {
-      port: Number($('vmixPort').value),
+      ...(!document.body.classList.contains('embedded') && { port: Number($('vmixPort').value) }),
       input: $('vmixInput').value,
       titleField: $('titleField').value,
       subtitleField: $('subtitleField').value,
+      captionField: $('captionField').value,
+      captionMode: $('captionMode').checked,
+      animation: $('gtAnimation').value,
       overlay: Number($('overlay').value),
     },
   });
   designDirty = false;
   notice('连接设置已保存');
+  await readCollaboration();
 });
+$('gtLayerForm').onsubmit = run(async () => {
+  await api('/api/stage/vmix', {
+    action: 'layer',
+    layer: Number($('gtLayer').value),
+    source: $('gtLayerSource').value,
+  });
+  notice('输入图层已更新');
+});
+$('openLan').onclick = run(() =>
+  readCollaboration({ action: 'open', address: $('lanAddress').value }),
+);
+$('stopLan').onclick = run(() => readCollaboration({ action: 'stop' }));
+$('lanTransfer').onclick = run(() =>
+  readCollaboration({ action: 'control', target: $('lanTarget').value }),
+);
+$('lanClaim').onclick = run(() => readCollaboration({ action: 'control', target: 'claim' }));
+$('copyInvite').onclick = run(() =>
+  navigator.clipboard.writeText(
+    'Vibe-vMix 协作\n' + $('joinUrl').value + '\n加入码 ' + $('joinCode').value,
+  ),
+);
 document.querySelectorAll('[data-vmix]').forEach((button) => {
   button.onclick = run(async () => {
     await api('/api/stage/vmix', { action: button.dataset.vmix });
+    await readCollaboration();
     notice(button.dataset.vmix === 'connect' ? 'vMix 连接成功' : 'vMix 操作成功');
   });
 });
 async function poll() {
   try {
-    if (!writing) await read();
+    if (!writing) await Promise.all([read(), readCollaboration()]);
     $('connection').textContent = '本地服务已连接';
   } catch (error) {
     $('connection').textContent = '连接中断';
@@ -628,6 +754,8 @@ async function init() {
     const button = document.createElement('button');
     button.className = 'template';
     button.dataset.id = template.id;
+    button.onmouseenter = button.onfocus = () => syncDockPreview(template.id);
+    button.onmouseleave = button.onblur = () => syncDockPreview();
     const sample = document.createElement('span');
     sample.className = 'template-sample';
     sample.style.setProperty('--sample-bg', template.background);
@@ -635,9 +763,9 @@ async function init() {
     sample.style.setProperty('--sample-accent', template.accent);
     sample.style.fontFamily = template.font;
     const title = document.createElement('strong');
-    title.textContent = '节目名称';
+    title.textContent = template.sample?.[0] || '弦乐合奏';
     const subtitle = document.createElement('small');
-    subtitle.textContent = '示例 · 表演者 / 演出单位';
+    subtitle.textContent = template.sample?.[1] || '青年交响乐团';
     sample.append(title, subtitle);
     const name = document.createElement('strong');
     name.textContent = template.name;
@@ -647,15 +775,20 @@ async function init() {
     button.onclick = run(async () => {
       await write({
         templateId: template.id,
-        style: { accent: '', background: '', foreground: '', font: 'template' },
+        style: { accent: '', background: '', foreground: '', font: 'template', fontAsset: '' },
       });
       for (const key of ['accent', 'background', 'foreground']) $(key).value = '';
       $('font').value = 'template';
+      updateFontLabel();
+      syncPalette();
     });
     $('templates').append(button);
   }
   await read();
   await loadAssets();
+  window.FBPWidgets.init();
+  syncPalette();
+  if (window.parent !== window) window.parent.postMessage({ type: 'list-fonts' }, '*');
   fillDesign();
   fillProgram();
   poll();

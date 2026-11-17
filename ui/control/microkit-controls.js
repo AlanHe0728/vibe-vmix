@@ -171,8 +171,9 @@
   }
   function updateTabs(instant) {
     if (window.FBPLiquidNav && FBPLiquidNav.update(instant === true)) return;
-    var nav = document.querySelector('.panel-nav'),
-      active = nav.querySelector('[aria-selected=true]'),
+    var nav = document.querySelector('.panel-nav');
+    if (!nav) return;
+    var active = nav.querySelector('[aria-selected=true]'),
       indicator = nav.querySelector('.tab-indicator');
     if (!indicator || !active) return;
     indicator.style.width = active.offsetWidth + 'px';
@@ -201,7 +202,7 @@
     document.querySelectorAll('[data-color-for]').forEach(syncColor);
     var slider = document.getElementById('animdur');
     document.querySelectorAll('input[type=range]').forEach(syncRange);
-    document.getElementById('animdurVal').textContent = Number(slider.value).toFixed(2) + '×';
+    if (slider) document.getElementById('animdurVal').textContent = Number(slider.value).toFixed(2) + '×';
     updateTabs();
   }
   function init() {
@@ -238,7 +239,7 @@
       true,
     );
     var nav = document.querySelector('.panel-nav');
-    if (window.ResizeObserver)
+    if (nav && window.ResizeObserver)
       new ResizeObserver(function () {
         updateTabs(true);
       }).observe(nav);

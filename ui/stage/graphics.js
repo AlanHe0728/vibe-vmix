@@ -4,7 +4,10 @@ const preview = new URLSearchParams(location.search).has('preview');
 const workspacePreview = new URLSearchParams(location.search).get('workspacePreview') === '1';
 const workspaceOrigin = document.referrer ? new URL(document.referrer).origin : '';
 let latestState,
+  draftTemplate = '',
   draftStyle = {},
+  draftBranding = {},
+  draftProgram = null,
   previewPresentation = { mode: 'live', only: '', hidden: [] };
 if (workspacePreview)
   window.addEventListener('message', (event) => {
@@ -16,6 +19,9 @@ if (workspacePreview)
     )
       return;
     draftStyle = event.data.layout || {};
+    draftBranding = event.origin === location.origin ? event.data.branding || {} : {};
+    draftProgram = event.origin === location.origin ? event.data.program || null : null;
+    draftTemplate = event.origin === location.origin ? event.data.templateId || '' : '';
     previewPresentation = event.data.presentation || { mode: 'live', only: '', hidden: [] };
     if (latestState) render(latestState);
   });
@@ -27,6 +33,30 @@ let etag = '',
   animation,
   captionAnimation;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let lastFont = '';
+function setFont(root, style, template) {
+  const filename = style.fontAsset;
+  if (filename !== lastFont) {
+    lastFont = filename;
+    const sheet = document.getElementById('importedFont') || document.createElement('style');
+    sheet.id = 'importedFont';
+    sheet.textContent = /^[a-f0-9]{32}\.(ttf|otf|woff2?)$/i.test(filename)
+      ? '@font-face{font-family:StageImported;src:url("/assets/' +
+        filename +
+        '");font-display:swap}'
+      : '';
+    if (!sheet.isConnected) document.head.append(sheet);
+  }
+  const family = style.font === 'template' ? template.font : style.font;
+  root.style.setProperty(
+    '--font',
+    lastFont
+      ? 'StageImported, sans-serif'
+      : ['serif', 'sans-serif'].includes(family)
+        ? family
+        : JSON.stringify(family) + ', sans-serif',
+  );
+}
 function setText(id, value) {
   $(id).textContent = value || '';
 }
@@ -101,7 +131,8 @@ function renderCaption(state) {
 }
 function render(state) {
   latestState = state;
-  if (workspacePreview) state = { ...state, style: { ...state.style, ...draftStyle } };
+  if (workspacePreview)
+    state = { ...state, ...draftBranding, style: { ...state.style, ...draftStyle } };
   if (workspacePreview) {
     const config = previewPresentation,
       layers = { ...state.layers };
@@ -113,7 +144,7 @@ function render(state) {
         !(config.hidden || []).includes(key);
     state = { ...state, layers };
     if (layout) {
-      const item = state.live || state.programs[0];
+      const item = draftProgram || state.live || state.programs[0];
       state = {
         ...state,
         channelName: state.channelName || '台标',
@@ -127,21 +158,22 @@ function render(state) {
               performer: '表演者',
               subtitle: '排版预览示例',
             },
-        captionLive: state.captionLive || {
+        captionLive: (!draftProgram && state.captionLive) || {
           caption: item?.caption || '歌词字幕 · 排版预览示例',
           index: 0,
         },
       };
     }
   }
-  const template = templates.find((item) => item.id === state.templateId) || templates[0];
+  const template =
+    templates.find((item) => item.id === (draftTemplate || state.templateId)) || templates[0];
   const style = state.style,
     root = $('canvas');
   root.dataset.template = template.id;
   root.classList.toggle('no-motion', !style.motion);
   for (const key of ['accent', 'background', 'foreground'])
     root.style.setProperty('--' + key, style[key] || template[key]);
-  root.style.setProperty('--font', style.font === 'template' ? template.font : style.font);
+  setFont(root, style, template);
   root.style.setProperty('--title-size', style.fontSize + 'px');
   root.style.setProperty('--logo-size', style.logoSize + 'px');
   for (const key of ['channel', 'event', 'sponsor']) {
@@ -157,14 +189,19 @@ function render(state) {
   }
   $('lower').style.left = style.lowerX + 'px';
   $('lower').style.top = style.lowerY + 'px';
-  $('lower').style.width = style.lowerWidth + 'px';
+  $('lower').style.maxWidth = Math.min(style.lowerWidth, 1920 - style.lowerX) + 'px';
   $('caption').style.left = style.captionX + 'px';
   $('caption').style.top = style.captionY + 'px';
   $('caption').style.bottom = 'auto';
   setText('eventName', state.eventName);
-  setText('type', state.live?.type);
+  setText('type', template.id === 'ranking' ? state.live?.subtitle : state.live?.type);
   setText('title', state.live?.title);
-  setText('subtitle', [state.live?.performer, state.live?.subtitle].filter(Boolean).join(' · '));
+  setText(
+    'subtitle',
+    [state.live?.performer, template.id !== 'ranking' && state.live?.subtitle]
+      .filter(Boolean)
+      .join(' · '),
+  );
   renderCaption(state);
   $('lower').classList.toggle('visible', Boolean(state.layers.lower && state.live));
   if (!Object.values(state.layers).some(Boolean) && cue !== null && state.transition.cue === cue)

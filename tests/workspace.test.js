@@ -111,7 +111,9 @@ test('stage takes an immutable live snapshot and rejects invalid patches atomica
     (await fetch(base + '/api/v1/state', { headers: { 'If-None-Match': etag } })).status,
     304,
   );
-  assert.equal((await body(base, '/api/stage/templates')).data.templates.length, 4);
+  const { templates } = (await body(base, '/api/stage/templates')).data;
+  for (const id of ['lyrics', 'announcement', 'ranking'])
+    assert(templates.some((item) => item.id === id));
   for (const file of ['control.html', 'control.js', 'graphics.html', 'graphics.css', 'graphics.js'])
     assert.equal((await fetch(base + '/stage/' + file)).status, 200);
 });
@@ -305,4 +307,114 @@ test('native assets stream from disk, media supports ranges, GT uses the vMix en
   });
   assert.equal(response.status, 403);
   assert.equal((await body(base, '/api/stage/library')).data.assets.length, 4);
+});
+
+test('LAN operators prepare and hand off GT captions without sharing the host API or writing live cues', async (t) => {
+  const { createStageServer } = require('../server/stage-server');
+  const { importLyrics } = require('../modules/stage/captions');
+  const dataDirectory = directory(t);
+  const calls = [];
+  let rejectOverlay = true;
+  let finishOverlay;
+  const server = createStageServer({
+    dataDirectory,
+    vmixFetch: async (url) => {
+      const query = url.searchParams;
+      const command = query.get('Function');
+      calls.push([command, query.get('Value')]);
+      if (command === 'OverlayInput2In' && rejectOverlay)
+        return new Response('Error', { status: 500 });
+      if (command === 'OverlayInput2In')
+        await new Promise((resolve) => {
+          finishOverlay = resolve;
+        });
+      return new Response('OK');
+    },
+  });
+  const host = await listenLocal(server);
+  t.after(() => closeLocal(server));
+  const endpoint = '/api/stage/collaboration';
+  const post = (payload) => body(host, endpoint, payload);
+  const { session } = (await body(host, endpoint)).data;
+  const address = session.addresses[0];
+  if (!address) return t.skip('requires a local IPv4 interface');
+  const { session: invitation } = (await post({ action: 'open', address })).data;
+  const lan = new URL(invitation.url).origin;
+  assert.equal((await fetch(invitation.url)).status, 200);
+  assert.equal((await fetch(lan + '/stage-module/captions.js')).status, 200);
+  assert.equal((await fetch(lan + '/api/v1/state')).status, 404);
+  assert.equal((await fetch(lan + '/api/stage/register')).status, 404);
+  const remote = async (action, data, token) => {
+    const response = await fetch(lan + '/api/collaboration/' + action, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: 'Bearer ' + token }),
+      },
+      ...(data !== undefined && { method: 'POST', body: JSON.stringify(data) }),
+    });
+    return { status: response.status, data: await response.json() };
+  };
+  assert.equal((await remote('state')).status, 401);
+  assert.equal((await remote('join', { name: 'A', code: 'bad' })).status, 403);
+  const { token: a } = (await remote('join', { name: 'A', code: invitation.code })).data;
+  const { token: b } = (await remote('join', { name: 'B', code: invitation.code })).data;
+  const saved = await body(host, '/api/v1/state', {
+    programs: [{ id: 'song', type: '歌唱', title: '试唱', caption: '' }],
+    vmix: { input: 'Lyrics', captionMode: true, overlay: 2 },
+  });
+  assert.equal(saved.status, 200);
+  const caption = importLyrics(
+    '[ti:试唱]\r\n[00:11.2]第二句\r\n[00:05.05][00:19]第一句',
+    true,
+  ).join('\n');
+  assert.equal(caption, '第一句\n第二句\n第一句');
+  assert.equal(
+    (await remote('save', { programId: 'song', caption: '', value: caption }, a)).status,
+    200,
+  );
+  assert.equal(
+    (await remote('save', { programId: 'song', caption: '', value: '过时的草稿' }, b)).status,
+    409,
+  );
+  const ready = await remote('prepare', { programId: 'song', caption, index: 0 }, a);
+  assert.equal(ready.data.prepared.text, '第一句');
+  assert.deepEqual(calls, []);
+  assert.equal((await remote('take', ready.data.prepared, a)).status, 409);
+  const bId = ready.data.session.clients.find((client) => client.name === 'B').id;
+  assert.equal((await post({ action: 'control', target: bId })).status, 200);
+  assert.equal((await remote('take', ready.data.prepared, b)).status, 502);
+  assert.equal((await remote('state', undefined, a)).data.live.uncertain, true);
+  rejectOverlay = false;
+  const taking = remote('take', ready.data.prepared, b);
+  t.after(() => finishOverlay?.());
+  while (!finishOverlay) await new Promise((resolve) => setTimeout(resolve, 10));
+  const inFlight = (await remote('state', undefined, a)).data;
+  assert.equal(inFlight.busy, true);
+  assert.equal((await post({ action: 'control', target: 'claim' })).status, 409);
+  finishOverlay();
+  assert.equal((await taking).data.live.text, '第一句');
+  const received = (await remote('state', undefined, a)).data;
+  assert.equal(received.live.visible, true);
+  assert.equal(received.live.operator, 'B');
+  assert.equal(received.prepared, null);
+  const aId = received.session.clients.find((client) => client.name === 'A').id;
+  assert.equal((await remote('control', { target: aId }, b)).status, 200);
+  assert.equal(
+    (await remote('caption.next', { programId: 'song', caption }, a)).data.live.text,
+    '第二句',
+  );
+  assert.equal((await remote('caption.hide', {}, a)).data.live.visible, false);
+  assert.deepEqual(calls, [
+    ['SetText', '第一句'],
+    ['OverlayInput2In', null],
+    ['SetText', '第一句'],
+    ['OverlayInput2In', null],
+    ['SetText', '第二句'],
+    ['OverlayInput2Out', null],
+  ]);
+  const disk = JSON.parse(fs.readFileSync(path.join(dataDirectory, 'state.json'), 'utf8'));
+  assert.equal(disk.programs[0].caption, caption);
+  assert.equal(disk.captionLive, null);
+  await post({ action: 'stop' });
+  await assert.rejects(fetch(invitation.url));
 });

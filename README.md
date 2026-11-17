@@ -3,7 +3,8 @@
 给 vMix 用的转播包装工具。正式版提供足球比分、计时、名单和比赛事件。Beta 版还可以加载舞台节目和 AE 直播模块。
 
 - 正式版 1.1.0 · [GitHub 下载](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v1.1.0) · [Gitee 下载](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v1.1.0)
-- Beta 2.0.0-beta.2 · [GitHub 下载](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v2.0.0-beta.2) · [Gitee 源码](https://gitee.com/alanhe0728/vibe-vmix/tree/beta)
+- Beta 2.0.0-beta.4 · [GitHub 源码](https://github.com/AlanHe0728/vibe-vmix/tree/beta) · [Gitee 源码](https://gitee.com/alanhe0728/vibe-vmix/tree/beta)
+- [Beta 2.0.0-beta.2 便携包](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v2.0.0-beta.2)
 - [历史版本和浏览器源码](https://github.com/AlanHe0728/vibe-vmix/releases)
 
 解压便携包后运行 EXE。打开控制台，复制上屏地址到 vMix 网页输入，画布设为 1920 × 1080。Beta 可先在 PVW 调整布局，再应用到播出。

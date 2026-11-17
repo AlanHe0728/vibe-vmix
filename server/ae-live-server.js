@@ -3,7 +3,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { createStaticHandler } = require('./static-files');
+const { createStaticHandler, operatorTheme } = require('./static-files');
 const { json, readObject, method } = require('./http-utils');
 const { AppError } = require('../core/errors');
 const { validateCommand } = require('../modules/ae-live/commands');
@@ -12,6 +12,7 @@ function createAELiveServer({
   dataDirectory,
   project = path.resolve(__dirname, '..'),
   vmixFetch = fetch,
+  sharedVmixPort = () => null,
 }) {
   fs.mkdirSync(path.join(dataDirectory, 'cache'), { recursive: true });
   const tokenFile = path.join(dataDirectory, 'pairing.json');
@@ -45,6 +46,7 @@ function createAELiveServer({
   let inFlight = null;
   const mount = createStaticHandler([
     { prefix: '/ae/', directory: path.join(project, 'ui/ae-live') },
+    operatorTheme(project),
   ]);
   const frameFile = path.join(dataDirectory, 'latest.png');
   function connected() {
@@ -140,15 +142,22 @@ function createAELiveServer({
     if (!session || body.session !== session) throw new AppError('连接会话已失效，请重新配对', 409);
     lastSeen = Date.now();
   }
+  let vmixRequests = 0;
+  let overlayMayBeLive = false;
   async function vMix(params) {
-    const url = new URL('http://127.0.0.1:' + settings.port + '/api/');
+    const url = new URL('http://127.0.0.1:' + (sharedVmixPort() ?? settings.port) + '/api/');
     url.search = new URLSearchParams(params).toString();
+    vmixRequests++;
+    if (/^OverlayInput\d+In$/.test(params.Function)) overlayMayBeLive = true;
     try {
       const response = await vmixFetch(url, { signal: AbortSignal.timeout(5000) });
       const result = await response.text();
       if (!response.ok || /^\s*(error|failed)/i.test(result)) throw Error(result.slice(0, 200));
+      if (/^OverlayInput\d+Out$/.test(params.Function)) overlayMayBeLive = false;
     } catch (error) {
       throw new AppError('vMix 操作失败：' + error.message, 502);
+    } finally {
+      vmixRequests--;
     }
   }
   const server = http.createServer(async (req, res) => {
@@ -179,9 +188,8 @@ function createAELiveServer({
         method(req, 'POST');
         const body = await readObject(req, 8192);
         if (
-          !Number.isInteger(body.port) ||
-          body.port < 1 ||
-          body.port > 65535 ||
+          (body.port !== undefined &&
+            (!Number.isInteger(body.port) || body.port < 1 || body.port > 65535)) ||
           !Number.isInteger(body.overlay) ||
           body.overlay < 1 ||
           body.overlay > 4 ||
@@ -190,7 +198,7 @@ function createAELiveServer({
         )
           throw new AppError('vMix 设置无效');
         settings = {
-          port: body.port,
+          port: body.port ?? settings.port,
           input: body.input,
           overlay: body.overlay,
           layout: settings.layout,
@@ -368,6 +376,10 @@ function createAELiveServer({
     session = '';
   };
   server.workspaceLayout = () => ({ ...settings.layout });
+  server.checkVmixPortChange = () => {
+    if (vmixRequests || overlayMayBeLive)
+      throw new AppError('请先撤下 AE 动画，再更改共用端口', 409);
+  };
   server.workspaceSetLayout = (layout) => {
     settings = { ...settings, layout };
     saveSettings();

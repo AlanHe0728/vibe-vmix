@@ -1,4 +1,8 @@
 'use strict';
+document.body.classList.toggle(
+  'embedded',
+  new URLSearchParams(location.search).get('workspace') === '1',
+);
 const $ = (id) => document.getElementById(id);
 $('openPreview').onclick = () => {
   if (window.parent !== window) window.parent.postMessage({ type: 'open-preview' }, '*');
@@ -207,7 +211,7 @@ $('renderForm').onsubmit = run(() =>
 );
 $('vmixForm').onsubmit = run(() =>
   api('settings', {
-    port: Number($('port').value),
+    ...(!document.body.classList.contains('embedded') && { port: Number($('port').value) }),
     overlay: Number($('overlay').value),
     input: $('input').value,
   }),

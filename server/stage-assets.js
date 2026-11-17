@@ -23,6 +23,10 @@ const kinds = {
   '.nbtitle': 'newblue',
   '.nbtlproj': 'newblue',
   '.nbtlpkg': 'newblue',
+  '.ttf': 'font',
+  '.otf': 'font',
+  '.woff': 'font',
+  '.woff2': 'font',
 };
 const mime = {
   '.png': 'image/png',
@@ -33,6 +37,10 @@ const mime = {
   '.mp4': 'video/mp4',
   '.mov': 'video/quicktime',
   '.avi': 'video/x-msvideo',
+  '.ttf': 'font/ttf',
+  '.otf': 'font/otf',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
 };
 
 function createAssetLibrary(directory) {
@@ -41,6 +49,8 @@ function createAssetLibrary(directory) {
   let entries = fs.existsSync(indexFile) ? JSON.parse(fs.readFileSync(indexFile, 'utf8')) : [];
   if (!Array.isArray(entries)) throw Error('素材库索引损坏，请恢复备份');
   const jobs = new Map();
+  const folders = new Map();
+  let browsing = new Map();
   const children = new Set();
   let disposed = false;
   function save(entry) {
@@ -52,7 +62,7 @@ function createAssetLibrary(directory) {
     return entry;
   }
   function get(id) {
-    const entry = entries.find((item) => item.id === id);
+    const entry = entries.find((item) => item.id === id) || browsing.get(id);
     if (!entry) throw new AppError('找不到素材', 404);
     return entry;
   }
@@ -71,10 +81,75 @@ function createAssetLibrary(directory) {
       createdAt: Date.now(),
     };
   }
+  function browse(folder) {
+    const directory = folders.get(folder);
+    if (!directory) throw new AppError('请选择素材文件夹', 404);
+    const items = fs.readdirSync(directory, { withFileTypes: true });
+    const children = [];
+    const files = new Map();
+    for (const item of items) {
+      const sourcePath = path.join(directory, item.name);
+      const id = crypto
+        .createHash('sha256')
+        .update(sourcePath)
+        .digest('hex')
+        .slice(0, 32);
+      if (item.isDirectory() && !item.isSymbolicLink()) {
+        folders.set(id, sourcePath);
+        children.push({ id, name: item.name });
+      } else if (item.isFile()) {
+        const extension = path.extname(item.name).toLowerCase();
+        if (Object.hasOwn(kinds, extension))
+          files.set(id, {
+            id,
+            name: item.name,
+            kind: kinds[extension],
+            file: id + extension,
+            sourcePath,
+            available: true,
+          });
+      }
+    }
+    browsing = files;
+    return {
+      folders: children,
+      assets: [...files.values()],
+      name: path.basename(directory) || directory,
+    };
+  }
   return {
     list: () => entries.map((entry) => ({ ...entry, available: fs.existsSync(filename(entry)) })),
     get,
     filename,
+    openFolder(sourcePath) {
+      if (typeof sourcePath !== 'string' || !path.isAbsolute(sourcePath))
+        throw new AppError('请选择本地文件夹');
+      let directory;
+      try {
+        directory = fs.realpathSync(sourcePath);
+        if (!fs.statSync(directory).isDirectory()) throw Error();
+      } catch {
+        throw new AppError('找不到素材文件夹', 404);
+      }
+      folders.clear();
+      folders.set('root', directory);
+      return browse('root');
+    },
+    browse,
+    pin(id) {
+      const entry = get(id);
+      const existing = entries.find(
+        (item) => item.id === id || (entry.sourcePath && item.sourcePath === entry.sourcePath),
+      );
+      if (existing) return existing;
+      const { available, ...record } = entry;
+      try {
+        return save({ ...record, bytes: fs.statSync(record.sourcePath).size });
+      } catch (error) {
+        if (error.code === 'ENOENT') throw new AppError('源文件已移动或删除', 404);
+        throw error;
+      }
+    },
     register(sourcePath) {
       if (typeof sourcePath !== 'string' || !path.isAbsolute(sourcePath))
         throw new AppError('请选择本地工程');
@@ -119,10 +194,15 @@ function createAssetLibrary(directory) {
       }
     },
     async serve(req, res, file) {
-      const entry = entries.find((item) => item.file === file && !item.sourcePath);
-      if (!entry || !mime[path.extname(file)]) throw new AppError('找不到素材', 404);
+      const entry = entries.find((item) => item.file === file) || browsing.get(file.slice(0, 32));
+      if (!entry || entry.file !== file || !mime[path.extname(file)])
+        throw new AppError('找不到素材', 404);
       const target = filename(entry);
-      const stat = await fs.promises.stat(target);
+      const stat = await fs.promises.stat(target).catch((error) => {
+        if (['ENOENT', 'ENOTDIR'].includes(error.code)) throw new AppError('素材已移动或删除', 404);
+        throw error;
+      });
+      if (!stat.isFile() || !stat.size) throw new AppError('素材无法预览', 404);
       let start = 0,
         end = stat.size - 1,
         partial = false;

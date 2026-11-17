@@ -14,7 +14,7 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: System.Reflection.AssemblyTitle("转播包装工作台")]
 [assembly: System.Reflection.AssemblyProduct("转播包装工作台")]
 [assembly: System.Reflection.AssemblyVersion("2.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersion("2.0.0-beta.2")]
+[assembly: System.Reflection.AssemblyInformationalVersion("2.0.0-beta.4")]
 
 internal static class Program {
     internal static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
@@ -136,8 +136,31 @@ internal sealed class WorkspaceForm : Form {
             if (type == "open-preview") {
                 string id = message.ContainsKey("module") ? Convert.ToString(message["module"]) : "all";
                 if (!new List<string> { "all", "stage", "football", "ae-live" }.Contains(id)) return;
-                var child = new WorkspaceForm(Program.Origin + "/workspace/preview.html?module=" + Uri.EscapeDataString(id), false);
+                string url = Program.Origin + "/workspace/preview.html?module=" + Uri.EscapeDataString(id);
+                foreach (Form window in OwnedForms) {
+                    var existing = window as WorkspaceForm;
+                    if (existing == null || existing.destination != url) continue;
+                    if (existing.WindowState == FormWindowState.Minimized) existing.WindowState = FormWindowState.Normal;
+                    existing.Activate();
+                    return;
+                }
+                var child = new WorkspaceForm(url, false);
                 child.Text = "预览与布局"; child.Show(this);
+            } else if (type == "list-fonts") {
+                using (var collection = new System.Drawing.Text.InstalledFontCollection()) {
+                    var names = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
+                    foreach (FontFamily family in collection.Families) {
+                        names.Add(family.Name);
+                        family.Dispose();
+                    }
+                    await view.CoreWebView2.ExecuteScriptAsync("window.dispatchEvent(new CustomEvent('native-fonts',{detail:" + Program.Json.Serialize(new { fonts = new List<string>(names) }) + "}));");
+                }
+            } else if (type == "open-folder") {
+                using (var picker = new FolderBrowserDialog()) {
+                    picker.Description = "选择舞台素材文件夹"; picker.ShowNewFolderButton = false;
+                    if (picker.ShowDialog(this) == DialogResult.OK)
+                        await view.CoreWebView2.ExecuteScriptAsync("window.dispatchEvent(new CustomEvent('native-folder',{detail:" + Program.Json.Serialize(new { path = picker.SelectedPath }) + "}));");
+                }
             } else if (type == "import-source") {
                 using (var picker = new OpenFileDialog()) {
                     picker.Title = "链接舞台包装工程"; picker.Filter = "包装工程|*.gtzip;*.gtxml;*.aep;*.aepx;*.nbtitle;*.nbtlproj;*.nbtlpkg"; picker.CheckFileExists = true;

@@ -76,6 +76,7 @@ function createStageModule() {
         background: '',
         foreground: '',
         font: 'template',
+        fontAsset: '',
         fontSize: 48,
         lowerX: 96,
         lowerY: 792,
@@ -98,6 +99,9 @@ function createStageModule() {
         input: '',
         titleField: 'Headline.Text',
         subtitleField: 'Description.Text',
+        captionField: 'Headline.Text',
+        captionMode: false,
+        animation: '',
         overlay: 1,
       },
     };
@@ -145,7 +149,11 @@ function createStageModule() {
       for (const key of ['accent', 'background', 'foreground'])
         if (style[key] !== '' && !/^#[\da-f]{6}$/i.test(style[key]))
           throw Error('颜色须为六位十六进制值');
-      if (!['template', 'serif', 'sans-serif'].includes(style.font)) throw Error('字体无效');
+      style.font = text(style.font, 120);
+      if (!style.font || /[\u0000-\u001f]/.test(style.font)) throw Error('字体无效');
+      style.fontAsset = text(style.fontAsset, 100);
+      if (style.fontAsset && !/^[a-f0-9]{32}\.(ttf|otf|woff2?)$/i.test(style.fontAsset))
+        throw Error('字体文件无效');
       number(style.fontSize, 24, 80);
       number(style.logoSize, 40, 300);
       number(style.lowerWidth, 400, 1728);
@@ -170,7 +178,10 @@ function createStageModule() {
       number(v.overlay, 1, 4);
       if (!Number.isInteger(v.port) || !Number.isInteger(v.overlay))
         throw Error('端口和叠加通道须为整数');
-      for (const field of ['input', 'titleField', 'subtitleField']) v[field] = text(v[field], 200);
+      for (const field of ['input', 'titleField', 'subtitleField', 'captionField', 'animation'])
+        v[field] = text(v[field], 200);
+      if (typeof v.captionMode !== 'boolean' || (v.captionMode && (!v.input || !v.captionField)))
+        throw Error('启用 GT 字幕时，请填写 GT 输入和字幕字段');
     }
     return next;
   }

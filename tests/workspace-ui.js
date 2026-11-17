@@ -64,6 +64,26 @@ async function main() {
       "document.querySelector('input[value=stage]').click();document.getElementById('apply').click()",
     );
     await cdp.until(page, "document.querySelector('#navigation button')?.textContent==='舞台节目'");
+    await cdp.until(
+      page,
+      "document.querySelector('#moduleFrame').src.endsWith('/stage/control.html?workspace=1')",
+    );
+    await cdp.eval(page, "document.getElementById('openSettings').click()");
+    assert.equal(
+      await cdp.eval(
+        page,
+        "document.getElementById('settingsDialog').open && document.querySelector('#outputAddresses input').value.includes('/stage/graphics.html')",
+      ),
+      true,
+    );
+    await cdp.eval(
+      page,
+      "document.getElementById('sharedVmixPort').value='8090';document.getElementById('compactSidebar').checked=true;document.getElementById('settingsForm').requestSubmit()",
+    );
+    await cdp.until(
+      page,
+      "!document.getElementById('settingsDialog').open && document.querySelector('.app').classList.contains('sidebar-compact')",
+    );
     const workspace = await fetch(origin + '/api/workspace').then((response) => response.json());
     const stageOrigin = workspace.modules.find((item) => item.id === 'stage').url;
     const stage = await cdp.page(stageOrigin + '/stage/control.html');
@@ -95,10 +115,15 @@ async function main() {
     await cdp.eval(stage, "document.getElementById('captionPrevious').click()");
     await cdp.until(graphics, "document.getElementById('captionText').textContent==='第一句歌词'");
     await cdp.eval(stage, "document.querySelectorAll('#captionList button')[2].click()");
+    await cdp.until(stage, "!document.getElementById('captionTake').disabled");
+    await cdp.eval(stage, "document.getElementById('captionTake').click()");
     await cdp.until(graphics, "document.getElementById('captionText').textContent==='第三句歌词'");
     await cdp.eval(stage, "document.getElementById('captionHide').click()");
     await cdp.until(graphics, "!document.getElementById('caption').classList.contains('visible')");
     await cdp.eval(stage, "document.querySelectorAll('#captionList button')[0].click()");
+    await cdp.until(stage, "!document.getElementById('captionTake').disabled");
+    await cdp.eval(stage, "document.getElementById('captionTake').click()");
+    await cdp.until(graphics, "document.getElementById('captionText').textContent==='第一句歌词'");
     await cdp.eval(stage, "document.getElementById('take').click()");
     await cdp.until(stage, "document.getElementById('liveTitle').textContent==='山河回响'");
     await screenshot(stage, 'stage-show');
@@ -117,6 +142,79 @@ async function main() {
     );
     await cdp.eval(stage, "document.querySelector('[data-tab=design]').click()");
     await cdp.until(stage, "!document.getElementById('design').hidden");
+    assert.equal(
+      await cdp.eval(stage, "document.getElementById('design').parentElement.id"),
+      'dockRight',
+    );
+    await cdp.eval(
+      stage,
+      `const where=document.querySelector('#design .panel-actions select');where.value='bottom';where.dispatchEvent(new Event('change'));const color=document.querySelector('[data-color-for="accent"]');color.value='#123456';color.dispatchEvent(new Event('input'))`,
+    );
+    assert.deepEqual(
+      await cdp.eval(
+        stage,
+        "[document.getElementById('design').parentElement.id,document.getElementById('accent').value]",
+      ),
+      ['dockBottom', '#123456'],
+    );
+    const mediaFolder = path.join(directory, 'media');
+    fs.mkdirSync(mediaFolder);
+    fs.writeFileSync(
+      path.join(mediaFolder, 'Logo.png'),
+      Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a8XkAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    );
+    await cdp.eval(stage, 'browseFolder({path:' + JSON.stringify(mediaFolder) + '})');
+    await cdp.until(
+      stage,
+      "document.querySelector('.asset-tile')?.textContent.includes('Logo.png')",
+    );
+    await cdp.eval(
+      stage,
+      `document.querySelector('.asset-tile').click();const transfer=new DataTransfer();document.querySelector('.asset-tile').dispatchEvent(new DragEvent('dragstart',{dataTransfer:transfer,bubbles:true}));document.getElementById('channelAsset').parentElement.dispatchEvent(new DragEvent('drop',{dataTransfer:transfer,bubbles:true,cancelable:true}));`,
+    );
+    await cdp.until(
+      stage,
+      "document.querySelector('#assetDetails img') && document.querySelector('#channelAsset + .asset-field-preview img')",
+    );
+    const linked = await fetch(stageOrigin + '/api/stage/library').then((response) =>
+      response.json(),
+    );
+    assert.equal(
+      linked.assets.find((item) => item.name === 'Logo.png').sourcePath,
+      path.join(mediaFolder, 'Logo.png'),
+    );
+    assert.equal(
+      fs.existsSync(path.join(directory, 'data', 'stage', 'assets', linked.assets[0].file)),
+      false,
+    );
+    await cdp.eval(stage, "setInstalledFonts(['Test Installed Family'])");
+    assert.equal(
+      await cdp.eval(
+        stage,
+        "[...document.getElementById('font').options].some(option=>option.value==='Test Installed Family')",
+      ),
+      true,
+    );
+    await cdp.eval(
+      stage,
+      "document.getElementById('fontPicker').click();document.getElementById('fontSearch').value='Test Installed';document.getElementById('fontSearch').dispatchEvent(new Event('input',{bubbles:true}))",
+    );
+    await cdp.until(
+      stage,
+      "document.querySelector('.font-option')?.style.fontFamily.includes('Test Installed Family') && document.querySelector('#previewWrap iframe').contentDocument?.getElementById('canvas').style.getPropertyValue('--font').includes('Test Installed Family')",
+    );
+    assert.equal(await cdp.eval(stage, "document.getElementById('font').value"), 'template');
+    await cdp.eval(
+      stage,
+      "document.getElementById('fontSearch').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}))",
+    );
+    await cdp.until(
+      stage,
+      "!document.getElementById('fontPopup').matches(':popover-open') && !document.querySelector('#previewWrap iframe').contentDocument.getElementById('canvas').style.getPropertyValue('--font').includes('Test Installed Family')",
+    );
     await cdp.eval(stage, "document.querySelector('[data-id=ink]').click()");
     await cdp.until(
       stage,
@@ -147,6 +245,10 @@ async function main() {
       await cdp.eval(graphics, "document.getElementById('title').textContent"),
       '山河回响',
     );
+    assert.equal(
+      await cdp.eval(graphics, "document.getElementById('lower').offsetWidth < 500"),
+      true,
+    );
     const enabled = await fetch(origin + '/api/workspace', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -154,6 +256,55 @@ async function main() {
     }).then((response) => response.json());
     const aeOrigin = enabled.modules.find((item) => item.id === 'ae-live').url;
     const footballOrigin = enabled.modules.find((item) => item.id === 'football').url;
+    const football = await cdp.page(footballOrigin + '/control/panel.html');
+    assert.equal(
+      await cdp.eval(football, `document.querySelector('button[onclick="editorOpen()"]').hidden`),
+      false,
+    );
+    await cdp.eval(page, 'location.reload()');
+    await cdp.until(page, "document.querySelector('#navigation [data-id=football]')");
+    await cdp.eval(page, "document.querySelector('#navigation [data-id=football]').click()");
+    await cdp.until(page, "document.querySelector('#moduleFrame').src.includes('workspace=1')");
+    const collaboration = await fetch(stageOrigin + '/api/stage/collaboration').then((response) =>
+      response.json(),
+    );
+    if (collaboration.session.addresses.length) {
+      const { session } = await fetch(stageOrigin + '/api/stage/collaboration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'open', address: collaboration.session.addresses[0] }),
+      }).then((response) => response.json());
+      const subtitle = await cdp.page(session.url);
+      await cdp.send(
+        'Emulation.setDeviceMetricsOverride',
+        { width: 390, height: 844, deviceScaleFactor: 1, mobile: false },
+        subtitle,
+      );
+      await cdp.eval(
+        subtitle,
+        `document.getElementById('name').value='字幕员';document.getElementById('code').value=${JSON.stringify(session.code)};document.getElementById('join').requestSubmit()`,
+      );
+      await cdp.until(subtitle, "document.querySelectorAll('#captionList button').length===3");
+      assert.equal(
+        await cdp.eval(subtitle, 'document.documentElement.scrollWidth > innerWidth'),
+        false,
+      );
+      await cdp.eval(subtitle, "document.querySelectorAll('#captionList button')[1].click()");
+      await cdp.until(
+        stage,
+        "document.getElementById('captionPrepared').textContent.includes('第二句歌词')",
+      );
+      await cdp.eval(stage, "document.getElementById('captionTake').click()");
+      await cdp.until(
+        subtitle,
+        "document.getElementById('current').textContent.includes('第二句歌词')",
+      );
+      await fetch(stageOrigin + '/api/stage/collaboration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'stop' }),
+      });
+    }
     const preview = await cdp.page(origin + '/workspace/preview.html?module=stage');
     await cdp.send(
       'Emulation.setDeviceMetricsOverride',
@@ -164,8 +315,8 @@ async function main() {
       preview,
       "document.querySelectorAll('#tabs button').length===4 && document.querySelectorAll('.canvas iframe').length===2",
     );
-    async function frameValue(query, expression, exact = false) {
-      const tree = await cdp.send('Page.getFrameTree', {}, preview);
+    async function frameValue(query, expression, exact = false, target = preview) {
+      const tree = await cdp.send('Page.getFrameTree', {}, target);
       const frames = [];
       function collect(node) {
         frames.push(node.frame);
@@ -177,16 +328,25 @@ async function main() {
       const world = await cdp.send(
         'Page.createIsolatedWorld',
         { frameId: frame.id, worldName: 'preview-test' },
-        preview,
+        target,
       );
       const result = await cdp.send(
         'Runtime.evaluate',
         { expression, contextId: world.executionContextId, returnByValue: true },
-        preview,
+        target,
       );
       if (result.exceptionDetails) throw Error(JSON.stringify(result.exceptionDetails));
       return result.result.value;
     }
+    assert.equal(
+      await frameValue(
+        '/control/panel.html?workspace=1',
+        `[...document.querySelectorAll('button[onclick="editorOpen()"]')].every(button => button.hidden && getComputedStyle(button).display === 'none')`,
+        false,
+        page,
+      ),
+      true,
+    );
     await cdp.eval(
       preview,
       "document.getElementById('element').value='stage:caption';document.getElementById('element').dispatchEvent(new Event('change'));document.getElementById('x').value='440';document.getElementById('x').dispatchEvent(new Event('change'))",
@@ -454,7 +614,7 @@ async function main() {
     assert.equal(
       await cdp.eval(
         preview,
-        "document.getElementById('pvwPanel').hidden && !document.getElementById('pgmPanel').hidden",
+        "document.getElementById('pvwPanel').hidden && !document.getElementById('pgmPanel').hidden && ['previewToolbar', 'inspector', 'inspectorToggle', 'previewFooter'].every(id => getComputedStyle(document.getElementById(id)).display === 'none') && !document.getElementById('reloadFrames').hidden",
       ),
       true,
     );

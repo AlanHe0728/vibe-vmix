@@ -3,7 +3,7 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const { createStaticHandler } = require('./static-files');
+const { createStaticHandler, operatorTheme } = require('./static-files');
 const { json, readObject, method } = require('./http-utils');
 const { AppError } = require('../core/errors');
 const { listenLocal, closeLocal } = require('./listen-local');
@@ -44,10 +44,22 @@ function createWorkspaceServer({
     ? JSON.parse(fs.readFileSync(configFile, 'utf8').replace(/^\uFEFF/, ''))
     : { enabled: [] };
   const loaded = new Map();
+  let vmixPort =
+    Number.isInteger(saved.vmixPort) && saved.vmixPort >= 1 && saved.vmixPort <= 65535
+      ? saved.vmixPort
+      : null;
+  function saveConfig(enabled, port) {
+    fs.writeFileSync(
+      configFile + '.tmp',
+      JSON.stringify({ ...saved, enabled, vmixPort: port }, null, 2),
+    );
+    fs.renameSync(configFile + '.tmp', configFile);
+  }
   let busy = false;
   let shuttingDown = false;
   const staticFiles = createStaticHandler([
     { prefix: '/workspace/', directory: path.join(project, 'ui/workspace') },
+    operatorTheme(project),
   ]);
   const stageLayoutKeys = [
     'channelX',
@@ -137,7 +149,8 @@ function createWorkspaceServer({
         url: loaded.get(entry.id)?.url || null,
       })),
       loaded: [...loaded.keys()],
-      version: '2.0.0-beta.2',
+      vmixPort,
+      version: '2.0.0-beta.4',
     };
   }
   function validate(ids) {
@@ -160,13 +173,18 @@ function createWorkspaceServer({
     } else if (id === 'stage') {
       const directory = path.join(dataDirectory, 'stage');
       fs.mkdirSync(directory, { recursive: true });
-      service = require('./stage-server').createStageServer({ dataDirectory: directory, project });
+      service = require('./stage-server').createStageServer({
+        dataDirectory: directory,
+        project,
+        sharedVmixPort: () => vmixPort,
+      });
     } else {
       const directory = path.join(dataDirectory, 'ae-live');
       fs.mkdirSync(directory, { recursive: true });
       service = require('./ae-live-server').createAELiveServer({
         dataDirectory: directory,
         project,
+        sharedVmixPort: () => vmixPort,
       });
     }
     try {
@@ -195,8 +213,7 @@ function createWorkspaceServer({
     try {
       for (const id of ids) if (!loaded.has(id)) added.set(id, await load(id));
       if (persist) {
-        fs.writeFileSync(configFile + '.tmp', JSON.stringify({ enabled: ids }, null, 2));
-        fs.renameSync(configFile + '.tmp', configFile);
+        saveConfig(ids, vmixPort);
       }
       for (const [id, instance] of loaded) {
         if (!ids.includes(id)) {
@@ -223,6 +240,21 @@ function createWorkspaceServer({
       // Local control writes must come from this application, not a remote site.
       const origin = req.headers.origin;
       if (origin && origin !== 'http://' + req.headers.host) throw new AppError('来源不允许', 403);
+      if (pathname === '/api/workspace/settings') {
+        method(req, 'POST');
+        const { vmixPort: port } = await readObject(req, 8192);
+        if (port !== null && (!Number.isInteger(port) || port < 1 || port > 65535))
+          throw new AppError('vMix 端口应为 1 到 65535');
+        if (busy || shuttingDown) throw new AppError('工作台正在切换模块', 409);
+        if (port !== vmixPort) {
+          loaded.get('stage')?.server.checkVmixPortChange();
+          loaded.get('ae-live')?.server.checkVmixPortChange();
+          saveConfig([...loaded.keys()], port);
+          vmixPort = port;
+        }
+        json(res, { ok: true, vmixPort });
+        return;
+      }
       if (pathname === '/api/workspace') {
         res.setHeader('Cache-Control', 'no-store');
         if (req.method === 'GET') json(res, { ok: true, ...describe() });

@@ -29,11 +29,16 @@ const base = {},
   boxes = {};
 let modules = [],
   tab = new URLSearchParams(location.search).get('module') || 'all';
+let inspectorOpen = true;
 let view = 'dual',
   selected = '',
   busy = false,
   scales = { pvw: 1, pgm: 1 },
   timer;
+try {
+  const preferred = localStorage.getItem('workspace-preview-default');
+  if (['dual', 'pvw', 'pgm'].includes(preferred)) view = preferred;
+} catch {}
 
 async function api(url, data) {
   const response = await fetch(
@@ -166,7 +171,8 @@ function fillControls() {
     $('size').min = range.minSize;
     $('size').max = range.maxSize;
     $('size').step = range.step;
-    $('sizeLabel').firstChild.textContent = element.id === 'stage' ? '宽度 / 尺寸' : '缩放';
+    $('sizeLabel').firstChild.textContent =
+      element.id !== 'stage' ? '缩放' : element.fields.size === 'lowerWidth' ? '最大宽度' : '尺寸';
   }
   updateActions();
   window.previewTools?.sync();
@@ -326,12 +332,24 @@ function outputUrl(module, kind) {
         : '/ae/graphics.html';
   return module.url + route + (kind === 'pvw' ? '?workspacePreview=1' : '');
 }
+function renderInspector() {
+  const visible = view !== 'pgm' && inspectorOpen;
+  $('inspector').hidden = !visible;
+  $('inspectorToggle').hidden = view === 'pgm';
+  $('inspectorToggle').setAttribute('aria-expanded', String(visible));
+  document.querySelector('.editor-shell').classList.toggle('tools-collapsed', !visible);
+}
 function renderScreens() {
+  document
+    .querySelectorAll('[data-view]')
+    .forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
   const active = activeModules();
   $('pvwPanel').hidden = view === 'pgm';
   $('pgmPanel').hidden = view === 'pvw';
   $('screens').classList.toggle('single', view !== 'dual');
-  $('screenNote').hidden = tab !== 'all';
+  $('previewToolbar').hidden = view === 'pgm';
+  $('previewFooter').hidden = view === 'pgm';
+  renderInspector();
   for (const kind of ['pvw', 'pgm']) {
     const canvas = $(kind + 'Canvas');
     canvas.querySelectorAll('iframe').forEach((frame) => frame.remove());
@@ -470,6 +488,11 @@ $('apply').onclick = async () => {
     fillControls();
     drawHandle();
   }
+};
+$('inspectorToggle').onclick = () => {
+  inspectorOpen = !inspectorOpen;
+  renderInspector();
+  requestAnimationFrame(resize);
 };
 renderTabs();
 renderScreens();
