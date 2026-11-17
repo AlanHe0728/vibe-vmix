@@ -84,6 +84,7 @@ run(compiler, [
   '/optimize+',
   '/out:' + executable,
   '/win32icon:' + path.join(output, 'workspace.ico'),
+  '/win32manifest:' + path.join(root, 'desktop/native/workspace.manifest'),
   '/r:System.Windows.Forms.dll',
   '/r:System.Drawing.dll',
   '/r:System.Web.Extensions.dll',
@@ -91,10 +92,7 @@ run(compiler, [
   '/r:' + path.join(output, 'Microsoft.Web.WebView2.WinForms.dll'),
   path.join(root, 'desktop/native/Program.cs'),
 ]);
-fs.writeFileSync(
-  executable + '.config',
-  '<?xml version="1.0"?><configuration><startup><supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.7.2"/></startup></configuration>',
-);
+fs.copyFileSync(path.join(root, 'desktop/native/workspace.config'), executable + '.config');
 fs.mkdirSync(path.join(output, 'data'));
 fs.writeFileSync(
   path.join(output, 'data/workspace.json'),

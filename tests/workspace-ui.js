@@ -315,6 +315,30 @@ async function main() {
       preview,
       "document.querySelectorAll('#tabs button').length===4 && document.querySelectorAll('.canvas iframe').length===2",
     );
+    for (const [physicalWidth, physicalHeight, scale] of [
+      [3440, 1440, 1],
+      [2560, 1600, 1.25],
+      [2560, 1600, 1.5],
+      [1920, 1080, 1.25],
+      [1366, 768, 1],
+    ]) {
+      await cdp.send('Emulation.setDeviceMetricsOverride', {
+        width: Math.floor(physicalWidth / scale),
+        height: Math.floor(physicalHeight / scale),
+        deviceScaleFactor: scale,
+        mobile: false,
+      }, preview);
+      await cdp.until(preview, `devicePixelRatio===${scale} && ['pvw','pgm'].every(kind => {
+        const wrap = document.getElementById(kind+'Wrap').getBoundingClientRect();
+        const canvas = document.getElementById(kind+'Canvas').getBoundingClientRect();
+        return wrap.width > 0 && Math.abs(wrap.width - canvas.width) < 1 &&
+          Math.abs(wrap.height - canvas.height) < 1 &&
+          wrap.bottom <= document.querySelector('.workspace-area').getBoundingClientRect().bottom;
+      })`);
+    }
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440, height: 960, deviceScaleFactor: 1, mobile: false,
+    }, preview);
     async function frameValue(query, expression, exact = false, target = preview) {
       const tree = await cdp.send('Page.getFrameTree', {}, target);
       const frames = [];

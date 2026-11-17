@@ -300,13 +300,15 @@ function drawHandle() {
 }
 function resize() {
   for (const kind of ['pvw', 'pgm']) {
-    const width = $(kind + 'Wrap').clientWidth;
+    const width = $(kind + 'Wrap').getBoundingClientRect().width;
     if (!width) continue;
     scales[kind] = width / 1920;
-    $(kind + 'Canvas').style.transform = 'scale(' + scales[kind] + ')';
+    $(kind + 'Canvas').style.zoom = scales[kind];
   }
 }
-new ResizeObserver(resize).observe($('screens'));
+const previewSize = new ResizeObserver(resize);
+previewSize.observe($('pvwWrap'));
+previewSize.observe($('pgmWrap'));
 function renderTabs() {
   $('tabs').replaceChildren();
   for (const item of [{ id: 'all', name: '全部模块' }, ...modules]) {

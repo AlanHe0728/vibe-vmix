@@ -15,6 +15,7 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: System.Reflection.AssemblyProduct("转播包装工作台")]
 [assembly: System.Reflection.AssemblyVersion("2.0.0.0")]
 [assembly: System.Reflection.AssemblyInformationalVersion("2.0.0-beta.4")]
+[assembly: System.Runtime.Versioning.TargetFramework(".NETFramework,Version=v4.7.2")]
 
 internal static class Program {
     internal static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
@@ -91,13 +92,17 @@ internal static class Program {
 }
 
 internal sealed class WorkspaceForm : Form {
+    private static readonly Size InitialWindowSize = new Size(1480, 980);
+    private static readonly Size MinimumWindowSize = new Size(640, 450);
     private readonly WebView2 view = new WebView2();
     private readonly bool main;
     private readonly string destination;
     private readonly Label loading = new Label();
     internal WorkspaceForm(string url, bool isMain) {
         main = isMain; destination = url;
-        Text = "转播包装工作台"; Width = 1480; Height = 980; MinimumSize = new Size(920, 680);
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        Text = "转播包装工作台"; Size = InitialWindowSize; MinimumSize = MinimumWindowSize;
         StartPosition = FormStartPosition.CenterScreen; BackColor = Color.White;
         if (Environment.GetEnvironmentVariable("BROADCAST_DESKTOP_TEST") == "1") { Opacity = 0; ShowInTaskbar = false; }
         string icon = Path.Combine(Program.Root, "workspace.ico"); if (File.Exists(icon)) Icon = new Icon(icon);
@@ -109,6 +114,22 @@ internal sealed class WorkspaceForm : Form {
             if (view.CoreWebView2 == null) return;
             try { if (WindowState == FormWindowState.Minimized) await view.CoreWebView2.TrySuspendAsync(); else view.CoreWebView2.Resume(); } catch { }
         };
+    }
+    protected override void OnLoad(EventArgs e) {
+        base.OnLoad(e);
+        var area = Screen.FromControl(Owner ?? this).WorkingArea;
+        var available = Size.Subtract(area.Size, new Size(24, 24));
+        float scale = CurrentAutoScaleDimensions.Width / 96F;
+        MinimumSize = FitWindowSize(MinimumWindowSize, available, scale);
+        var size = FitWindowSize(InitialWindowSize, available, scale);
+        var width = size.Width;
+        var height = size.Height;
+        Bounds = new Rectangle(area.Left + (area.Width - width) / 2,
+            area.Top + (area.Height - height) / 2, width, height);
+    }
+    private static Size FitWindowSize(Size logical, Size available, float scale) {
+        return new Size(Math.Min((int)Math.Round(logical.Width * scale), available.Width),
+            Math.Min((int)Math.Round(logical.Height * scale), available.Height));
     }
     private async Task Initialize() {
         try {

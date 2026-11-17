@@ -150,32 +150,7 @@ async function main() {
       await delay(100);
     }
     assert(footballFrame, 'football control is loaded in the native window');
-    const world = await cdp.send(
-      'Page.createIsolatedWorld',
-      { frameId: footballFrame.id, worldName: 'native-preview-test' },
-      sessionId,
-    );
-    for (let i = 0; i < 60; i++) {
-      const probe = await cdp.send(
-        'Runtime.evaluate',
-        {
-          contextId: world.executionContextId,
-          expression: '!!document.querySelector(\'[onclick=\\"editorOpen()\\"]\')',
-          returnByValue: true,
-        },
-        sessionId,
-      );
-      if (probe.result.value) break;
-      await delay(100);
-    }
-    await cdp.send(
-      'Runtime.evaluate',
-      {
-        contextId: world.executionContextId,
-        expression: 'document.querySelector(\'[onclick=\\"editorOpen()\\"]\').click()',
-      },
-      sessionId,
-    );
+    await cdp.eval(sessionId, "document.getElementById('openPreview').click()");
     let previewTarget;
     for (let i = 0; i < 100; i++) {
       const { targetInfos } = await cdp.send('Target.getTargets');
@@ -202,17 +177,47 @@ async function main() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sb_clockcmd: 'start' }),
     });
+    const viewport = await cdp.eval(sessionId, '({ ratio: devicePixelRatio, width: innerWidth, height: innerHeight })');
+    const capture = await cdp.send('Page.captureScreenshot', { format: 'png' }, sessionId);
+    const png = Buffer.from(capture.data, 'base64');
+    assert(Math.abs(png.readUInt32BE(16) - viewport.width * viewport.ratio) <= 2);
+    assert(Math.abs(png.readUInt32BE(20) - viewport.height * viewport.ratio) <= 2);
     // Close the real top-level Windows window, not a DevTools page target.
-    const closeScript =
-      'Add-Type -TypeDefinition \'using System; using System.Runtime.InteropServices; public class NativeClose { [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr handle, uint message, IntPtr wParam, IntPtr lParam); }\'; [NativeClose]::PostMessage([IntPtr]::new(' +
-      ready.windowHandle +
-      '),16,[IntPtr]::Zero,[IntPtr]::Zero)';
+    const closeScript = `
+      Add-Type -TypeDefinition '
+        using System;
+        using System.Runtime.InteropServices;
+        public class NativeWindow {
+          [StructLayout(LayoutKind.Sequential)]
+          public struct Rect { public int Left, Top, Right, Bottom; }
+          [DllImport("user32.dll")] public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+          [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr window, out Rect rect);
+          [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr window);
+          [DllImport("user32.dll")] public static extern IntPtr GetWindowDpiAwarenessContext(IntPtr window);
+          [DllImport("user32.dll")] public static extern bool AreDpiAwarenessContextsEqual(IntPtr a, IntPtr b);
+          [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+        }'
+      $taskHandle = [IntPtr]::new(${ready.windowHandle})
+      $taskBuild = [int](Get-ItemPropertyValue 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' CurrentBuildNumber)
+      if ($taskBuild -ge 15063) {
+        $taskContext = [IntPtr]::new(-4)
+        if (-not [NativeWindow]::AreDpiAwarenessContextsEqual([NativeWindow]::GetWindowDpiAwarenessContext($taskHandle), $taskContext)) { exit 3 }
+        if ([Math]::Abs([NativeWindow]::GetDpiForWindow($taskHandle) / 96.0 - ${viewport.ratio}) -gt 0.01) { exit 5 }
+        [void][NativeWindow]::SetThreadDpiAwarenessContext($taskContext)
+        $taskRect = New-Object NativeWindow+Rect
+        if (-not [NativeWindow]::GetClientRect($taskHandle, [ref]$taskRect)) { exit 6 }
+        if ([Math]::Abs($taskRect.Right - ${png.readUInt32BE(16)}) -gt 2 -or
+            [Math]::Abs($taskRect.Bottom - ${png.readUInt32BE(20)}) -gt 2) { exit 7 }
+      }
+      if (-not [NativeWindow]::PostMessage($taskHandle,16,[IntPtr]::Zero,[IntPtr]::Zero)) { exit 4 }
+    `;
     const close = spawn(
       'C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe',
       ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', closeScript],
       { windowsHide: true, stdio: 'ignore' },
     );
-    await new Promise((resolve) => close.on('exit', resolve));
+    assert.equal(await new Promise((resolve) => close.on('exit', resolve)), 0,
+      'WebView2 output must match the native window DPI and physical client size');
     for (let i = 0; i < 80 && host.exitCode === null; i++) await delay(100);
     assert.notEqual(host.exitCode, null, 'host exits after closing window');
     await assert.rejects(fetch(origin + '/api/workspace'));
@@ -239,6 +244,8 @@ async function main() {
     console.log(
       'PASS native EXE, football separate preview window, module loading, real window close, clock pause and all sockets released',
     );
+    console.log('PASS native rendering at ' + Math.round(viewport.ratio * 100) + '%: ' +
+      png.readUInt32BE(16) + 'x' + png.readUInt32BE(20) + ' physical pixels');
   } finally {
     cdp?.ws.close();
     if (host && host.exitCode === null) host.kill();

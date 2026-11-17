@@ -477,7 +477,8 @@ const previewFrame = document.createElement('iframe');
 previewFrame.title = '舞台排版预览';
 const previewWrap = $('previewWrap');
 const resizePreview = () => {
-  previewFrame.style.transform = 'scale(' + previewWrap.clientWidth / 1920 + ')';
+  const width = previewWrap.getBoundingClientRect().width;
+  if (width) previewFrame.style.zoom = width / 1920;
 };
 new ResizeObserver(resizePreview).observe(previewWrap);
 const slots = {
