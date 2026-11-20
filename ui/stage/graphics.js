@@ -162,9 +162,14 @@ function render(state) {
   $('caption').style.top = style.captionY + 'px';
   $('caption').style.bottom = 'auto';
   setText('eventName', state.eventName);
-  setText('type', state.live?.type);
+  setText('type', template.id === 'ranking' ? state.live?.subtitle : state.live?.type);
   setText('title', state.live?.title);
-  setText('subtitle', [state.live?.performer, state.live?.subtitle].filter(Boolean).join(' · '));
+  setText(
+    'subtitle',
+    [state.live?.performer, template.id !== 'ranking' && state.live?.subtitle]
+      .filter(Boolean)
+      .join(' · '),
+  );
   renderCaption(state);
   $('lower').classList.toggle('visible', Boolean(state.layers.lower && state.live));
   if (!Object.values(state.layers).some(Boolean) && cue !== null && state.transition.cue === cue)

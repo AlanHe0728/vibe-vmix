@@ -4,10 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>AE 直播连接</title>
+    <link rel="stylesheet" href="/shared/operator-theme.css" />
     <link rel="stylesheet" href="/ae/control.css" />
     <script defer src="/ae/control.js"></script>
   </head>
-  <body>
+  <body class="operator-ui">
     <header>
       <strong>AE 直播连接</strong><span id="status">尚未连接</span
       ><button id="inspect">读取当前合成</button><button id="clear">清空待执行操作</button
@@ -33,10 +34,7 @@
           <div id="controls" class="live-controls">
             <p class="empty">连接插件并读取合成后显示直播控件。</p>
           </div>
-          <p class="hint">
-            AE 中以 LIVE:
-            开头的文本图层、滑块、颜色与复选框会显示在这里。修改后点击应用，不会自动改动其他图层。
-          </p>
+          <p class="hint">在 AE 插件中将图层标记为 LIVE。</p>
           <div class="actions">
             <button id="frame">生成当前画面</button><button id="show">画面上屏</button
             ><button id="markers">添加 IN / HOLD / OUT 标记</button>
@@ -59,10 +57,6 @@
               >尚无 AE 画面</span
             >
           </div>
-          <p class="hint">
-            插件可持续刷新当前帧或按时间推进。复杂合成的帧率取决于 AE
-            渲染速度；此通道用于交互画面，不保证广播帧率。流畅动画请使用下方的动画缓存。
-          </p>
           <span id="frameInfo" class="hint"></span>
           <h2 class="subheading">待执行与结果</h2>
           <div id="queue" class="queue"></div>
@@ -71,7 +65,6 @@
       <section class="cache">
         <div class="section-heading">
           <h2>动画缓存与播出</h2>
-          <span class="hint">先渲染，检查完成后再上屏</span>
         </div>
         <div class="cache-grid">
           <section>
@@ -84,11 +77,7 @@
                   required /></label
               ><button type="submit">渲染当前工作区到缓存</button>
             </form>
-            <p class="hint">
-              需在 AE 内生成 MOV；该操作会占用 AE
-              渲染队列，请在节目准备时运行。输出模块模板须存在。已生成的缓存可由 vMix 持续播放，AE
-              后续编辑不会改动正在播出的缓存。
-            </p>
+            <p class="hint">渲染会占用 AE 队列。请填写 AE 已安装的输出模块模板。</p>
             <div id="clips"></div>
           </section>
           <section>

@@ -98,6 +98,9 @@ function createStageModule() {
         input: '',
         titleField: 'Headline.Text',
         subtitleField: 'Description.Text',
+        captionField: 'Headline.Text',
+        captionMode: false,
+        animation: '',
         overlay: 1,
       },
     };
@@ -170,7 +173,10 @@ function createStageModule() {
       number(v.overlay, 1, 4);
       if (!Number.isInteger(v.port) || !Number.isInteger(v.overlay))
         throw Error('端口和叠加通道须为整数');
-      for (const field of ['input', 'titleField', 'subtitleField']) v[field] = text(v[field], 200);
+      for (const field of ['input', 'titleField', 'subtitleField', 'captionField', 'animation'])
+        v[field] = text(v[field], 200);
+      if (typeof v.captionMode !== 'boolean' || (v.captionMode && (!v.input || !v.captionField)))
+        throw Error('启用 GT 字幕时，请填写 GT 输入和字幕字段');
     }
     return next;
   }

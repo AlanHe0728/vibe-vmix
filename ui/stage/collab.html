@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Vibe-vMix 字幕协作</title>
+    <link rel="stylesheet" href="/shared/operator-theme.css" />
+    <link rel="stylesheet" href="/control.css" />
+    <script defer src="/stage-module/captions.js"></script>
+    <script defer src="/collab.js"></script>
+  </head>
+  <body class="operator-ui">
+    <header>
+      <strong>Vibe-vMix 字幕协作</strong>
+      <span id="connection">尚未加入</span>
+    </header>
+    <div id="notice" role="status"></div>
+    <main class="collab-wrap">
+      <form id="join">
+        <label>操作员姓名<input id="name" required maxlength="24" autocomplete="name" /></label>
+        <label>加入码<input id="code" required maxlength="12" autocomplete="off" /></label>
+        <button type="submit" class="primary">加入演出</button>
+      </form>
+      <section id="desk" hidden>
+        <dl class="caption-status">
+          <dt>播出方式</dt>
+          <dd id="output"></dd>
+          <dt>当前字幕</dt>
+          <dd id="current"></dd>
+          <dt>待播字幕</dt>
+          <dd id="prepared"></dd>
+          <dt>控制权</dt>
+          <dd id="owner"></dd>
+        </dl>
+        <div class="actions">
+          <button id="claim">接手控制权</button>
+          <button id="release">释放控制权</button>
+          <button id="leave">离开协作</button>
+        </div>
+        <form id="handoff" hidden>
+          <label>交接对象<select id="target"></select></label>
+          <button type="submit">交接控制权</button>
+        </form>
+        <section class="caption-desk">
+          <label>节目<select id="program"></select></label>
+          <div class="actions">
+            <button id="take" class="primary">确认上屏</button>
+            <button id="previous">上一句</button>
+            <button id="next">下一句</button>
+            <button id="hide">字幕下屏</button>
+          </div>
+          <ol id="captionList" aria-label="字幕句子"></ol>
+        </section>
+        <section class="caption-desk">
+          <h2>编辑歌词与字幕</h2>
+          <label>每行一句<textarea id="lyrics" rows="6" maxlength="30000"></textarea></label>
+          <div class="actions">
+            <label class="file-button"
+              >导入歌词<input id="file" type="file" accept=".lrc,.txt"
+            /></label>
+            <button id="save">保存歌词</button>
+            <button id="discard">恢复已保存歌词</button>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

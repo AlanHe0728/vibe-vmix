@@ -4,18 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>舞台节目包装</title>
+    <link rel="stylesheet" href="/shared/operator-theme.css" />
     <link rel="stylesheet" href="control.css" />
     <script defer src="/stage-module/captions.js"></script>
     <script defer src="control.js"></script>
   </head>
-  <body>
+  <body class="operator-ui">
     <header>
       <strong>舞台节目</strong>
       <nav aria-label="舞台工作区">
         <button data-tab="show" aria-pressed="true">节目与播出</button
         ><button data-tab="design" aria-pressed="false">包装与模板</button
         ><button data-tab="library" aria-pressed="false">素材与导入</button
-        ><button data-tab="connection" aria-pressed="false">vMix 连接</button>
+        ><button data-tab="connection" aria-pressed="false">连接与协作</button>
       </nav>
       <span id="connection">正在连接</span><button class="danger" id="hideAll">全部下屏</button>
     </header>
@@ -29,7 +30,7 @@
               <button id="addProgram">添加节目</button>
             </div>
             <ol id="programList"></ol>
-            <p id="emptyPrograms" class="empty">添加本场节目，然后选择节目编辑。</p>
+            <p id="emptyPrograms" class="empty">暂无节目</p>
             <div class="list-actions">
               <button id="exportShow">导出节目单</button
               ><label class="file-button"
@@ -69,9 +70,10 @@
                   aria-describedby="captionInputHelp"
                 ></textarea>
               </label>
-              <p id="captionInputHelp" class="hint caption-input-help">
-                每行一句，最多 500 句。保存节目后可逐句播出。
-              </p>
+              <p id="captionInputHelp" class="hint caption-input-help">每行一句，最多 500 句。</p>
+              <label class="file-button"
+                >导入歌词<input id="importLyrics" type="file" accept=".lrc,.txt"
+              /></label>
               <div class="actions">
                 <button type="submit" class="primary">保存节目</button
                 ><button type="button" id="moveUp">上移</button
@@ -91,8 +93,16 @@
                 <h2 id="captionDeskTitle">逐句字幕</h2>
                 <span id="captionCount">0 句</span>
               </div>
-              <p id="captionHint" class="hint" role="status"></p>
+              <dl class="caption-status">
+                <dt>当前字幕</dt>
+                <dd id="captionOnAir">等待状态</dd>
+                <dt>待播字幕</dt>
+                <dd id="captionPrepared">尚未选句</dd>
+                <dt>控制权</dt>
+                <dd id="captionOwner">导播主机</dd>
+              </dl>
               <div class="actions" aria-label="字幕播出控制">
+                <button id="captionTake" class="primary" disabled>确认上屏</button>
                 <button type="button" id="captionPrevious">上一句</button>
                 <button type="button" id="captionNext" class="primary">播出第一句</button>
                 <button type="button" id="captionHide">字幕下屏</button>
@@ -106,13 +116,11 @@
               <button id="togglePreview">打开预览与布局</button>
             </div>
             <div class="preview-wrap" id="previewWrap">
-              <p>在独立窗口预览各模块与组合画面</p>
+              <p>1920 × 1080</p>
             </div>
-            <p class="hint">透明画布 · 1920 × 1080</p>
             <h2 class="layer-title">上屏图层</h2>
             <div id="layerControls" class="layers"></div>
             <button id="transition" class="wide">播放包装转场</button>
-            <p class="hint">包装转场覆盖画面，不切换 vMix 摄像机。</p>
           </section>
         </div>
       </section>
@@ -169,7 +177,6 @@
             </section>
             <section>
               <h2>位置与大小</h2>
-              <p class="hint">在预览窗口调整位置，确认后再应用到播出画面。</p>
               <button type="button" id="designPreview">打开预览与布局</button>
             </section>
           </div>
@@ -192,16 +199,10 @@
             ><button id="registerSource">链接本地工程</button>
           </div>
         </div>
-        <p class="hint">
-          图片与视频复制到素材库；链接本地工程保留原路径与依赖。GT 交给 vMix 渲染；AE
-          可调用本机渲染引擎；NewBlue 工程在原软件编辑后导出视频。原工程不会转换成内置模板。
-        </p>
         <div id="assetList" class="asset-list"></div>
         <section class="render-section">
           <h2>After Effects 离线渲染</h2>
-          <p class="hint">
-            需本机安装 AE。导出 MOV 后可添加到 vMix，是否透明取决于所选 AE 输出模块。
-          </p>
+          <p class="hint">需安装 After Effects。带透明通道的输出请选择支持 Alpha 的模板。</p>
           <form id="renderForm" class="render-form">
             <label>AE 工程<select id="renderSource"></select></label
             ><label>合成名称<input id="composition" required maxlength="200" /></label
@@ -217,7 +218,7 @@
         </section>
       </section>
       <section id="connectionTab" class="tab" hidden>
-        <div class="section-heading"><h1>vMix 连接</h1></div>
+        <div class="section-heading"><h1>连接与协作</h1></div>
         <div class="connection-grid">
           <section>
             <h2>内置舞台包装</h2>
@@ -240,7 +241,12 @@
               ><label>vMix 输入名称 / 编号 / GUID<input id="vmixInput" maxlength="200" /></label
               ><label>主标题字段<input id="titleField" maxlength="200" required /></label
               ><label>副标题字段<input id="subtitleField" maxlength="200" required /></label
-              ><label
+              ><label>逐句字幕字段<input id="captionField" maxlength="200" required /></label>
+              <label>GT 动画名称<input id="gtAnimation" maxlength="200" /></label>
+              <label class="check"
+                ><input id="captionMode" type="checkbox" />逐句字幕通过 GT 播出</label
+              >
+              <label
                 >叠加通道<select id="overlay">
                   <option>1</option>
                   <option>2</option>
@@ -253,10 +259,46 @@
               <button data-vmix="connect">测试连接</button
               ><button data-vmix="text">同步当前节目到 GT</button
               ><button data-vmix="show">GT 上屏</button><button data-vmix="hide">GT 下屏</button>
+              <button data-vmix="animate">触发 GT 动画</button>
             </div>
+            <form id="gtLayerForm">
+              <label
+                >目标图层（1–10）<input
+                  id="gtLayer"
+                  type="number"
+                  min="1"
+                  max="10"
+                  value="1"
+                  required
+              /></label>
+              <label
+                >来源输入名称 / 编号 / GUID<input id="gtLayerSource" maxlength="200" required
+              /></label>
+              <button id="applyGtLayer" type="submit">更新输入图层</button>
+            </form>
             <p class="hint">
-              先在素材库添加 GT 到 vMix。字段名须与 GT 标题编辑器一致，文字字段以 .Text 结尾。
+              在素材库添加 GT 后填写对应输入。换用新标题时，先撤下旧标题，再绑定新输入。文字字段以
+              .Text 结尾。
             </p>
+          </section>
+          <section>
+            <h2>局域网协作</h2>
+            <p class="hint">同一局域网的字幕机用浏览器打开加入地址，输入加入码即可操作。</p>
+            <label>本机网络地址<select id="lanAddress"></select></label>
+            <div class="actions">
+              <button id="openLan" class="primary">开启协作</button>
+              <button id="stopLan" hidden>关闭协作</button>
+            </div>
+            <div id="lanInvite" hidden>
+              <label>加入地址<input id="joinUrl" readonly /></label>
+              <label>加入码<input id="joinCode" readonly /></label>
+              <button id="copyInvite">复制邀请</button>
+              <label>控制权交接对象<select id="lanTarget"></select></label>
+              <div class="actions">
+                <button id="lanTransfer">交接控制权</button>
+                <button id="lanClaim">导播收回控制权</button>
+              </div>
+            </div>
           </section>
         </div>
       </section>

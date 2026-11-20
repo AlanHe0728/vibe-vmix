@@ -47,7 +47,7 @@ function open(module) {
       ? '/stage/control.html'
       : module.id === 'ae-live'
         ? '/ae/control.html'
-        : '/control/panel.html');
+        : '/control/panel.html?workspace=1');
   document
     .querySelectorAll('#navigation button')
     .forEach((button) =>
@@ -55,7 +55,7 @@ function open(module) {
     );
 }
 function render() {
-  byId('workspaceVersion').textContent = '本地制作 · ' + model.version;
+  byId('workspaceVersion').textContent = model.version;
   byId('catalog').replaceChildren();
   byId('navigation').replaceChildren();
   for (const module of model.modules) {
@@ -80,7 +80,7 @@ function render() {
     });
     const state = document.createElement('span');
     state.className = 'state-label';
-    state.textContent = module.enabled ? '已加载 · 独立保存数据' : '未加载';
+    state.textContent = module.enabled ? '已加载' : '未加载';
     label.append(checkbox, title, description, features, state);
     byId('catalog').append(label);
     if (module.enabled) {

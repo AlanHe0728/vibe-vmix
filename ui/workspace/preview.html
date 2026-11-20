@@ -4,20 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>预览与布局 · 转播包装工作台</title>
+    <link rel="stylesheet" href="/shared/operator-theme.css" />
     <link rel="stylesheet" href="preview.css" />
     <script defer src="preview.js"></script>
     <script defer src="preview-tools.js"></script>
   </head>
-  <body>
+  <body class="operator-ui">
     <header>
       <div class="window-brand">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <rect x="3" y="4" width="18" height="16" rx="3" />
           <path d="M3 10h18M15 10v10" />
         </svg>
-        <div>
-          <strong>预览与布局</strong><span class="header-note">转播包装工作台 · 1920 × 1080</span>
-        </div>
+        <div><strong>预览与布局</strong><span class="header-note">1920 × 1080</span></div>
       </div>
       <div class="view-switch" aria-label="画面显示方式">
         <button data-view="dual" aria-pressed="true">双画面</button>
@@ -34,7 +33,7 @@
     <nav id="tabs" aria-label="预览模块"></nav>
     <div class="editor-shell">
       <main class="workspace-area">
-        <div class="canvas-toolbar">
+        <div class="canvas-toolbar" id="previewToolbar">
           <div id="categoryTabs" aria-label="栏目预览"></div>
           <label class="compact-label"
             >预览内容<select id="previewMode">
@@ -55,24 +54,15 @@
           </section>
           <section id="pgmPanel" class="screen-panel" aria-label="播出画面">
             <div class="screen-title">
-              <strong><i class="lamp live-lamp"></i>PGM <span>播出</span></strong
-              ><span>当前模块输出</span>
+              <strong><i class="lamp live-lamp"></i>PGM <span>播出</span></strong>
             </div>
             <div class="screen-wrap" id="pgmWrap"><div class="canvas" id="pgmCanvas"></div></div>
           </section>
-        </div>
-        <p class="screen-note" id="screenNote">
-          总预览按足球、舞台、AE 叠加；不包含 vMix 摄像机画面，实际叠放顺序以 vMix 为准。
-        </p>
-        <div class="canvas-caption">
-          <span id="modeHint">PVW 可拖动调整 · PGM 跟随实际播出</span
-          ><span>方向键微调 1 px · Shift 加速</span>
         </div>
       </main>
       <aside id="inspector" class="controls" aria-label="调整画面元素">
         <div class="inspector-heading">
           <h1>布局属性</h1>
-          <span class="inspector-badge">仅编辑 PVW</span>
         </div>
         <section class="inspector-section">
           <label class="element-label">选择元素<select id="element"></select></label>
@@ -142,23 +132,19 @@
         </section>
         <section class="inspector-section">
           <h2>预览栏目</h2>
-          <p class="hint">开关仅影响 PVW，不控制上屏。</p>
           <div id="layerList"></div>
           <button id="showAllLayers" class="wide">显示全部预览栏目</button>
         </section>
-        <p class="inspector-footnote">
-          构图比例、辅助线和背景仅用于监看。上屏画布始终为 1920 × 1080。
-        </p>
       </aside>
     </div>
-    <footer>
+    <footer id="previewFooter">
       <div class="footer-status">
         <span id="pending" class="pending" hidden>有未应用的调整</span>
-        <p id="notice" role="status" aria-live="polite">拖动 PVW 中的选框，确认后再应用到播出。</p>
+        <p id="notice" role="status" aria-live="polite"></p>
       </div>
       <div class="footer-actions">
         <button id="reset" type="button">恢复播出位置</button
-        ><button id="apply" class="primary" type="button">将全部调整应用到播出</button>
+        ><button id="apply" class="primary" type="button">应用到播出</button>
       </div>
     </footer>
   </body>

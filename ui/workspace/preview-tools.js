@@ -150,10 +150,6 @@
       .forEach((node) =>
         node.setAttribute('aria-pressed', String(node.dataset.element === selected)),
       );
-    $('modeHint').textContent =
-      mode === 'layout'
-        ? '排版预览：含未上屏元素，缺失内容以示例显示 · PGM 不受影响'
-        : 'PVW 跟随播出 · 栏目开关仅作用于预览';
   }
   function render() {
     const items = entries();
@@ -314,13 +310,6 @@
     };
   }
   $('customRatio').hidden = prefs.ratio !== 'custom';
-  $('inspectorToggle').onclick = () => {
-    const shown = $('inspector').hidden;
-    $('inspector').hidden = !shown;
-    document.querySelector('.editor-shell').classList.toggle('tools-collapsed', !shown);
-    $('inspectorToggle').setAttribute('aria-expanded', String(shown));
-    requestAnimationFrame(resize);
-  };
   $('reloadFrames').onclick = () => renderScreens();
   window.previewTools = {
     render,

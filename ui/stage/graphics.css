@@ -191,6 +191,26 @@ body.preview {
 #canvas[data-template='minimal'] .event-name {
   font-size: 15px;
 }
+#canvas[data-template='lyrics'] .caption {
+  border-top: 3px solid var(--accent);
+  padding: 12px 26px;
+  font-size: 36px;
+  text-align: center;
+}
+#canvas[data-template='announcement'] .lower {
+  border-top: 2px solid var(--accent);
+}
+#canvas[data-template='announcement'] .type {
+  min-width: 115px;
+  letter-spacing: 0.12em;
+}
+#canvas[data-template='ranking'] .type {
+  background: transparent;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  border-right: 1px solid var(--accent);
+  min-width: 130px;
+}
 #transition {
   position: absolute;
   inset: 0;

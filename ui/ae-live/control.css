@@ -1,10 +1,12 @@
 :root {
   font:
-    14px/1.6 'Segoe UI',
+    14px/1.6 -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
     'Microsoft YaHei UI',
     sans-serif;
-  color: #202a35;
-  background: #fff;
+  color: var(--operator-ink);
+  background: var(--operator-surface);
   color-scheme: light;
 }
 * {
@@ -21,18 +23,21 @@ textarea {
 }
 button {
   padding: 8px 14px;
-  border: 1px solid #c8d0d8;
-  border-radius: 7px;
-  background: #fff;
-  color: #344352;
+  border: 1px solid var(--operator-row-line);
+  border-radius: var(--operator-pill);
+  background: var(--operator-surface);
+  color: var(--operator-muted);
   cursor: pointer;
+  font-weight: 550;
+  box-shadow: var(--operator-shadow);
 }
 button:hover {
-  background: #edf4fa;
+  background: var(--operator-selected);
 }
 button:disabled {
   opacity: 0.45;
   cursor: default;
+  box-shadow: none;
 }
 input,
 select,
@@ -42,9 +47,9 @@ textarea {
   padding: 9px 11px;
   margin-top: 6px;
   border: 1px solid #c8d0d8;
-  border-radius: 6px;
+  border-radius: var(--operator-field-radius);
   min-width: 0;
-  background: #fff;
+  background: var(--operator-surface);
   color: #202a35;
 }
 input[readonly] {
@@ -72,7 +77,7 @@ header {
   flex-wrap: wrap;
   position: sticky;
   top: 0;
-  background: #fff;
+  background: var(--operator-chrome);
   z-index: 2;
 }
 header strong {
@@ -198,6 +203,7 @@ h2 {
   place-items: center;
   margin-top: 22px;
   overflow: hidden;
+  border-radius: var(--operator-field-radius);
 }
 .preview img {
   width: 100%;

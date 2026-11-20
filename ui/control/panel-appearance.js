@@ -29,6 +29,12 @@ function clearLogoKey(key) {
     if (res) log('已清除: ' + key, true);
   });
 }
+if (window.parent !== window && new URLSearchParams(location.search).get('workspace') === '1') {
+  document.querySelectorAll('button[onclick="editorOpen()"]').forEach(function (button) {
+    button.hidden = true;
+  });
+}
+
 function resetAllPos() {
   editorOpen();
 }

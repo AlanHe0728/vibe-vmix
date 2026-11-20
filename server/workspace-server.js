@@ -3,7 +3,7 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const { createStaticHandler } = require('./static-files');
+const { createStaticHandler, operatorTheme } = require('./static-files');
 const { json, readObject, method } = require('./http-utils');
 const { AppError } = require('../core/errors');
 const { listenLocal, closeLocal } = require('./listen-local');
@@ -48,6 +48,7 @@ function createWorkspaceServer({
   let shuttingDown = false;
   const staticFiles = createStaticHandler([
     { prefix: '/workspace/', directory: path.join(project, 'ui/workspace') },
+    operatorTheme(project),
   ]);
   const stageLayoutKeys = [
     'channelX',
@@ -137,7 +138,7 @@ function createWorkspaceServer({
         url: loaded.get(entry.id)?.url || null,
       })),
       loaded: [...loaded.keys()],
-      version: '2.0.0-beta.2',
+      version: '2.0.0-beta.3',
     };
   }
   function validate(ids) {

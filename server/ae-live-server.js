@@ -3,7 +3,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { createStaticHandler } = require('./static-files');
+const { createStaticHandler, operatorTheme } = require('./static-files');
 const { json, readObject, method } = require('./http-utils');
 const { AppError } = require('../core/errors');
 const { validateCommand } = require('../modules/ae-live/commands');
@@ -45,6 +45,7 @@ function createAELiveServer({
   let inFlight = null;
   const mount = createStaticHandler([
     { prefix: '/ae/', directory: path.join(project, 'ui/ae-live') },
+    operatorTheme(project),
   ]);
   const frameFile = path.join(dataDirectory, 'latest.png');
   function connected() {

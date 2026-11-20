@@ -29,6 +29,7 @@ const base = {},
   boxes = {};
 let modules = [],
   tab = new URLSearchParams(location.search).get('module') || 'all';
+let inspectorOpen = true;
 let view = 'dual',
   selected = '',
   busy = false,
@@ -326,12 +327,21 @@ function outputUrl(module, kind) {
         : '/ae/graphics.html';
   return module.url + route + (kind === 'pvw' ? '?workspacePreview=1' : '');
 }
+function renderInspector() {
+  const visible = view !== 'pgm' && inspectorOpen;
+  $('inspector').hidden = !visible;
+  $('inspectorToggle').hidden = view === 'pgm';
+  $('inspectorToggle').setAttribute('aria-expanded', String(visible));
+  document.querySelector('.editor-shell').classList.toggle('tools-collapsed', !visible);
+}
 function renderScreens() {
   const active = activeModules();
   $('pvwPanel').hidden = view === 'pgm';
   $('pgmPanel').hidden = view === 'pvw';
   $('screens').classList.toggle('single', view !== 'dual');
-  $('screenNote').hidden = tab !== 'all';
+  $('previewToolbar').hidden = view === 'pgm';
+  $('previewFooter').hidden = view === 'pgm';
+  renderInspector();
   for (const kind of ['pvw', 'pgm']) {
     const canvas = $(kind + 'Canvas');
     canvas.querySelectorAll('iframe').forEach((frame) => frame.remove());
@@ -470,6 +480,11 @@ $('apply').onclick = async () => {
     fillControls();
     drawHandle();
   }
+};
+$('inspectorToggle').onclick = () => {
+  inspectorOpen = !inspectorOpen;
+  renderInspector();
+  requestAnimationFrame(resize);
 };
 renderTabs();
 renderScreens();
