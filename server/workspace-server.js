@@ -75,6 +75,10 @@ function createWorkspaceServer({
     'captionY',
     'logoSize',
   ];
+  function selectedScoreboard(state) {
+    const templates = state.scoreboard_templates || {};
+    return Object.hasOwn(templates, state.sb_layout) ? templates[state.sb_layout] : null;
+  }
   function layout(id) {
     const service = loaded.get(id)?.server;
     if (!service) throw new AppError('模块未加载', 404);
@@ -83,12 +87,15 @@ function createWorkspaceServer({
     if (id === 'stage')
       return Object.fromEntries(stageLayoutKeys.map((key) => [key, state.style[key]]));
     const positions = require('../packages/football-classic.json').positions;
-    return Object.fromEntries(
-      Object.entries(positions).flatMap(([key, point]) => [
-        [key + '_pos', state[key + '_pos'] || { x: point[0], y: point[1] }],
-        [key + '_scale', state[key + '_scale'] ?? 1],
-      ]),
-    );
+    const template = selectedScoreboard(state);
+    const result = { scoreboardTemplate: template?.id || 'classic' };
+    for (const [key, [x, y]] of Object.entries(positions)) {
+      const customScoreboard = key === 'sb' && template;
+      const prefix = customScoreboard ? 'sb_template_' + template.id : key;
+      result[key + '_pos'] = state[prefix + '_pos'] || (customScoreboard ? template.position : { x, y });
+      result[key + '_scale'] = state[prefix + '_scale'] ?? 1;
+    }
+    return result;
   }
   function applyLayout(id, input) {
     const current = layout(id);
@@ -106,9 +113,12 @@ function createWorkspaceServer({
     if (
       !keys.length ||
       keys.length !== Object.keys(base).length ||
-      keys.some((key) => !Object.hasOwn(current, key) || !Object.hasOwn(base, key))
+      keys.some((key) => key === 'scoreboardTemplate' || !Object.hasOwn(current, key) || !Object.hasOwn(base, key))
     )
       throw new AppError('位置数据无效');
+    if (id === 'football' && keys.some((key) => key.startsWith('sb_')) &&
+        input.scoreboardTemplate !== undefined && input.scoreboardTemplate !== current.scoreboardTemplate)
+      throw new AppError('比分牌模板已切换，请恢复播出位置后重新调整', 409);
     for (const key of keys) {
       if (JSON.stringify(current[key]) !== JSON.stringify(base[key]))
         throw new AppError('播出位置已在其他窗口修改，请恢复播出位置后重新调整', 409);
@@ -138,7 +148,15 @@ function createWorkspaceServer({
     }
     const service = loaded.get(id).server;
     if (id === 'ae-live') service.workspaceSetLayout({ ...current, ...draft });
-    else service.workspaceUpdate(id === 'stage' ? { style: draft } : draft);
+    else if (id === 'stage') service.workspaceUpdate({ style: draft });
+    else {
+      const template = selectedScoreboard(service.workspaceState());
+      const patch = Object.fromEntries(Object.entries(draft).map(([key, value]) => [
+        template && key.startsWith('sb_') ? 'sb_template_' + template.id + key.slice(2) : key,
+        value,
+      ]));
+      service.workspaceUpdate(patch);
+    }
     return layout(id);
   }
   function describe() {

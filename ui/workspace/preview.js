@@ -398,8 +398,11 @@ async function refresh() {
       const current = (await api('/api/workspace/layout/' + module.id)).layout;
       if (!base[module.id]) base[module.id] = current;
       else
-        for (const key of Object.keys(current))
-          if (!Object.hasOwn(draft[module.id] || {}, key)) base[module.id][key] = current[key];
+        for (const key of Object.keys(current)) {
+          const pending = draft[module.id] || {};
+          if (key === 'scoreboardTemplate' && ('sb_pos' in pending || 'sb_scale' in pending)) continue;
+          if (!Object.hasOwn(pending, key)) base[module.id][key] = current[key];
+        }
     }
     if (changed) {
       renderTabs();
@@ -477,7 +480,9 @@ $('apply').onclick = async () => {
     for (const id of order.filter(dirty)) {
       const values = draft[id],
         prior = Object.fromEntries(Object.keys(values).map((key) => [key, base[id][key]]));
-      const result = await api('/api/workspace/layout/' + id, { base: prior, draft: values });
+      const result = await api('/api/workspace/layout/' + id, {
+        base: prior, draft: values, scoreboardTemplate: base[id].scoreboardTemplate,
+      });
       base[id] = result.layout;
       delete draft[id];
       sendDraft(id);

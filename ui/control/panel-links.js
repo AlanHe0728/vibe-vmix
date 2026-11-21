@@ -376,20 +376,22 @@
     });
     FBPWidgets.sync();
   }
-  function teamPatch() {
+  function teamPatch(profiles) {
     var patch = {};
+    var name = function (side) { return profiles ? profiles[side].name : team(side); };
+    var shade = function (side) { return profiles ? profiles[side].color : color(side); };
     ['home', 'away'].forEach(function (side) {
       var suffix = side === 'home' ? 'H' : 'A';
       ['xi', 'sub'].forEach(function (prefix) {
-        patch[prefix + suffix + '_team'] = team(side);
-        patch[prefix + suffix + '_color'] = color(side);
+        patch[prefix + suffix + '_team'] = name(side);
+        patch[prefix + suffix + '_color'] = shade(side);
       });
     });
     groups.forEach(function (prefix) {
       var side = sideOf(prefix);
       patch[prefix + '_side'] = side;
-      patch[prefix + '_team'] = team(side);
-      if (el(prefix + '_color')) patch[prefix + '_color'] = color(side);
+      patch[prefix + '_team'] = name(side);
+      if (el(prefix + '_color')) patch[prefix + '_color'] = shade(side);
     });
     return patch;
   }

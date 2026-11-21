@@ -139,6 +139,11 @@ function editValueMatches(actual, expected) {
   );
 }
 function saveEdit(id, o) {
+  var template = id === 'sb' && scoreboardTemplate();
+  if (template) {
+    var key = 'sb_template_' + template.id;
+    o = o.sb_pos ? { [key + '_pos']: o.sb_pos } : { [key + '_scale']: o.sb_scale };
+  }
   if (id === 'lineup' && luIsAll()) {
     var mapped = {};
     Object.keys(o).forEach(function (k) {
@@ -172,18 +177,24 @@ function applyPos(key, id) {
     delete PENDING[id];
   }
   var p = POS_DEF[key];
+  var draftKey = key;
+  var template = key === 'sb' && scoreboardTemplate();
+  if (template) {
+    key = 'sb_template_' + template.id;
+    p = { x: template.position.x, y: template.position.y, s: 1 };
+  }
   if (key === 'lineup' && luIsAll()) {
-    key = 'lineup_all';
+    key = draftKey = 'lineup_all';
     p = { x: PACKAGE.positions.lineup_all[0], y: PACKAGE.positions.lineup_all[1], s: 1 };
   }
-  var st = Object.prototype.hasOwnProperty.call(WORKSPACE_DRAFT, key + '_pos')
-    ? WORKSPACE_DRAFT[key + '_pos']
+  var st = Object.prototype.hasOwnProperty.call(WORKSPACE_DRAFT, draftKey + '_pos')
+    ? WORKSPACE_DRAFT[draftKey + '_pos']
     : S[key + '_pos'];
   if (st && typeof st === 'object' && isFinite(+st.x) && isFinite(+st.y)) {
     p = { x: +st.x, y: +st.y, s: p.s };
   }
-  var scaleValue = Object.prototype.hasOwnProperty.call(WORKSPACE_DRAFT, key + '_scale')
-    ? WORKSPACE_DRAFT[key + '_scale']
+  var scaleValue = Object.prototype.hasOwnProperty.call(WORKSPACE_DRAFT, draftKey + '_scale')
+    ? WORKSPACE_DRAFT[draftKey + '_scale']
     : S[key + '_scale'];
   var sc = isFinite(+scaleValue) ? Math.max(0.3, Math.min(3, +scaleValue)) : p.s;
   SCALE[id] = sc;

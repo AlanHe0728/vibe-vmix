@@ -15,9 +15,15 @@ function fitClock(el, max, min) {
 }
 function sbTick() {
   var c = $('sbClock');
-  c.textContent = timeText(sbMs());
+  var time = timeText(sbMs());
+  c.textContent = time;
   c.classList.toggle('paused', !CB.running);
   fitClock(c, 25, 14);
+  var matchdayClock = $('matchdayClock');
+  if (matchdayClock && matchdayClock.textContent !== time) {
+    matchdayClock.textContent = time;
+    fitMatchdayText(matchdayClock);
+  }
 }
 function sbBoot() {
   sbTick();
@@ -96,6 +102,75 @@ function sbApply() {
   setLogo('sbLogoA', field('awayLogo', ''));
   sbSetStatus(field('status', 'running'));
   $('sb').classList.toggle('on', truthy(field('scoreboard_show', true)));
+  if ($('matchdayBoard')) applyMatchday();
+}
+
+function matchdayInk(hex) {
+  var rgb = hex.match(/[\da-f]{2}/gi).map(function (component) {
+    var value = parseInt(component, 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+  });
+  return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722 > 0.4 ? '#000' : '#fff';
+}
+
+function fitMatchdayText(el) {
+  var cell = el.parentElement;
+  if (!cell.clientWidth) return;
+  el.style.fontSize = '';
+  var style = getComputedStyle(cell);
+  var width = cell.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  if (el.offsetWidth > width) {
+    el.style.fontSize = Math.floor((parseFloat(style.fontSize) * width) / el.offsetWidth) + 'px';
+  }
+}
+
+function applyMatchday() {
+  var sb = $('sb'), template = scoreboardTemplate();
+  sb.classList.toggle('matchday', Boolean(template));
+  if (!template) return;
+  var signature = template.id + ':' + template.revision;
+  if (signature !== renderedScoreboardTemplate) {
+    renderedScoreboardTemplate = signature;
+    Object.entries(template.dimensions).forEach(function (entry) {
+      setCss('--sb-template-' + entry[0], entry[1] + 'px');
+    });
+    setCss('--sb-template-brand', template.theme.brand);
+    setCss('--sb-template-clock', template.theme.clock);
+    setCss('--sb-template-clock-ink', template.theme.clockInk);
+    setCss('--sb-template-font', JSON.stringify(template.theme.font));
+    var images = document.querySelectorAll('#matchdayBoard img, #matchdayHeader img');
+    ['left', 'right', 'headerLeft', 'headerRight'].forEach(function (key, index) {
+      var image = images[index];
+      var src = template.images[key];
+      image.hidden = !src;
+      if (src && image.getAttribute('src') !== src) image.src = src;
+      if (!src) image.removeAttribute('src');
+    });
+  }
+  var title = String(field('sb_matchday_title', '')).trim();
+  $('matchdayHeader').hidden = !title || !truthy(field('sb_matchday_header', false));
+  $('matchdayTitle').textContent = title;
+  $('matchdayHome').textContent = $('sbHome').textContent;
+  $('matchdayAway').textContent = $('sbAway').textContent;
+  $('matchdayH').textContent = $('sbH').textContent;
+  $('matchdayA').textContent = $('sbA').textContent;
+  var root = getComputedStyle(document.documentElement);
+  ['home', 'away'].forEach(function (side) {
+    sb.style.setProperty('--matchday-' + side + '-ink', matchdayInk(root.getPropertyValue('--' + side)));
+  });
+}
+
+var renderedScoreboardTemplate;
+function scoreboardTemplate() {
+  var library = S.scoreboard_templates;
+  return $('matchdayBoard') && library && Object.prototype.hasOwnProperty.call(library, S.sb_layout)
+    ? library[S.sb_layout] : null;
+}
+
+function fitMatchdayBoard() {
+  ['matchdayClock', 'matchdayHome', 'matchdayAway', 'matchdayH', 'matchdayA', 'matchdayTitle'].forEach(
+    function (id) { fitMatchdayText($(id)); },
+  );
 }
 
 /* ================= 计时器（正计/倒计） ================= */

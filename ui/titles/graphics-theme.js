@@ -11,7 +11,8 @@ if (['sb', 'clk', 'rst', 'card', 'ply', 'goal', 'sub', 'lineup'].indexOf(ONLY) >
   });
 }
 function fitBroadcastText() {
-  fitScoreboardWidth();
+  if (scoreboardTemplate()) fitMatchdayBoard();
+  else fitScoreboardWidth();
   document
     .querySelectorAll(
       '.nm,.cd-name,.ply-name,.gd-who .n,.lu-name,.lu-team-name,.swap-name,.rst-main,.lu-head .tm',

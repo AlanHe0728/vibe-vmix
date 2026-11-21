@@ -19,6 +19,7 @@
 =====================================================================
 -->
 <link rel="stylesheet" href="broadcast.css">
+<link rel="stylesheet" href="scoreboard-template.css">
 <link rel="stylesheet" href="editor-tools.css">
 </head>
 <body>
@@ -35,6 +36,22 @@
         <div class="clock" id="sbClock">00:00</div><div class="period" id="sbPeriod">上半场</div></div>
       <div class="sb-side away"><span class="nm" id="sbAway">客队</span><span class="dot"></span><img class="sb-logo empty" id="sbLogoA" alt=""></div>
     </div></div>
+    <div class="matchday-board" id="matchdayBoard">
+      <div class="matchday-logos">
+        <img hidden alt="">
+        <img hidden alt="">
+      </div>
+      <div class="matchday-cell matchday-clock"><span id="matchdayClock">00:00</span></div>
+      <div class="matchday-cell matchday-home"><span id="matchdayHome">主队</span></div>
+      <div class="matchday-cell matchday-away"><span id="matchdayAway">客队</span></div>
+      <div class="matchday-cell matchday-home matchday-score"><span id="matchdayH">0</span></div>
+      <div class="matchday-cell matchday-away matchday-score"><span id="matchdayA">0</span></div>
+    </div>
+  </div>
+  <div id="matchdayHeader" hidden>
+    <img hidden alt="">
+    <div class="matchday-cell"><span id="matchdayTitle"></span></div>
+    <img hidden alt="">
   </div>
 
   <div id="clk" class="pos wipe-vertical"><div class="clk-panel">
