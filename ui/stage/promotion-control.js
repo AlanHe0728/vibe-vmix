@@ -102,6 +102,18 @@ function emptyPromotion(roundId) {
   };
 }
 
+function syncPromotionDesign() {
+  const options = state.stageDesigns.filter(({ slot }) => slot === 'promotion');
+  replaceOptions($('promotionDesign'), [
+    ['', '内置名单'],
+    ...options.map(({ id, name }) => [id, name]),
+  ]);
+  $('promotionDesign').value = promotionDraft.designId || '';
+  const disabled = !$('promotionDesign').value;
+  $('editPromotionDesign').disabled = disabled;
+  $('positionPromotionDesign').disabled = disabled;
+}
+
 function loadPromotionDraft() {
   const saved = savedPromotion();
   promotionDraft = saved ? structuredClone(saved) : emptyPromotion(promotionRound);
@@ -115,6 +127,7 @@ function loadPromotionDraft() {
   });
   renderPromotionEntries();
   updatePromotionCount();
+  syncPromotionDesign();
 }
 
 function syncPromotion() {
@@ -130,6 +143,7 @@ function syncPromotion() {
     (!promotionDirty && promotionBaseline !== JSON.stringify(savedPromotion()))
   )
     loadPromotionDraft();
+  else syncPromotionDesign();
   const output = state.promotions.find(({ id }) => id === state.promotionRoundId);
   $('promotionOutputStatus').textContent = output ? `网页显示 · ${output.title || '晋级名单'}` : '';
 }
@@ -337,6 +351,44 @@ function installPromotion() {
     promotionDraft.title = $('promotionTitleInput').value;
     changedPromotion();
   };
+  $('promotionDesign').onchange = () => {
+    const id = $('promotionDesign').value;
+    if (id) promotionDraft.designId = id;
+    else delete promotionDraft.designId;
+    changedPromotion();
+    syncPromotionDesign();
+  };
+  $('importPromotionDesign').onchange = run(async () => {
+    const input = $('importPromotionDesign');
+    const file = input.files[0];
+    input.value = '';
+    if (!file) return;
+    const roundId = promotionRound;
+    input.disabled = true;
+    try {
+      const template = await importStageDesign(file, 'promotion');
+      if (roundId === promotionRound) {
+        promotionDraft.designId = template.id;
+        changedPromotion();
+        syncPromotionDesign();
+      }
+    } finally {
+      input.disabled = false;
+    }
+  });
+  $('editPromotionDesign').onclick = run(() => openStageDesign(promotionDraft.designId));
+  $('positionPromotionDesign').onclick = run(async () => {
+    const { scene } = state.stageDesigns.find(({ id }) => id === promotionDraft.designId);
+    await write({
+      style: {
+        promotionListX: Math.round(scene.position.x),
+        promotionListY: Math.round(scene.position.y),
+        promotionListWidth: scene.width,
+        promotionListHeight: scene.height,
+      },
+    });
+    notice('已应用模板的名单位置和尺寸');
+  });
   $('promotionSort').oninput = () => {
     promotionDraft.sort = $('promotionSort').value;
     changedPromotion();

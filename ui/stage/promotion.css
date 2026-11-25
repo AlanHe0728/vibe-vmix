@@ -34,6 +34,41 @@ body.preview #canvas {
   background: var(--plate);
   box-shadow: 0 16px 54px #0005;
 }
+#promotionDesign {
+  position: absolute;
+  inset: 0 auto auto 0;
+  transform-origin: top left;
+  pointer-events: none;
+}
+#promotionCard.lu.designed-roster {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+.designed-roster .promotion-header {
+  visibility: hidden;
+}
+.designed-roster #promotionRows {
+  position: relative;
+  padding-inline: 0;
+}
+.promotion-group .design-row {
+  position: relative;
+  min-width: 0;
+  height: var(--promotion-row-height);
+}
+.promotion-cell {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.promotion-cell > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .promotion-header {
   display: flex;
   align-items: center;

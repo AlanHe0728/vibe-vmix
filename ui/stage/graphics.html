@@ -6,12 +6,14 @@
     <link rel="stylesheet" href="graphics.css" />
     <script defer src="/stage-module/captions.js"></script>
     <script defer src="media.js"></script>
+    <script defer src="/shared/motion-scene.js"></script>
     <script defer src="graphics.js"></script>
   </head>
   <body>
     <div id="canvas" data-template="gala">
       <div id="captionLayer">
         <div id="caption" class="layer">
+          <div id="captionDesign" hidden></div>
           <div id="captionBackground" class="stage-media" aria-hidden="true"></div>
           <div id="captionBox" class="caption">
             <span id="captionText"></span>

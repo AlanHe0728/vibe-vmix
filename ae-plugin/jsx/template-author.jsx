@@ -6,11 +6,15 @@ var VMixTemplateAuthor = (function () {
     var pending = null, panelExport = null;
     var logoKeys = ["team.homeLogo", "team.awayLogo", "event.logo"];
     var names = ["主队队名", "客队队名", "主队比分", "客队比分", "比赛计时",
-        "节目名称", "表演者", "节目副标题", "节目类型", "活动名称"];
+        "节目名称", "表演者", "节目副标题", "节目类型", "活动名称",
+        "实时歌词字幕", "名单标题", "页码", "名次", "选手姓名", "节目", "分数"];
     var keys = ["team.home", "team.away", "score.home", "score.away", "clock.match",
-        "program.title", "program.performer", "program.subtitle", "program.type", "event.name"];
+        "program.title", "program.performer", "program.subtitle", "program.type", "event.name",
+        "caption.text", "promotion.title", "promotion.page", "promotion.rank", "promotion.name",
+        "promotion.program", "promotion.score"];
     var examples = ["主队名称", "客队名称", "0", "0", "00:00",
-        "节目名称", "表演者", "节目副标题", "歌唱", "活动名称"];
+        "节目名称", "表演者", "节目副标题", "歌唱", "活动名称",
+        "今夜星光照亮舞台 · Live 2026", "晋级名单", "1 / 2", "01", "示例选手", "示例节目", "98.50"];
     var samplePS = [[134, 0, 214, 60], [134, 60, 214, 60], [352, 0, 68, 60],
         [352, 60, 68, 60], [0, 60, 130, 60]];
     var psTeamColors = {
@@ -86,10 +90,18 @@ var VMixTemplateAuthor = (function () {
         } finally { file.close(); }
         return result;
     }
-    function readTemplate(file, module) {
+    function defaultSlot(module) { return module === "football" ? "scoreboard" : "program"; }
+    function fieldAllowed(index, module, slot) {
+        if (index < 0) return false;
+        if (module === "football") return index < 5;
+        if (slot === "caption") return index === 10;
+        if (slot === "promotion") return index >= 11 && index <= 16;
+        return index >= 5 && index <= 9;
+    }
+    function readTemplate(file, module, slot) {
         var result = readJson(file);
         if (!result || result.format !== "vibe-vmix-graphics" || result.version !== 2 ||
-            result.module !== module || !result.scene || !result.motion || !(result.elements instanceof Array)) {
+            result.module !== module || result.slot !== (slot || defaultSlot(module)) || !result.scene || !result.motion || !(result.elements instanceof Array)) {
             fail("请选择同一模块的 .vmix-graphics.json 模板。");
         }
         return result;
@@ -111,8 +123,8 @@ var VMixTemplateAuthor = (function () {
         } finally { file.close(); }
         if (!file.exists || file.length < data.length) fail("模板未写完整。");
     }
-    function addText(elements, i, box, style, width, height, module) {
-        if ((module === "football") !== (i < 5)) fail("图层「" + names[i] + "」属于另一种模块。");
+    function addText(elements, i, box, style, width, height, module, slot) {
+        if (!fieldAllowed(i, module, slot)) fail("图层「" + names[i] + "」属于另一种模板。");
         var x = within(Math.round(box[0]), 0, width - 1);
         var y = within(Math.round(box[1]), 0, height - 1);
         if (box[2] <= 0 || box[3] <= 0 || box[0] >= width || box[1] >= height ||
@@ -137,7 +149,7 @@ var VMixTemplateAuthor = (function () {
         var boxHeight = Math.max(visibleHeight + 8, size * 1.3);
         return [left - shift, top - (boxHeight - visibleHeight) / 2, boxWidth, boxHeight];
     }
-    function psScene(doc, module, png, external) {
+    function psScene(doc, module, png, external, slot) {
         var width = pixel(doc.width), height = pixel(doc.height), text = [], colors = [], logos = [], duplicate;
         sizeCheck(width, height);
         var sample = width === 420 && height === 120 && decodeURI(doc.name) === "BITFA动效比分条.psd";
@@ -178,7 +190,7 @@ var VMixTemplateAuthor = (function () {
                     var font = app.fonts.getByName(item.font);
                     addText(text, index, box, { text: item.contents, size: size,
                         align: align, family: font.family, bold: item.fauxBold || /bold|black|heavy/i.test(font.style),
-                        color: rgb([c.red / 255, c.green / 255, c.blue / 255]) }, width, height, module);
+                        color: rgb([c.red / 255, c.green / 255, c.blue / 255]) }, width, height, module, slot);
                     if (sample && index < 4) text[text.length - 1].inkField = index % 2 === 0 ? "home" : "away";
                     layer.visible = false;
                 }
@@ -276,7 +288,7 @@ var VMixTemplateAuthor = (function () {
         }
         return { tracks: { enter: track(start, hold), exit: track(out, end) }, hold: (hold + out) / 2 };
     }
-    function aeScene(comp, module, hold, png, finish, external) {
+    function aeScene(comp, module, hold, png, finish, external, slot) {
         var text = [], colors = [], logos = [], fields = [], width = comp.width, height = comp.height;
         var i, layer, index;
         sizeCheck(width, height);
@@ -314,7 +326,7 @@ var VMixTemplateAuthor = (function () {
                     text: item.text, size: size, family: item.fontFamily || item.font,
                     bold: item.fauxBold || /bold|black|heavy/i.test(item.fontStyle || ""),
                     align: align, color: item.applyFill ? rgb(item.fillColor) : "#FFFFFF"
-                }, width, height, module);
+                }, width, height, module, slot);
             fields.push(layer.index);
         }
         checkFields(text.concat(colors, logos));
@@ -375,13 +387,17 @@ var VMixTemplateAuthor = (function () {
             var layout = [[.33,.03,.48,.44,.22],[.33,.53,.48,.44,.22],
                 [.825,.03,.16,.44,.24],[.825,.53,.16,.44,.24],[.025,.53,.28,.44,.23],
                 [.18,.11,.78,.47,.28],[.18,.57,.78,.33,.19],[.18,.74,.78,.23,.16],
-                [.018,.2,.14,.6,.16],[.18,.03,.78,.28,.18]][index];
+                [.018,.2,.14,.6,.16],[.18,.03,.78,.28,.18],
+                [.03,.12,.94,.76,.38],
+                [.03,.035,.70,.12,.072],[.82,.046,.14,.088,.032],
+                [.02,.21,.12,.085,.042],[.16,.21,.25,.085,.042],
+                [.43,.21,.33,.085,.042],[.78,.21,.19,.085,.042]][index];
             x = Math.round(width * layout[0]); y = Math.round(height * layout[1]);
             boxWidth = Math.max(2, Math.round(width * layout[2]));
             boxHeight = Math.max(2, Math.round(height * layout[3]));
             size = Math.max(8, Math.min(90, Math.round(height * layout[4])));
         }
-        var center = planned && (index >= 0 && index < 5 || index === 8);
+        var center = planned && (index >= 0 && index < 5 || index === 8 || index === 13 || index === 16);
         if (isPS) {
             layer = source.artLayers.add();
             layer.kind = LayerKind.TEXT;
@@ -484,7 +500,8 @@ var VMixTemplateAuthor = (function () {
         if (!/^[a-z][a-z0-9-]{0,47}$/.test(options.id) || /^(classic|prototype|constructor)$/.test(options.id)) {
             fail("模板标识需以小写英文字母开头，可包含数字或连字符。");
         }
-        var base = options.base ? readTemplate(options.base, module) : null;
+        var slot = options.slot || defaultSlot(module);
+        var base = options.base ? readTemplate(options.base, module, slot) : null;
         if (base && (base.scene.width !== width || base.scene.height !== height)) {
             fail("当前作品尺寸须与选取的模板一致。");
         }
@@ -492,12 +509,16 @@ var VMixTemplateAuthor = (function () {
         var png = options.external ? new File(options.external) :
             new File(file.parent.fsName + "/.vmix-plate-" + new Date().getTime() + ".png");
         var result = {
-            format: "vibe-vmix-graphics", version: 2, module: module, slot: module === "football" ? "scoreboard" : "program",
+            format: "vibe-vmix-graphics", version: 2, module: module, slot: slot,
             id: options.id, name: options.name,
             scene: { width: width, height: height, position: module === "football" ?
                 { x: Math.min(960, width / 2 + 40), y: Math.min(540, height / 2 + 36) } :
                 { x: Math.min(960, width / 2 + 96), y: Math.max(height / 2, 936 - height / 2) } }
         };
+        if (slot === "caption" || slot === "promotion") {
+            result.scene.position = { x: Math.min(96, 1920 - width), y: slot === "caption" ?
+                Math.max(0, 1010 - height) : Math.min(112, 1080 - height) };
+        }
         if (motion) result.motion = motion.tracks;
         else if (base) result.motion = base.motion;
         else result.motion = stillTracks();
@@ -513,6 +534,27 @@ var VMixTemplateAuthor = (function () {
         }
         function write(elements) {
             result.elements = elements;
+            if (slot === "caption" || slot === "promotion") {
+                var seen = {}, first = height, last = 0;
+                for (var index = 0; index < elements.length; index++) {
+                    var element = elements[index], binding = element.bind;
+                    if (!binding) continue;
+                    if (seen[binding]) fail("实时字段重复：" + binding);
+                    seen[binding] = true;
+                    if (/^promotion\.(rank|name|program|score)$/.test(binding)) {
+                        first = Math.min(first, element.y);
+                        last = Math.max(last, element.y + element.height);
+                    }
+                }
+                if (slot === "caption" && !seen["caption.text"]) fail("请插入实时歌词字幕图层。");
+                if (slot === "promotion") {
+                    if (!seen["promotion.title"] || !seen["promotion.name"]) fail("晋级模板至少需要名单标题和选手姓名。");
+                    result.roster = base && base.roster ? base.roster : {
+                        top: first, rowHeight: Math.min(height - first, Math.max(28, last - first + 8)),
+                        repeatArt: Boolean(options.repeatRow)
+                    };
+                }
+            }
             if (!options.external) saveTemplate(file, result);
             return result;
         }
@@ -521,11 +563,11 @@ var VMixTemplateAuthor = (function () {
                 if (error) { callback(error); return; }
                 try { write(elements); } catch (error) { callback(error); return; }
                 callback(null, result);
-            }, options.external);
+            }, options.external, slot);
             return null;
         }
         try {
-            return write(isPS ? psScene(source, module, png, options.external) : base.elements);
+            return write(isPS ? psScene(source, module, png, options.external, slot) : base.elements);
         } finally { if (!options.external && png.exists) png.remove(); }
     }
     function idFor(value, module) {
@@ -665,16 +707,22 @@ var VMixTemplateAuthor = (function () {
             }
             var width = isPS ? pixel(source.width) : source.width, height = isPS ? pixel(source.height) : source.height;
             var meta = { host: appName, name: source.name.replace(/\.psd$/i, ""), width: width, height: height,
-                token: String(source.id) + ":" + source.name, suggestModule: /football|bitfa|足球|比分/i.test(source.name) ? "football" : "stage",
-                footballId: idFor(source.name, "football"), stageId: idFor(source.name, "stage") };
+                token: String(source.id) + ":" + source.name, suggestModule: /football|bitfa|足球|比分/i.test(source.name) ? "football" :
+                    /promotion|晋级/i.test(source.name) ? "promotion" :
+                    /caption|lyric|歌词|字幕/i.test(source.name) ? "caption" : "stage",
+                footballId: idFor(source.name, "football"), stageId: idFor(source.name, "stage"),
+                captionId: idFor(source.name, "caption"), promotionId: idFor(source.name, "promotion") };
             if (request.action === "inspect") return JSON.stringify({ ok: true, result: meta });
             if (args.token !== meta.token) fail("当前作品已切换，请刷新后重试。");
             if (args.module !== "football" && args.module !== "stage") fail("未知模板模块。");
+            var slot = args.slot || defaultSlot(args.module);
+            if (args.module === "football" ? slot !== "scoreboard" : !/^(program|caption|promotion)$/.test(slot))
+                fail("未知模板用途。");
             if (request.action === "choose") {
                 if (args.kind !== "base" && args.kind !== "pack") fail("未知模板类型。");
                 var selected = File.openDialog("选取工作台模板", "*.json");
                 if (selected) {
-                    var template = args.kind === "pack" ? readFootballPack(selected) : readTemplate(selected, args.module);
+                    var template = args.kind === "pack" ? readFootballPack(selected) : readTemplate(selected, args.module, slot);
                     result = { path: selected.fsName, name: template.name, id: template.id };
                 }
             } else if (request.action === "savePath") {
@@ -700,7 +748,7 @@ var VMixTemplateAuthor = (function () {
                     typeof args.asset !== "string" || !/vmix-plate-[a-f0-9]{16}\.png$/i.test(args.asset)) fail("导出位置无效。");
                 var output = new File(args.output);
                 if (new File(args.asset).parent.fsName !== output.parent.fsName) fail("导出位置无效。");
-                var options = { module: args.module, name: args.name, id: args.id, external: args.asset,
+                var options = { module: args.module, slot: slot, repeatRow: args.repeatRow, name: args.name, id: args.id, external: args.asset,
                     base: args.base ? new File(args.base) : null, pack: args.pack ? new File(args.pack) : null };
                 var template = exportFile(isPS, source, output, options, function (error, template) {
                     panelExport = error ? { done: true, error: error.message || String(error) } :
@@ -720,6 +768,9 @@ var VMixTemplateAuthor = (function () {
                     } else if (args.control === "stage-kit" && args.module === "stage") {
                         addWidget(isPS, source, "event.logo");
                         addField(isPS, source, 5, true); addField(isPS, source, 6, true);
+                    } else if (args.control === "caption-kit" && slot === "caption") addField(isPS, source, 10, true);
+                    else if (args.control === "promotion-kit" && slot === "promotion") {
+                        for (var i = 11; i <= 16; i++) addField(isPS, source, i, true);
                     } else if (args.control === "custom") addField(isPS, source, -1, true);
                     else if (args.control === "home" || args.control === "away" || /^team\.(homeLogo|awayLogo)$/.test(args.control)) {
                         if (args.module !== "football") fail("该控件属于足球模板。");
@@ -728,7 +779,7 @@ var VMixTemplateAuthor = (function () {
                     else {
                         var index = -1;
                         for (var i = 0; i < keys.length; i++) if (keys[i] === args.control) index = i;
-                        if (index < 0 || (index < 5) !== (args.module === "football")) fail("该文字字段属于另一模块。");
+                        if (!fieldAllowed(index, args.module, slot)) fail("该文字字段属于另一种模板。");
                         addField(isPS, source, index, true);
                     }
                 } finally { if (!isPS) app.endUndoGroup(); }

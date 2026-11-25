@@ -1,4 +1,4 @@
-# 转播包装工作台 2.0.0
+# 转播包装工作台 2.1.0
 
 本版本未完全验证，可能存在BUG，如遇BUG请与开发者联系
 
@@ -34,6 +34,10 @@ Windows 独立桌面程序。完整解压后双击 `转播包装工作台.exe`�
 2. 在节目资料中导入透明 MOV 或多选同组 PNG 帧并填写帧率。点「播出报幕」完整播放该节目绑定的动画，也可单独重播。在「包装与模板」中导入和设置全场台标及活动 Logo，通过「上屏图层」开关。MOV 和 PNG 序列由 FFmpeg 转为保留透明度的画面，可使用 vMix 附带的 FFmpeg 6，或通过 `BROADCAST_FFMPEG` 指定 FFmpeg。迁移节目单时同时保留舞台素材目录。
 3. 歌词在「逐句字幕」中手动上屏。在「包装与模板 → 字幕模板」创建模板，或将鼠标移到卡片上点击「编辑」。可分别设置中文字体、英文与数字字体，以及上屏和下屏效果与时长。点击「保存」更新模板，点击「保存为副本」建立独立模板。编辑器的「导出模板」会打包背景和已导入的字体文件，可用模板列表中的「导入模板」恢复。打开「预览与布局」，选择「字幕条」可整体拖动模板，选择台标或活动 Logo 可直接输入像素宽高，也可切换「锁定纵横比」。每个节目支持最多 500 句，可从 LRC / TXT 导入。
 4. 将舞台的上屏地址添加为 vMix 网页输入，画布设为 1920 × 1080。用「预览与布局」检查图层位置。
+
+### 舞台设计模板
+
+歌词字幕和晋级名单支持导入 AI、Photoshop 或 After Effects 生成的设计 JSON。歌词模板和现有字幕模板同级，晋级模板在各轮名单样式中选用。在控台可编辑、校验、导出或另存 JSON。[模板 API、规范和可导入示例](stage-design/API与封装规范.md)
 
 ### 晋级名单
 
@@ -92,6 +96,7 @@ WinForms + 系统共享 WebView2，不随新工作台携带 Electron / Chromium�
 | `data/state.json` | 足球资料，与旧便携版兼容 |
 | `data/stage/state.json` | 舞台节目、包装、设置 |
 | `data/stage/assets/` | 舞台素材与工程索引 |
+| `data/stage/design-assets/` | 设计 JSON 内嵌的 PNG 和 WebM |
 | `data/ae-live/` | AE 密钥、播放设置、画面和缓存 |
 | `data/webview/` | 桌面界面缓存 |
 
@@ -112,6 +117,6 @@ npm ci
 npm run build:workspace
 ```
 
-Node 运行文件取自构建机器正在使用的 Node EXE。若其目录已有 `LICENSE` 或 `LICENSE.txt`，构建也可直接使用该许可。SDK 原始包和许可需要与所用版本对应；SDK 解压目录会在构建时自动生成，构建清单记录原始包 SHA256。构建输出为 `dist/转播包装工作台-2.0.0-Windows-x64` 和同名 ZIP。
+Node 运行文件取自构建机器正在使用的 Node EXE。若其目录已有 `LICENSE` 或 `LICENSE.txt`，构建也可直接使用该许可。SDK 原始包和许可需要与所用版本对应；SDK 解压目录会在构建时自动生成，构建清单记录原始包 SHA256。构建输出为 `dist/转播包装工作台-2.1.0-Windows-x64` 和同名 ZIP。
 
 实现依据：[vMix HTTP API](https://www.vmix.com/help29/DeveloperAPI.html)、[vMix 输入函数](https://images.vmix.com/help29/ShortcutFunctionReference.html)、[NewBlue 文件格式](https://newbluefx.zendesk.com/hc/en-us/articles/4408894698267-Save-and-package-graphics-or-projects-to-your-computer)、[微软 WebView2 分发](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/evergreen-vs-fixed-version)。

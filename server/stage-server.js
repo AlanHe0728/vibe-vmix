@@ -11,6 +11,13 @@ const { createNetworkSession } = require('./network-session');
 const { createStaticHandler, operatorTheme } = require('./static-files');
 const { json, readObject, method, sendSnapshot } = require('./http-utils');
 const { AppError } = require('../core/errors');
+const {
+  stageDesign,
+  captionLink,
+  mediaPrefix,
+  byteLimit: designLimit,
+} = require('../modules/stage/design');
+const { createStageDesignAssets } = require('./stage-design-assets');
 
 const {
   defaults: promotionDefaults,
@@ -23,6 +30,23 @@ function promotionLayout({ style }) {
   return Object.fromEntries(promotionLayoutFields.map((key) => [key, style[key]]));
 }
 
+function promotionDesign(state, live) {
+  return live?.designId && state.stageDesigns.find(({ id }) => id === live.designId);
+}
+
+function designEtag(design) {
+  return '"stage-design-' + design.id + '-' + design.revision + '"';
+}
+
+function promotionResponse(state, live) {
+  const design = promotionDesign(state, live);
+  return {
+    live,
+    layout: promotionLayout(state),
+    ...(design && { design, eventLogo: state.eventAsset }),
+  };
+}
+
 function createStageServer({
   dataDirectory,
   project = path.resolve(__dirname, '..'),
@@ -31,15 +55,31 @@ function createStageServer({
   promotionNow = () => performance.now(),
 }) {
   const library = createAssetLibrary(path.join(dataDirectory, 'assets'));
+  const designDirectory = path.join(dataDirectory, 'design-assets');
+  const designAssets = createStageDesignAssets(designDirectory);
+  async function readDesign(req) {
+    let document;
+    try {
+      document = await readObject(req, designLimit);
+    } catch (error) {
+      if (error.status === 413) throw new AppError('模板超过 4 MiB', 413);
+      throw error;
+    }
+    const template = stageDesign(document);
+    if (Buffer.byteLength(JSON.stringify(template)) > designLimit)
+      throw new AppError('模板超过 4 MiB', 413);
+    return template;
+  }
   const stage = createStageModule();
   let promotionKey = '';
   let promotionStartedAt = 0;
   function currentPromotion(state) {
     const roster = state.promotions.find(({ id }) => id === state.promotionRoundId);
     const live = roster ? promotionSnapshot(roster) : null;
-    const { pageCount, pageSize } = promotionGrid(live?.entries.length || 0, state.style);
+    const design = promotionDesign(state, live);
+    const { pageCount, pageSize } = promotionGrid(live?.entries.length || 0, state.style, design);
     // Share one page clock across vMix and all PGM viewers. PVW stays on page one for layout.
-    const key = JSON.stringify([live, pageSize]);
+    const key = JSON.stringify([live, pageSize, design?.revision]);
     const now = promotionNow();
     if (key !== promotionKey) {
       promotionKey = key;
@@ -323,6 +363,7 @@ function createStageServer({
         files: ['broadcast.css'],
       },
       { prefix: '/stage/', directory: path.join(project, 'ui/stage') },
+      { prefix: mediaPrefix, directory: designDirectory },
       {
         prefix: '/stage-module/',
         directory: path.join(project, 'modules/stage'),
@@ -355,6 +396,7 @@ function createStageServer({
         (pathname === '/api/v1/state' || /^\/state(?:\.json)?\/?$/.test(pathname))
       ) {
         const patch = await readObject(req);
+        if (Object.hasOwn(patch, 'stageDesigns')) throw new AppError('请通过设计模板导入接口保存');
         const current = application.read();
         if (req.headers['if-match'] && req.headers['if-match'] !== application.snapshot().etag)
           throw new AppError('内容已在其他窗口更新，请检查修改后重试', 409);
@@ -431,9 +473,7 @@ function createStageServer({
           const roundId = params.get('round') ?? defaultRound;
           const draft = state.promotions.find(({ id }) => id === roundId);
           const live = draft ? promotionSnapshot(draft) : null;
-          const body = JSON.stringify(
-            params.has('layout') ? { live, layout: promotionLayout(state) } : live,
-          );
+          const body = JSON.stringify(params.has('layout') ? promotionResponse(state, live) : live);
           sendSnapshot(req, res, {
             body,
             etag: '"' + createHash('sha256').update(body).digest('hex') + '"',
@@ -444,13 +484,75 @@ function createStageServer({
         const state = application.read();
         const params = new URL(req.url, 'http://local').searchParams;
         const live = currentPromotion(state);
-        const body = JSON.stringify(
-          params.has('layout') ? { live, layout: promotionLayout(state) } : live,
-        );
+        const body = JSON.stringify(params.has('layout') ? promotionResponse(state, live) : live);
         sendSnapshot(req, res, {
           body,
           etag: '"' + createHash('sha256').update(body).digest('hex') + '"',
         });
+      } else if (pathname === '/api/stage/design-templates/validate') {
+        method(req, 'POST');
+        const template = await readDesign(req);
+        json(res, { ok: true, template });
+      } else if (pathname === '/api/stage/design-templates') {
+        if (req.method === 'GET') {
+          const { stageDesigns } = application.read();
+          json(res, {
+            ok: true,
+            templates: stageDesigns.map(({ id, name, slot, scene, revision }) => ({
+              id,
+              name,
+              slot,
+              scene,
+              revision,
+            })),
+          });
+        } else {
+          method(req, 'POST');
+          const template = await readDesign(req);
+          const replace = new URL(req.url, 'http://local').searchParams.get('replace') === '1';
+          const { stageDesigns, captionTemplates } = application.read();
+          const prior = stageDesigns.find(({ id }) => id === template.id);
+          const caption = captionTemplates.find(({ id }) => id === template.id);
+          if (req.headers['if-match'] && (!prior || req.headers['if-match'] !== designEtag(prior)))
+            throw new AppError('设计模板已在其他窗口更新，请重新打开', 409);
+          if (
+            (prior && (!replace || prior.slot !== template.slot)) ||
+            (template.slot === 'caption' && caption && caption.designId !== template.id)
+          )
+            throw new AppError('模板标识已存在，请更新同类型模板或更换标识', 409);
+          if (
+            (!prior && stageDesigns.length >= 60) ||
+            (template.slot === 'caption' && !caption && captionTemplates.length >= 100)
+          )
+            throw new AppError('模板库已满');
+          const stored = designAssets.import({ ...template, revision: (prior?.revision ?? 0) + 1 });
+          application.update({
+            stageDesigns: [...stageDesigns.filter(({ id }) => id !== stored.id), stored],
+            ...(stored.slot === 'caption' && {
+              captionTemplates: [
+                ...captionTemplates.filter(({ id }) => id !== stored.id),
+                captionLink(stored, caption),
+              ],
+            }),
+          });
+          json(res, { ok: true, template: stored }, prior ? 200 : 201);
+        }
+      } else if (pathname.startsWith('/api/stage/design-templates/')) {
+        method(req, 'GET');
+        const { stageDesigns, captionTemplates } = application.read();
+        const id = pathname.slice('/api/stage/design-templates/'.length);
+        const design = stageDesigns.find((item) => item.id === id);
+        if (!design) throw new AppError('找不到设计模板', 404);
+        res.setHeader('ETag', designEtag(design));
+        const position =
+          design.slot === 'caption'
+            ? captionTemplates.find(({ designId }) => designId === id)?.position
+            : undefined;
+        res.setHeader(
+          'Content-Disposition',
+          'attachment; filename="' + id + '.vmix-graphics.json"',
+        );
+        json(res, designAssets.export(design, position));
       } else if (pathname === '/api/stage/templates') {
         method(req, 'GET');
         json(res, { ok: true, templates });

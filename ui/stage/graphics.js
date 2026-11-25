@@ -38,6 +38,8 @@ let etag = '',
   captionOnAir,
   captionDisplay,
   captionUsesLatin = false;
+let captionDesignPlayer,
+  captionDesignActive = false;
 const transitionMedia = StageMedia.mount($('transitionMedia'), { fit: 'contain' });
 const captionBackground = StageMedia.mount($('captionBackground'), { fit: 'contain' });
 const eventMedia = StageMedia.mount($('eventMedia'), { fit: 'fill' });
@@ -122,6 +124,12 @@ function clearCaption() {
   $('caption').classList.remove('visible');
   $('captionText').textContent = '';
   captionBackground.stop();
+  if (captionDesignActive) {
+    captionDesignPlayer.load(null);
+    $('captionDesign').hidden = true;
+    $('caption').classList.remove('designed-caption');
+    captionDesignActive = false;
+  }
 }
 
 function runCaptionEffect(effect, entering, duration) {
@@ -145,6 +153,54 @@ function runCaptionEffect(effect, entering, duration) {
   return Boolean(playback);
 }
 
+function placeCaptionLayer(state, template, bounds) {
+  const element = $('caption');
+  const draftApplies =
+    workspacePreview && (draftCaptionTemplate ?? template?.id ?? '') === (template?.id || '');
+  element.style.left =
+    ((draftApplies ? draftStyle.captionX : undefined) ??
+      template?.position?.x ??
+      state.style.captionX) + 'px';
+  element.style.top =
+    ((draftApplies ? draftStyle.captionY : undefined) ??
+      template?.position?.y ??
+      state.style.captionY) + 'px';
+  element.style.width = bounds ? bounds.width + 'px' : '';
+  element.style.height = bounds ? bounds.height + 'px' : '';
+}
+
+function renderDesignedCaption(state, template, body, visible, layout) {
+  const design =
+    visible && template?.designId && state.stageDesigns?.find(({ id }) => id === template.designId);
+  const animate = !layout && !reduced && !$('transition').classList.contains('playing');
+  if (!design) {
+    if (captionDesignActive && !visible) {
+      captionDesignPlayer.setVisible(false, animate);
+      return true;
+    }
+    if (captionDesignActive) clearCaption();
+    return false;
+  }
+  if (!captionDesignActive) {
+    clearCaption();
+    captionDesignActive = true;
+    $('captionDesign').hidden = false;
+    $('caption').classList.add('designed-caption');
+  }
+  captionDesignPlayer ??= FBPMotionScene.attach($('captionDesign'));
+  placeCaptionLayer(state, template, design.scene);
+  captionDesignPlayer.load(FBPMotionScene.stageScene(design), design.revision);
+  captionDesignPlayer.update({
+    'caption.text': body,
+    'event.logo': /\.(?:png|jpe?g|webp)$/i.test(state.eventAsset)
+      ? '/assets/' + state.eventAsset
+      : '',
+  });
+  $('caption').classList.add('visible');
+  captionDesignPlayer.setVisible(true, animate);
+  return true;
+}
+
 function renderCaption(state, preset) {
   const active = state.captionLive;
   const body = active && StageCaptions.lines(active.caption)[active.index];
@@ -152,6 +208,11 @@ function renderCaption(state, preset) {
   const wasOnAir = captionOnAir;
   captionOnAir = visible;
   const layout = workspacePreview && previewPresentation.mode === 'layout';
+  const stored = state.captionTemplates.find(({ id }) => id === active?.template?.id);
+  const template = visible
+    ? stored || active?.template
+    : StageCaptions.forProgram(state, state.live);
+  if (renderDesignedCaption(state, template, body, visible, layout)) return;
   if (!visible && wasOnAir) {
     if (
       !layout &&
@@ -166,10 +227,6 @@ function renderCaption(state, preset) {
   const element = $('caption');
   const box = $('captionBox');
   const text = $('captionText');
-  const stored = state.captionTemplates.find(({ id }) => id === active?.template?.id);
-  const template = visible
-    ? stored || active?.template
-    : StageCaptions.forProgram(state, state.live);
   const appearance = { ...state.style, ...template?.appearance };
   const root = $('canvas');
   for (const key of ['accent', 'background', 'foreground'])
@@ -190,18 +247,7 @@ function renderCaption(state, preset) {
   const bounds = template && StageCaptions.bounds(template);
   box.classList.toggle('caption-template', Boolean(template));
   box.classList.toggle('caption-footage', Boolean(template?.background));
-  const draftApplies =
-    workspacePreview && (draftCaptionTemplate ?? template?.id ?? '') === (template?.id || '');
-  element.style.left =
-    ((draftApplies ? draftStyle.captionX : undefined) ??
-      template?.position?.x ??
-      state.style.captionX) + 'px';
-  element.style.top =
-    ((draftApplies ? draftStyle.captionY : undefined) ??
-      template?.position?.y ??
-      state.style.captionY) + 'px';
-  element.style.width = bounds ? bounds.width + 'px' : '';
-  element.style.height = bounds ? bounds.height + 'px' : '';
+  placeCaptionLayer(state, template, bounds);
   box.style.maxWidth = template ? '' : state.style.lowerWidth + 'px';
   function place(node, geometry) {
     node.style.left = geometry ? geometry.x - bounds.x + 'px' : '';

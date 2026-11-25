@@ -38,15 +38,25 @@ function teamField(value, module) {
 }
 
 function asset(value, kind) {
-  const signature = kind === 'image' ? /^data:image\/png;base64,iVBORw0KGgo/ : /^data:video\/webm;base64,GkXf/;
-  if (typeof value !== 'string' || value.length > 2500000 || !signature.test(value) ||
-      !/^[A-Za-z0-9+/]+={0,2}$/.test(value.slice(value.indexOf(',') + 1)))
+  const signature =
+    kind === 'image' ? /^data:image\/png;base64,iVBORw0KGgo/ : /^data:video\/webm;base64,GkXf/;
+  if (
+    typeof value !== 'string' ||
+    value.length > 2500000 ||
+    !signature.test(value) ||
+    !/^[A-Za-z0-9+/]+={0,2}$/.test(value.slice(value.indexOf(',') + 1))
+  )
     invalid('内嵌透明素材');
   return value;
 }
 
 function track(value, label) {
-  if (!value || !Array.isArray(value.frames) || value.frames.length < 2 || value.frames.length > 240)
+  if (
+    !value ||
+    !Array.isArray(value.frames) ||
+    value.frames.length < 2 ||
+    value.frames.length > 240
+  )
     invalid(label + '关键帧');
   const duration = number(value.duration, 1, 10000, label + '时长');
   let last = -1;
@@ -68,18 +78,32 @@ function track(value, label) {
   return { duration, frames };
 }
 
-function parseMotionTemplate(input, module) {
-  if (input?.format !== format || input.version !== 2 || input.module !== module ||
-      input.slot !== (module === 'football' ? 'scoreboard' : 'program'))
+function parseMotionTemplate(input, module, options = {}) {
+  const slot = options.slot ?? (module === 'football' ? 'scoreboard' : 'program');
+  const allowedFields = options.fields ?? fields[module];
+  const parseAsset = options.asset ?? asset;
+  if (
+    input?.format !== format ||
+    input.version !== 2 ||
+    input.module !== module ||
+    input.slot !== slot
+  )
     invalid('模板模块或版本');
   const { id, name, scene, elements, motion } = input;
-  if (typeof id !== 'string' || !/^[a-z][a-z0-9-]{0,47}$/.test(id) ||
-      ['classic', 'constructor', 'prototype'].includes(id)) invalid('模板标识');
+  if (
+    typeof id !== 'string' ||
+    !/^[a-z][a-z0-9-]{0,47}$/.test(id) ||
+    ['classic', 'constructor', 'prototype'].includes(id)
+  )
+    invalid('模板标识');
   const width = number(scene?.width, 64, 1920, '组件宽度');
   const height = number(scene?.height, 24, 1080, '组件高度');
   if (!Array.isArray(elements) || !elements.length || elements.length > 64) invalid('组件列表');
   return {
-    id, name: label(name, 64, '模板名'), width, height,
+    id,
+    name: label(name, 64, '模板名'),
+    width,
+    height,
     position: {
       x: number(scene.position?.x, 0, 1920, '画布横坐标'),
       y: number(scene.position?.y, 0, 1080, '画布纵坐标'),
@@ -94,23 +118,31 @@ function parseMotionTemplate(input, module) {
       };
       if (box.x + box.width > width || box.y + box.height > height) invalid('元素超出组件范围');
       if (el.type === 'rect') {
-        return { ...box, color: color(el.color, '矩形颜色'), colorField: teamField(el.colorField, module),
-          radius: number(el.radius ?? 0, 0, 64, '矩形圆角') };
+        return {
+          ...box,
+          color: color(el.color, '矩形颜色'),
+          colorField: teamField(el.colorField, module),
+          radius: number(el.radius ?? 0, 0, 64, '矩形圆角'),
+        };
       }
       if (el.type === 'image' && el.bind !== undefined) {
         if (!logos[module]?.includes(el.bind)) invalid('Logo 绑定');
-        return { ...box, bind: el.bind, src: el.src ? asset(el.src, 'image') : '' };
+        return { ...box, bind: el.bind, src: el.src ? parseAsset(el.src, 'image') : '' };
       }
-      if (el.type === 'image' || el.type === 'video') return { ...box, src: asset(el.src, el.type) };
+      if (el.type === 'image' || el.type === 'video')
+        return { ...box, src: parseAsset(el.src, el.type) };
       if (el.type !== 'text') invalid('元素类型');
       const bind = el.bind ?? '';
-      if (bind && !fields[module].includes(bind)) invalid('实时字段');
+      if (bind && !allowedFields.includes(bind)) invalid('实时字段');
       const align = el.align ?? 'left';
       if (!['left', 'center', 'right'].includes(align)) invalid('文本对齐');
       const font = el.font ?? 'Microsoft YaHei';
       if (typeof font !== 'string' || !/^[\p{L}\p{N} -]{1,64}$/u.test(font)) invalid('字体');
       return {
-        ...box, bind, align, font,
+        ...box,
+        bind,
+        align,
+        font,
         text: el.text === '' || el.text === undefined ? '' : label(el.text, 160, '文字'),
         fontSize: number(el.fontSize, 8, 144, '字号'),
         weight: number(el.weight ?? 600, 100, 900, '字重'),

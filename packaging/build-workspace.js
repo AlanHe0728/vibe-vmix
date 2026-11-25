@@ -47,8 +47,10 @@ fs.writeFileSync(
   path.join(output, '使用说明.md'),
   fs
     .readFileSync(path.join(root, 'docs/WORKSPACE_2.md'), 'utf8')
-    .replace('../ae-plugin/README.md', 'AE插件/README.md'),
+    .replace('../ae-plugin/README.md', 'AE插件/README.md')
+    .replace('stage-design/API与封装规范.md', '模板开发/API与封装规范.md'),
 );
+fs.cpSync(path.join(root, 'docs/stage-design'), path.join(output, '模板开发'), { recursive: true });
 // System UI engines are shared. Only the service runtime is bundled.
 fs.mkdirSync(path.join(output, 'runtime'));
 fs.copyFileSync(process.execPath, path.join(output, 'runtime/node.exe'));

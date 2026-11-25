@@ -3,6 +3,7 @@ const { templates } = require('./templates');
 const { format: motionFormat, parseMotionTemplate } = require('../../core/motion-template');
 const { lines, forProgram } = require('./captions');
 const promotionLayout = require('./promotion-layout');
+const { stageDesign } = require('./design');
 const {
   text,
   keys,
@@ -85,6 +86,7 @@ function createStageModule() {
       programs: [],
       rounds: [],
       captionTemplates: [],
+      stageDesigns: [],
       captionTemplateId: '',
       promotions: [],
       promotionRoundId: null,
@@ -141,6 +143,7 @@ function createStageModule() {
       'programs',
       'rounds',
       'captionTemplates',
+      'stageDesigns',
       'captionTemplateId',
       'promotions',
       'promotionRoundId',
@@ -185,6 +188,16 @@ function createStageModule() {
     } else if (!next.promotions.some(({ id }) => id === next.promotionRoundId)) {
       next.promotionRoundId = next.promotions[0]?.id ?? null;
     }
+    if (own(patch, 'stageDesigns'))
+      next.stageDesigns = uniqueList(patch.stageDesigns, 60, (design) => stageDesign(design, true));
+    const designs = new Map(next.stageDesigns.map(({ id, slot }) => [id, slot]));
+    if (
+      next.captionTemplates.some(
+        ({ designId }) => designId && designs.get(designId) !== 'caption',
+      ) ||
+      next.promotions.some(({ designId }) => designId && designs.get(designId) !== 'promotion')
+    )
+      throw Error('找不到对应的舞台设计模板');
     const rounds = new Set(next.rounds.map((item) => item.id));
     const lyrics = new Set(next.captionTemplates.map((item) => item.id));
     if (

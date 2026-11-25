@@ -699,6 +699,147 @@ test('promotion viewers share automatic pagination as the layout and round chang
   }
 });
 
+test('stage design packages validate, round-trip media and drive both stage outputs', async (t) => {
+  const { server, dataDirectory } = setup(t);
+  const base = '/api/stage/design-templates';
+  const example = (slot) =>
+    JSON.parse(
+      fs.readFileSync(
+        path.join(__dirname, '../docs/stage-design', slot + '-example.vmix-graphics.json'),
+      ),
+    );
+  const image = samplePng();
+  const data = 'data:image/png;base64,' + image.toString('base64');
+  const caption = example('caption');
+  caption.elements.unshift({ type: 'image', x: 0, y: 0, width: 1100, height: 134, src: data });
+  assert.equal((await request(server, base + '/validate', caption)).status, 200);
+  assert.deepEqual((await request(server, base)).json().templates, []);
+  const withoutField = { ...caption, elements: caption.elements.filter(({ bind }) => !bind) };
+  assert.equal((await request(server, base + '/validate', withoutField)).status, 400);
+  assert.equal(
+    (
+      await request(server, base + '/validate', {
+        ...caption,
+        elements: [...caption.elements, caption.elements.at(-1)],
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request(server, base + '/validate', {
+        ...caption,
+        elements: [
+          { ...caption.elements[0], src: 'https://example.com/plate.png' },
+          ...caption.elements.slice(1),
+        ],
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await request(server, base, caption, { origin: 'http://other.example' })).status,
+    403,
+  );
+
+  const imported = await request(server, base, caption);
+  assert.equal(imported.status, 201);
+  assert.match(
+    imported.json().template.elements[0].src,
+    /^\/stage-design-media\/[a-f0-9]{64}\.png$/,
+  );
+  const served = await request(server, imported.json().template.elements[0].src);
+  assert.equal(served.status, 200);
+  assert.deepEqual(served.bytes, image);
+  const downloaded = (await request(server, base + '/' + caption.id)).json();
+  assert.equal(downloaded.elements[0].src, data);
+  assert.equal(downloaded.elements.at(-1).latinFont, 'Arial');
+  assert.equal(downloaded.motion.enter.duration, 460);
+  assert.equal((await request(server, base, caption)).status, 409);
+  const state = (await request(server, '/api/v1/state')).json();
+  assert.equal(state.captionTemplates.find(({ id }) => id === caption.id).designId, caption.id);
+  assert.equal(
+    (
+      await request(server, '/api/v1/state', {
+        captionTemplateId: caption.id,
+        programs: [
+          { id: 'act-1', type: '歌唱', title: '歌曲', performer: '甲', caption: '第一句\n第二句' },
+        ],
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await call(server, 'caption.take', { programId: 'act-1', index: 1 })).status, 200);
+  assert.equal(
+    (await request(server, '/api/v1/state')).json().captionLive.template.designId,
+    caption.id,
+  );
+  assert.equal(
+    (await request(server, base + '?replace=1', { ...caption, name: '更新后' })).json().template
+      .revision,
+    2,
+  );
+
+  const promotion = example('promotion');
+  assert.equal((await request(server, base, promotion)).status, 201);
+  const roster = {
+    id: '',
+    title: '第一轮晋级名单',
+    background: '',
+    sort: 'score',
+    designId: promotion.id,
+    columns: { rank: true, name: true, title: true, score: true },
+    entries: Array.from({ length: 25 }, (_, i) => ({
+      id: 'contestant-' + i,
+      name: '选手 ' + i,
+      title: '节目 ' + i,
+      score: 100 - i,
+      rank: null,
+      selected: true,
+    })),
+  };
+  assert.equal(
+    (await request(server, '/api/v1/state', { promotions: [{ ...roster, designId: caption.id }] }))
+      .status,
+    400,
+  );
+  assert.equal((await request(server, '/api/v1/state', { promotions: [roster] })).status, 200);
+  const result = (await request(server, '/api/stage/promotion?layout=1')).json();
+  assert.equal(result.design.id, promotion.id);
+  assert.equal(result.live.entries[0].score, 100);
+  const before = require('../modules/stage/promotion-layout').grid(
+    25,
+    result.layout,
+    result.design,
+  );
+  const narrow = require('../modules/stage/promotion-layout').grid(
+    25,
+    { promotionListWidth: 680, promotionListHeight: 380 },
+    result.design,
+  );
+  assert(narrow.pageCount > before.pageCount);
+  assert.equal(
+    (await request(server, '/api/stage/promotion-preview?layout=1&round=')).json().design.id,
+    promotion.id,
+  );
+  assert.equal((await call(server, 'all.hide')).status, 200);
+  assert.equal(
+    (await request(server, '/api/stage/promotion?layout=1')).json().design.id,
+    promotion.id,
+  );
+
+  const restarted = createStageServer({ dataDirectory });
+  try {
+    assert.equal((await request(restarted, base + '/' + caption.id)).json().name, '更新后');
+    assert.equal(
+      (await request(restarted, '/api/stage/promotion?layout=1')).json().design.id,
+      promotion.id,
+    );
+  } finally {
+    restarted.close();
+  }
+});
+
 function samplePng() {
   function chunk(name, bytes) {
     const key = Buffer.from(name);

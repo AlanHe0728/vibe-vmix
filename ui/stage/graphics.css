@@ -67,6 +67,14 @@ body.preview {
   width: max-content;
   transition: none;
 }
+#captionDesign {
+  position: absolute;
+  inset: 0 auto auto 0;
+}
+#caption.designed-caption #captionBackground,
+#caption.designed-caption #captionBox {
+  display: none;
+}
 #captionBackground {
   inset: auto;
 }

@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/stage-controls/match-controls.css" />
     <link rel="stylesheet" href="show.css" />
     <script defer src="media.js"></script>
+    <script defer src="design-control.js"></script>
     <script defer src="show-control.js"></script>
     <script defer src="promotion-control.js"></script>
     <script defer src="control.js"></script>
@@ -219,6 +220,17 @@
               </section>
               <section class="promotion-output">
                 <h2>名单样式</h2>
+                <label>设计模板<select id="promotionDesign"></select></label>
+                <div class="actions">
+                  <label class="file-button"
+                    >导入设计 JSON<input
+                      id="importPromotionDesign"
+                      type="file"
+                      accept=".json,application/json"
+                  /></label>
+                  <button id="editPromotionDesign" type="button">编辑模板</button>
+                  <button id="positionPromotionDesign" type="button">采用模板尺寸与位置</button>
+                </div>
                 <label>名单标题<input id="promotionTitleInput" maxlength="120" /></label>
                 <label
                   >排列方式<select id="promotionSort">
@@ -261,7 +273,11 @@
                 <h1>字幕模板</h1>
                 <div class="actions">
                   <label class="file-button">
-                    导入模板<input id="importCaptionTemplate" type="file" accept=".stage-caption" />
+                    导入模板<input
+                      id="importCaptionTemplate"
+                      type="file"
+                      accept=".stage-caption,.json,application/json"
+                    />
                   </label>
                   <button type="button" id="createCaptionTemplate">创建新模板</button>
                 </div>
@@ -440,6 +456,20 @@
         <div class="preview-wrap" id="previewWrap"></div>
       </aside>
     </main>
+    <dialog id="stageDesignDialog" class="stage-design-dialog" aria-labelledby="stageDesignTitle">
+      <h2 id="stageDesignTitle"></h2>
+      <label
+        >模板 JSON<textarea id="stageDesignText" spellcheck="false" rows="16"></textarea>
+      </label>
+      <p id="stageDesignStatus" role="status"></p>
+      <div class="actions">
+        <button id="stageDesignValidate" data-design-action type="button">校验</button>
+        <button id="stageDesignExport" data-design-action type="button">导出模板</button>
+        <button id="stageDesignSaveCopy" data-design-action type="button">保存为副本</button>
+        <button id="stageDesignSave" data-design-action type="button" class="primary">保存</button>
+        <form method="dialog"><button type="submit">关闭</button></form>
+      </div>
+    </dialog>
     <dialog id="captionTemplateDialog" aria-labelledby="captionTemplateDialogTitle">
       <form id="captionTemplateForm">
         <h2 id="captionTemplateDialogTitle">创建新模板</h2>

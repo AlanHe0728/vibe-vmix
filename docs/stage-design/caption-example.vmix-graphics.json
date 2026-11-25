@@ -1,0 +1,110 @@
+{
+  "format": "vibe-vmix-graphics",
+  "version": 2,
+  "module": "stage",
+  "slot": "caption",
+  "id": "stage-cobalt-caption",
+  "name": "钴蓝歌词字幕",
+  "scene": {
+    "width": 1100,
+    "height": 134,
+    "position": {
+      "x": 96,
+      "y": 890
+    }
+  },
+  "elements": [
+    {
+      "type": "rect",
+      "x": 0,
+      "y": 18,
+      "width": 1080,
+      "height": 100,
+      "color": "#12233A",
+      "radius": 18,
+      "opacity": 0.92
+    },
+    {
+      "type": "rect",
+      "x": 16,
+      "y": 35,
+      "width": 5,
+      "height": 66,
+      "color": "#56D6FF",
+      "radius": 2
+    },
+    {
+      "type": "text",
+      "bind": "caption.text",
+      "x": 40,
+      "y": 24,
+      "width": 1010,
+      "height": 88,
+      "text": "今夜星光照亮舞台 · Live 2026",
+      "font": "Microsoft YaHei",
+      "fontSize": 38,
+      "minFontSize": 26,
+      "weight": 600,
+      "color": "#F2F8FF",
+      "latinFont": "Arial",
+      "wrap": true
+    }
+  ],
+  "motion": {
+    "enter": {
+      "duration": 460,
+      "frames": [
+        {
+          "t": 0,
+          "x": -42,
+          "y": 0,
+          "sx": 1,
+          "sy": 1,
+          "rotation": 0,
+          "opacity": 0
+        },
+        {
+          "t": 0.65,
+          "x": 5,
+          "y": 0,
+          "sx": 1,
+          "sy": 1,
+          "rotation": 0,
+          "opacity": 1
+        },
+        {
+          "t": 1,
+          "x": 0,
+          "y": 0,
+          "sx": 1,
+          "sy": 1,
+          "rotation": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    "exit": {
+      "duration": 290,
+      "frames": [
+        {
+          "t": 0,
+          "x": 0,
+          "y": 0,
+          "sx": 1,
+          "sy": 1,
+          "rotation": 0,
+          "opacity": 1
+        },
+        {
+          "t": 1,
+          "x": -28,
+          "y": 0,
+          "sx": 1,
+          "sy": 1,
+          "rotation": 0,
+          "opacity": 0
+        }
+      ]
+    }
+  }
+}

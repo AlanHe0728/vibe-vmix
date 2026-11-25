@@ -242,6 +242,14 @@
 #mediaImportStatus {
   min-height: 1.5em;
 }
+.stage-design-dialog {
+  width: min(880px, calc(100vw - 32px));
+}
+#stageDesignText {
+  width: 100%;
+  font-family: Consolas, monospace;
+  tab-size: 2;
+}
 .promotion-desk {
   max-width: 1560px;
   margin: 0 auto;

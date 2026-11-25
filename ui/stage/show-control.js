@@ -263,6 +263,10 @@ async function importCaptionTemplate() {
   input.disabled = true;
   notice('正在导入字幕模板和素材…');
   try {
+    if (/\.json$/i.test(file.name)) {
+      await importStageDesign(file, 'caption');
+      return;
+    }
     const response = await fetch(captionPackageURL, { method: 'POST', body: file });
     const result = await response.json();
     if (!response.ok) throw Error(result.error || '字幕模板导入失败');
@@ -278,6 +282,7 @@ function renderCaptionTemplateCards() {
     state.templateId,
     state.captionTemplateId,
     state.captionTemplates,
+    state.stageDesigns.map(({ id, revision }) => [id, revision]),
   ]);
   if (signature === captionCardsSignature) return;
   captionCardsSignature = signature;
@@ -312,7 +317,14 @@ function captionTemplateCard(item, preset) {
   );
   const sample = document.createElement('span');
   sample.className = 'template-sample';
+  const design = item?.designId && state.stageDesigns.find(({ id }) => id === item.designId);
+  const designText = design?.elements.find(({ bind }) => bind === 'caption.text');
   const style = { ...preset, ...item?.appearance };
+  if (designText) {
+    style.foreground = designText.color;
+    style.font = designText.font;
+    style.background = design.elements.find(({ type }) => type === 'rect')?.color;
+  }
   for (const [key, setting] of [
     ['bg', 'background'],
     ['fg', 'foreground'],
@@ -328,7 +340,7 @@ function captionTemplateCard(item, preset) {
   const name = document.createElement('strong');
   name.textContent = label;
   const description = document.createElement('small');
-  description.textContent = preset?.description || '自定义字幕';
+  description.textContent = preset?.description || (design ? '设计模板' : '自定义字幕');
   use.append(sample, name, description);
   use.onmouseenter = use.onfocus = () => syncDockPreview(preset?.id || '', item?.id || '');
   use.onmouseleave = use.onblur = () => syncDockPreview();
@@ -341,12 +353,15 @@ function captionTemplateCard(item, preset) {
   edit.className = 'caption-template-edit';
   edit.textContent = '编辑';
   edit.setAttribute('aria-label', '编辑 ' + label);
-  edit.onclick = () => openCaptionEditor(item, preset);
+  edit.onclick = design
+    ? run(() => openStageDesign(design.id))
+    : () => openCaptionEditor(item, preset);
   card.append(use, edit);
   return card;
 }
 
 function installCaptionEditor() {
+  installStageDesignEditor();
   const form = $('captionTemplateForm');
   const dialog = $('captionTemplateDialog');
   captionPreview = StageMedia.mount($('captionPreviewFootage'));

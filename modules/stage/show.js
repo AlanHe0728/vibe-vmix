@@ -61,6 +61,7 @@ function captionTemplate(value) {
   keys(value, [
     'id',
     'name',
+    'designId',
     'background',
     'x',
     'y',
@@ -96,6 +97,7 @@ function captionTemplate(value) {
   return {
     id: id(value.id),
     name,
+    ...(value.designId && { designId: id(value.designId) }),
     background,
     backgroundFit,
     canvasAnchor: {
@@ -197,7 +199,7 @@ function promotionEntry(value) {
 }
 
 function promotion(value) {
-  keys(value, ['id', 'title', 'background', 'sort', 'columns', 'entries']);
+  keys(value, ['id', 'title', 'background', 'sort', 'columns', 'entries', 'designId']);
   keys(value.columns, promotionColumns);
   if (promotionColumns.some((key) => typeof value.columns[key] !== 'boolean'))
     throw Error('名单列设置无效');
@@ -206,6 +208,7 @@ function promotion(value) {
     id: id(value.id, true),
     title: text(value.title, 120),
     background: webMedia(value.background),
+    ...(value.designId && { designId: id(value.designId) }),
     sort: value.sort,
     columns: value.columns,
     entries: uniqueList(value.entries, 300, promotionEntry),
