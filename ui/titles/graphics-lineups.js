@@ -33,6 +33,10 @@ function luActive() {
   return LU_STATES.indexOf(a) < 0 ? 'xiH' : a;
 }
 function luIsAll() {
+  if (WORKSPACE_PREVIEW && WORKSPACE_PRESENTATION.mode === 'layout') {
+    if (WORKSPACE_PRESENTATION.only === 'lineup') return false;
+    if (WORKSPACE_PRESENTATION.only === 'lineup_all') return true;
+  }
   return field('lineup_mode', 'all') !== 'single';
 }
 function rosterLines(pfx) {
@@ -89,6 +93,7 @@ function numberColors(el, color) {
 function luBuildAll() {
   var root = $('lineupAll');
   root.innerHTML = '<div class="lu-match-title">比赛阵容</div><div class="lu-teams"></div>';
+  root.querySelector('.lu-match-title').textContent = templateLabel('lineup', '比赛阵容');
   var data = LU_STATES.map(rosterLines),
     columns = data.map(function (rows) {
       return rows.length > 12 ? Math.ceil(rows.length / 12) : 1;
@@ -137,7 +142,7 @@ function luBuildAll() {
         rows = groupIndex ? subRows : starterRows;
       var title = document.createElement('div');
       title.className = 'lu-group-title';
-      title.textContent = groupIndex ? '替补' : '首发';
+      title.textContent = groupIndex ? templateLabel('substitutes', '替补') : templateLabel('starters', '首发');
       var count = document.createElement('span');
       count.textContent = raw.length + ' 人';
       title.appendChild(count);
@@ -173,8 +178,8 @@ function luBuild() {
   }
   $(id).style.setProperty('--acc', luV(pfx, 'color', '#C8102E') || '#C8102E');
   $(id + 'Team').textContent = luV(pfx, 'team', '球队');
-  $(id + 'Sub').textContent = luV(pfx, 'subtitle', '首发阵容');
-  $('lineupRailTitle').textContent = luV(pfx, 'subtitle', '首发阵容');
+  $(id + 'Sub').textContent = luV(pfx, 'subtitle', templateLabel(pfx.startsWith('xi') ? 'starters' : 'substitutes', '首发阵容'));
+  $('lineupRailTitle').textContent = $(id + 'Sub').textContent;
   var raw = rosterLines(pfx),
     list = $(id + 'List');
   rosterRows(list, raw, pfx);
@@ -219,6 +224,7 @@ function luApply() {
     S.homeLogo,
     S.awayLogo,
     S.lineup_tick,
+    footballTemplate()?.revision,
   ]);
   // 仅当 状态切换 / 从隐藏→显示 / 内容有变 时重建并重放，避免轮询导致文字闪烁消失
   if (show && (!was || list.getAttribute('data-sig') !== sig)) {
@@ -234,7 +240,7 @@ function luApplyAll() {
 
 /* ================= Logo ================= */
 function logoApply() {
-  var d = field('logo_data', '');
+  var d = field('logo_data', footballTemplate()?.presentation?.logo || '');
   var img = $('logoImg');
   var show = truthy(field('logo_show', false)) && !!(d || '').trim();
   if (d) {

@@ -19,6 +19,7 @@
 =====================================================================
 -->
 <link rel="stylesheet" href="broadcast.css">
+<link rel="stylesheet" href="scoreboard-template.css">
 <link rel="stylesheet" href="editor-tools.css">
 </head>
 <body>
@@ -35,6 +36,17 @@
         <div class="clock" id="sbClock">00:00</div><div class="period" id="sbPeriod">上半场</div></div>
       <div class="sb-side away"><span class="nm" id="sbAway">客队</span><span class="dot"></span><img class="sb-logo empty" id="sbLogoA" alt=""></div>
     </div></div>
+    <div class="matchday-board" id="matchdayBoard">
+      <div class="matchday-logos">
+        <img hidden alt="">
+        <img hidden alt="">
+      </div>
+      <div class="matchday-cell matchday-clock"><span id="matchdayClock">00:00</span></div>
+      <div class="matchday-cell matchday-home"><span id="matchdayHome">主队</span></div>
+      <div class="matchday-cell matchday-away"><span id="matchdayAway">客队</span></div>
+      <div class="matchday-cell matchday-home matchday-score"><span id="matchdayH">0</span></div>
+      <div class="matchday-cell matchday-away matchday-score"><span id="matchdayA">0</span></div>
+    </div>
   </div>
 
   <div id="clk" class="pos wipe-vertical"><div class="clk-panel">
@@ -63,15 +75,15 @@
 
   <div id="goal" class="pos wipe-horizontal"><div class="gd">
 
-    <div class="gd-word" id="gdWord"><img src="assets/icons/football.svg" alt=""><span>进球</span></div>
+    <div class="gd-word" id="gdWord"><img src="assets/icons/football.svg" alt=""><span id="goalHeading">进球</span></div>
     <div class="gd-info"><div class="gd-num" id="gdNum">10</div>
       <div class="gd-who"><div class="n" id="gdName">球员姓名</div><div class="t" id="gdTeam">球队</div></div>
       <div class="gd-sc num"><span id="gdH">0</span><span class="sep">-</span><span id="gdA">0</span></div></div></div>
   </div>
 
-  <div id="sub" class="pos wipe-horizontal"><div class="swap"><div class="swap-title"><span id="subTeam">球队</span><span>换人</span></div>
-    <div class="swap-row"><span class="swap-direction out">下场<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg></span><span class="swap-num num" id="subOffNum">10</span><span class="swap-name" id="subOffName">下场球员</span></div>
-    <div class="swap-row"><span class="swap-direction incoming">上场<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="swap-num num" id="subOnNum">12</span><span class="swap-name" id="subOnName">上场球员</span></div></div></div>
+  <div id="sub" class="pos wipe-horizontal"><div class="swap"><div class="swap-title"><span id="subTeam">球队</span><span id="subHeading">换人</span></div>
+    <div class="swap-row"><span class="swap-direction out"><span id="subOffLabel">下场</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg></span><span class="swap-num num" id="subOffNum">10</span><span class="swap-name" id="subOffName">下场球员</span></div>
+    <div class="swap-row"><span class="swap-direction incoming"><span id="subOnLabel">上场</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="swap-num num" id="subOnNum">12</span><span class="swap-name" id="subOnName">上场球员</span></div></div></div>
 
   <!-- 单个名单面板：默认全部阵容；lineup_mode=single 时按 lineup_active 显示一份。 -->
   <div id="lineup" class="pos wipe-vertical"><div class="lu"><div class="lu-panel"><div class="lu-rail"><img src="assets/icons/football.svg" alt=""><span class="lu-rail-title" id="lineupRailTitle">首发阵容</span></div><div class="lu-head">
@@ -93,6 +105,7 @@
 <script src="../control/roster-format.js"></script>
 <script src="../control/player-title.js"></script>
 <script src="/shared/api-client.js"></script>
+<script src="/shared/motion-scene.js"></script>
 <script src="runtime.js"></script>
 <script src="motion-curves.js"></script>
 <script src="editor-tools.js"></script>

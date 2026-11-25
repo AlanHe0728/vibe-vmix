@@ -107,3 +107,36 @@ body.edit .pos{opacity:1;pointer-events:auto;cursor:grab;clip-path:none;transiti
 @media(prefers-reduced-motion:reduce){.pos,.pos *{animation:none!important;transition:none!important;transform:none}.pos{transform:translate(-50%,-50%)}.pos,.pos.on{clip-path:none}}
 
 .swap{width:650px;background:var(--paper);box-shadow:0 2px 4px #10202520;border-left:3px solid var(--subColor,#c8102e)}.swap-title{height:32px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--band);color:white;font-size:19px;font-weight:600}.swap-title>span:first-child{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.swap-row{height:58px;display:flex;align-items:center;gap:16px;padding:0 20px}.swap-row+.swap-row{border-top:1px solid var(--line)}.swap-direction{width:76px;flex:none;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600}.swap-direction.out{color:#b6253b}.swap-direction.incoming{color:#226e45}.swap-direction svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.swap-num{width:44px;flex:none;text-align:center;font-size:27px;font-weight:650}.swap-name{flex:1;min-width:0;font-size:26px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Validated football pack variables are scoped to each graphic. */
+.football-pack #canvas > .pos {
+  --paper: var(--pack-surface, #f7f9f9);
+  --ink: var(--pack-ink, #20282b);
+  --dim: var(--pack-muted, #526267);
+  --line: var(--pack-line, #d6dfe0);
+  --plate: var(--pack-surface, linear-gradient(180deg,#fafbfb 0%,#eef2f2 100%));
+  --band: var(--pack-heading, linear-gradient(105deg,var(--panel) 0%,var(--panel) 65%,#284e53 100%));
+  color: var(--ink);
+  font-family: var(--pack-font, inherit);
+}
+.football-pack :is(.sb-bar, .matchday-board, .clk-panel, .rst, .cd, .ply-bar, .gd, .swap, .lu-panel, .lu-all) {
+  border-radius: var(--pack-radius, 0px);
+}
+.football-pack :is(.clk-panel, .rst, .cd, .ply-bar, .gd, .swap, .lu-panel, .lu-all) {
+  overflow: hidden;
+}
+.football-pack :is(.ply-num, .lu-rail, .lu-group-title, .lu-rn.no-num) {
+  background: var(--pack-secondary, #e3eaea);
+}
+.football-pack :is(.clk-label, .rst-main, .cd-type, .ply-ev, .gd-word, .swap-title, .lu-head, .lu-match-title) {
+  color: var(--pack-heading-ink, #fff);
+}
+.football-pack .sb-mid .period {
+  background: var(--pack-heading, var(--panel));
+  color: var(--pack-heading-ink, #fff);
+}
+.football-pack .clk-label { border-left-color: var(--pack-accent, var(--clockAcc)); }
+.football-pack .gd-num { border-left-color: var(--pack-accent, var(--goalC)); }
+.football-pack .sb-badge:not(.over) .ico { background: var(--pack-accent, var(--gold)); }
+.football-pack #logo img { border-radius: var(--pack-radius, 0px); }
+.gd-word > span, .swap-direction > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

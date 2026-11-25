@@ -1,0 +1,27 @@
+:root {
+  --operator-surface: #fff;
+  --operator-chrome: #f5f7fa;
+  --operator-ink: #202a35;
+  --operator-muted: #52606d;
+  --operator-accent: #1666ad;
+  --operator-focus: #2274b8;
+  --operator-line: #c8d0d8;
+  --operator-row-line: #e0e5eb;
+  --operator-selected: #eaf2fa;
+  --operator-pill: 999px;
+  --operator-field-radius: 12px;
+  --operator-shadow: 0 1px 3px #213b541f, 0 3px 7px #213b5417;
+}
+
+:where(.operator-ui) {
+  accent-color: var(--operator-accent);
+  caret-color: var(--operator-accent);
+}
+
+.operator-ui ::selection {
+  color: #162c40;
+  background: #b9d7ef;
+}
+.embedded [data-standalone] {
+  display: none !important;
+}

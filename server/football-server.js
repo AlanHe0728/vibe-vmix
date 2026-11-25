@@ -46,7 +46,9 @@ function createFootballServer(
     publicFiles: {
       '/package.js': {
         type: 'application/javascript; charset=utf-8',
-        body: 'window.FBPPackage=' + JSON.stringify(profile) + ';',
+        body: 'window.FBPPackage=' + JSON.stringify({
+          ...profile, scoreboardTemplates: profile.id === 'football-classic',
+        }) + ';',
       },
       ...(profile.id === 'football-premier'
         ? {

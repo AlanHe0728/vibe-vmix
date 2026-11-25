@@ -80,4 +80,12 @@ function createStaticHandler(mounts) {
   };
 }
 
-module.exports = { createStaticHandler };
+function operatorTheme(project) {
+  return {
+    prefix: '/shared/',
+    directory: path.join(project, 'ui/shared'),
+    files: ['operator-theme.css'],
+  };
+}
+
+module.exports = { createStaticHandler, operatorTheme };

@@ -1,0 +1,155 @@
+:root {
+  font:
+    13px/1.6 'Segoe UI',
+    'Microsoft YaHei UI',
+    sans-serif;
+  color: #e6e8eb;
+  background: #292a2d;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+header {
+  padding: 17px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #505359;
+}
+header strong {
+  font-size: 17px;
+}
+header span {
+  color: #b9bdc4;
+  font-size: 11px;
+}
+main {
+  padding: 0 18px 18px;
+}
+section {
+  padding: 22px 0;
+  border-bottom: 1px solid #505359;
+}
+h1,
+h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+p {
+  font-size: 12px;
+  color: #bcc0c7;
+  margin: 12px 0 0;
+  line-height: 1.8;
+}
+label {
+  display: block;
+  color: #ccd0d6;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  color: inherit;
+}
+input,
+select,
+textarea {
+  width: 100%;
+  display: block;
+  border: 1px solid #62666f;
+  border-radius: 5px;
+  padding: 9px;
+  margin-top: 6px;
+  background: #222326;
+  min-width: 0;
+}
+button {
+  border: 1px solid #62666f;
+  border-radius: 5px;
+  padding: 8px 12px;
+  background: #393c42;
+  cursor: pointer;
+  font-size: 12px;
+}
+button:hover {
+  background: #434b57;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #9ac9ff;
+  outline-offset: 2px;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.check input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: #90bdeb;
+}
+.note {
+  font-size: 11px;
+  color: #b1b6bf;
+}
+.control {
+  display: flex;
+  align-items: end;
+  gap: 9px;
+  margin-bottom: 15px;
+}
+.control label {
+  flex: 1;
+  margin: 0;
+}
+.control textarea {
+  resize: vertical;
+}
+.control input[type='color'] {
+  height: 38px;
+  padding: 3px;
+}
+.control input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  max-height: 220px;
+  overflow: auto;
+  color: #d1d8e2;
+}
+pre:empty {
+  display: none;
+}
+#status {
+  color: #b8d8fa;
+}

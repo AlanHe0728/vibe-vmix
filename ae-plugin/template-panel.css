@@ -1,0 +1,57 @@
+:root {
+  color-scheme: dark;
+  color: #eeeff1;
+  background: #252628;
+  font: 13px/1.45 "Segoe UI", "Microsoft YaHei UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  background: #2b2d30;
+  padding: 14px;
+  border-bottom: 1px solid #404247;
+}
+h1, h2, p { margin: 0; }
+h1 { font-size: 15px; font-weight: 650; }
+header p, #status { margin-top: 5px; color: #b6bbc4; font-size: 12px; overflow-wrap: anywhere; }
+main { padding: 12px 14px 15px; }
+fieldset { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+fieldset:disabled { opacity: .56; }
+button, input, select { font: inherit; color: inherit; }
+button, select, input[type="text"], input[type="color"] {
+  min-height: 32px;
+  border: 1px solid #535861;
+  background: #363940;
+  border-radius: 5px;
+}
+button { cursor: pointer; padding: 5px 9px; }
+button:hover:enabled { background: #454a53; border-color: #858d9d; }
+button:disabled, input:disabled { cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 2px solid #85b6fa;
+  outline-offset: 2px;
+}
+.quiet { background: transparent; flex: none; }
+.field { display: grid; gap: 5px; color: #d0d5df; font-size: 12px; }
+select, input[type="text"] { width: 100%; padding: 4px 8px; }
+.kit, .primary { width: 100%; margin-top: 8px; }
+.kit { background: #334354; border-color: #526f8d; }
+section { margin-top: 12px; }
+h2 { margin-bottom: 6px; color: #d7dae0; font-size: 12px; font-weight: 650; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.swatch { display: flex; gap: 4px; }
+.swatch button { flex: 1; min-width: 0; }
+input[type="color"] { width: 30px; padding: 3px; cursor: pointer; }
+details { margin-top: 15px; border-top: 1px solid #43464e; padding-top: 8px; }
+summary { color: #c7cbd2; cursor: pointer; }
+details .field, .choice { margin-top: 8px; }
+.choice { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.choice span { color: #babec8; font-size: 11px; overflow-wrap: anywhere; }
+.primary { background: #b7d8ff; color: #152943; border-color: #b7d8ff; font-weight: 700; margin-top: 11px; }
+.primary:hover:enabled { background: #d3e7ff; border-color: #d3e7ff; }
+#status[data-error="true"] { color: #ffc4b8; }

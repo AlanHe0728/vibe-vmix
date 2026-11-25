@@ -1,0 +1,143 @@
+:root {
+  --accent: #d5b66e;
+  --background: #721d2b;
+  --foreground: #fff9e9;
+  --font: serif;
+  --title-size: 48px;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: transparent;
+}
+body {
+  font-family: 'Microsoft YaHei', sans-serif;
+}
+#canvas {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  color: var(--foreground);
+}
+body.preview {
+  background: #26313b;
+}
+.layer {
+  position: absolute;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 220ms ease,
+    transform 260ms ease;
+  pointer-events: none;
+}
+.layer.visible {
+  opacity: 1;
+  visibility: visible;
+}
+.logo {
+  width: var(--logo-size, 160px);
+  height: var(--logo-size, 160px);
+}
+.caption {
+  max-width: 1728px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--background) 78%, transparent);
+  font-family: var(--font);
+  text-shadow: 0 2px 4px #000;
+  font-size: 29px;
+  line-height: 1.5;
+  max-height: 160px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+#captionLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#caption {
+  width: max-content;
+  transition: none;
+}
+#captionBackground {
+  inset: auto;
+}
+#canvas #caption .caption-template {
+  position: absolute;
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 38px;
+  font-weight: 650;
+}
+.stage-media {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.stage-media > :is(img, video, canvas) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.event-logo {
+  width: calc(var(--logo-size, 160px) * 2.85);
+  height: calc(var(--logo-size, 160px) * 1.5);
+}
+.event-logo .stage-media > * {
+  object-position: right bottom;
+}
+.logo .stage-media > *,
+.event-logo .stage-media > * {
+  object-fit: fill;
+}
+#captionText {
+  white-space: pre-wrap;
+}
+.caption-latin {
+  font-family: var(--font-latin, inherit);
+}
+#canvas #caption .caption-template:not(.caption-footage) {
+  background-color: var(--caption-fill, transparent);
+}
+#canvas[data-template='lyrics'] .caption {
+  background: transparent;
+  font-weight: 650;
+}
+#transition {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  visibility: hidden;
+  z-index: 20;
+  overflow: hidden;
+}
+#transition.playing {
+  visibility: visible;
+}
+#wipe {
+  position: absolute;
+  inset: 0;
+  background: var(--background);
+  border-left: 24px solid var(--accent);
+  transform: translateX(-110%);
+}
+#canvas.no-motion .layer {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    transition: none;
+  }
+}

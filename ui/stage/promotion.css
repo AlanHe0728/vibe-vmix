@@ -1,0 +1,99 @@
+.stage-media {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+}
+.stage-media > :is(img, video, canvas) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+body.preview {
+  width: 100vw;
+  height: 100vh;
+  background: #26313b;
+}
+body.preview #canvas {
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%) scale(var(--preview-scale, 1));
+}
+#promotionCard.lu {
+  --promotion-scale: 1;
+  position: absolute;
+  top: 112px;
+  left: 96px;
+  width: 1728px;
+  height: auto;
+  padding: 0;
+  border-radius: calc(14px * var(--promotion-scale));
+  overflow: hidden;
+  background: var(--plate);
+  box-shadow: 0 16px 54px #0005;
+}
+.promotion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(24px * var(--promotion-scale));
+  height: var(--promotion-header-height, 112px);
+  padding: 0 calc(36px * var(--promotion-scale));
+  background: var(--band);
+  color: white;
+}
+.promotion-header h1 {
+  font-size: calc(47px * var(--promotion-scale));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#promotionPage {
+  font-size: calc(24px * var(--promotion-scale));
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+#promotionRows {
+  display: grid;
+  grid-template-columns: repeat(var(--groups, 1), minmax(0, 1fr));
+  gap: calc(48px * var(--promotion-scale));
+  padding: var(--promotion-padding-top, 21px) calc(36px * var(--promotion-scale))
+    var(--promotion-padding-bottom, 32px);
+}
+.promotion-group {
+  min-width: 0;
+}
+.promotion-group .lu-row {
+  display: grid;
+  grid-template-columns: var(--columns);
+  gap: calc(18px * var(--promotion-scale));
+  height: var(--promotion-row-height, 53px);
+  padding-right: calc(8px * var(--promotion-scale));
+}
+.promotion-group .lu-row > * {
+  min-width: 0;
+}
+.promotion-group .lu-rn {
+  width: calc(56px * var(--promotion-scale));
+  font-size: calc(23px * var(--promotion-scale));
+  background: #e3ebeb;
+}
+.promotion-group .lu-name {
+  font-size: calc(27px * var(--promotion-scale));
+}
+.promotion-group .lu-row .score {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.promotion-group .row-heading > span {
+  font-size: calc(20px * var(--promotion-scale));
+  font-weight: 600;
+  color: var(--dim);
+}
+.promotion-empty {
+  color: var(--dim);
+  font-size: calc(26px * var(--promotion-scale));
+  padding: calc(20px * var(--promotion-scale)) 0 calc(8px * var(--promotion-scale));
+}

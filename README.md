@@ -1,14 +1,12 @@
 # 转播包装工作台
 
-给 vMix 用的转播包装工具。正式版提供足球比分、计时、名单和比赛事件。Beta 版还可以加载舞台节目和 AE 直播模块。
+给 vMix 用的转播包装工具。按需加载舞台节目、足球赛事和 AE 直播连接。舞台支持分轮节目单、透明动画报幕、歌词模板和独立晋级名单网页。各模块可在 PVW 调整布局，再应用到播出。
 
-- 正式版 1.1.0 · [GitHub 下载](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v1.1.0) · [Gitee 下载](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v1.1.0)
-- Beta 2.0.0-beta.4 · [GitHub 下载](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v2.0.0-beta.4) · [Gitee 下载](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v2.0.0-beta.4)
-- 历史 Beta 2.0.0-beta.3 · [GitHub 下载](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v2.0.0-beta.3) · [Gitee 下载](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v2.0.0-beta.3)
-- [历史版本和浏览器源码](https://github.com/AlanHe0728/vibe-vmix/releases)
+- 正式版 2.0.0 · [GitHub 下载](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v2.0.0) · [Gitee 下载](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v2.0.0)
+- [历史版本](https://github.com/AlanHe0728/vibe-vmix/releases)
 
-解压便携包后运行 EXE。打开控制台，复制上屏地址到 vMix 网页输入，画布设为 1920 × 1080。Beta 可先在 PVW 调整布局，再应用到播出。
+完整解压 Windows x64 便携包，运行「转播包装工作台.exe」。启用所需模块，在「设置 → 上屏地址」复制地址，添加为 vMix 的 1920 × 1080 网页输入。
 
-[足球使用说明](docs/USAGE.md) · [Beta 使用说明](https://github.com/AlanHe0728/vibe-vmix/blob/beta/docs/WORKSPACE_2.md) · [AE 插件](https://github.com/AlanHe0728/vibe-vmix/blob/beta/ae-plugin/README.md) · [反馈问题](https://github.com/AlanHe0728/vibe-vmix/issues)
+[工作台使用说明](docs/WORKSPACE_2.md) · [足球使用说明](docs/USAGE.md) · [Adobe 插件](ae-plugin/README.md) · [反馈问题](https://github.com/AlanHe0728/vibe-vmix/issues)
 
 本版本未完全验证，可能存在BUG，如遇BUG请与开发者联系

@@ -11,7 +11,8 @@ if (['sb', 'clk', 'rst', 'card', 'ply', 'goal', 'sub', 'lineup'].indexOf(ONLY) >
   });
 }
 function fitBroadcastText() {
-  fitScoreboardWidth();
+  if (scoreboardTemplate()) fitMatchdayBoard();
+  else fitScoreboardWidth();
   document
     .querySelectorAll(
       '.nm,.cd-name,.ply-name,.gd-who .n,.lu-name,.lu-team-name,.swap-name,.rst-main,.lu-head .tm',
@@ -33,6 +34,56 @@ function field(n, d) {
   if (S.hasOwnProperty(n) && S[n] !== undefined && S[n] !== null && S[n] !== '') return S[n];
   return d;
 }
+function footballTemplate() {
+  var library = S.scoreboard_templates;
+  return $('matchdayBoard') && library && Object.hasOwn(library, S.sb_layout)
+    ? library[S.sb_layout] : null;
+}
+
+function footballLayoutPrefix(template, layer) {
+  if (layer === 'sb' && (template?.dimensions || template?.motion)) return 'sb_template_' + template.id;
+  return template?.presentation ? 'pack_template_' + template.id + '_' + layer : layer;
+}
+
+function templateLabel(key, fallback) {
+  return footballTemplate()?.presentation?.labels[key] || fallback;
+}
+
+var PACK_STYLE_NAMES = {
+  surface: 'surface', secondary: 'secondary', ink: 'ink', muted: 'muted', line: 'line',
+  heading: 'heading', headingInk: 'heading-ink', accent: 'accent', radius: 'radius', font: 'font',
+};
+var renderedPackStyle;
+function applyFootballStyle() {
+  var template = footballTemplate();
+  var design = template?.presentation;
+  var all = luIsAll();
+  var signature = design ? template.id + ':' + template.revision + ':' + all : '';
+  if (renderedPackStyle === signature) return;
+  renderedPackStyle = signature;
+  document.body.classList.toggle('football-pack', Boolean(design));
+  ['sb', 'clk', 'rst', 'card', 'ply', 'goal', 'sub', 'logo', 'lineup'].forEach(function (id) {
+    var el = $(id);
+    var styles = design ? Object.assign({}, design.style, design.layers[id]?.style,
+      id === 'lineup' && all ? design.layers.lineup_all?.style : null) : {};
+    Object.keys(PACK_STYLE_NAMES).forEach(function (key) {
+      var property = '--pack-' + PACK_STYLE_NAMES[key];
+      var value = styles[key];
+      if (value === undefined) el.style.removeProperty(property);
+      else el.style.setProperty(property, key === 'radius' ? value + 'px' :
+        key === 'font' ? JSON.stringify(value) + ', "Microsoft YaHei", sans-serif' : value);
+    });
+  });
+  [
+    ['goalHeading', 'goal', '进球'],
+    ['subHeading', 'substitution', '换人'],
+    ['subOffLabel', 'subOff', '下场'],
+    ['subOnLabel', 'subOn', '上场'],
+  ].forEach(function (entry) {
+    if ($(entry[0])) $(entry[0]).textContent = templateLabel(entry[1], entry[2]);
+  });
+}
+
 function setVar(name, h) {
   if (/^#[0-9a-fA-F]{6}$/.test(h || '')) document.documentElement.style.setProperty(name, h);
 }
@@ -62,6 +113,7 @@ function applyTheme() {
     ? 'url(' + JSON.stringify(bg) + ') center / cover no-repeat'
     : bg || 'transparent';
   injectFont();
+  applyFootballStyle();
   var m = field('motion', 'smooth');
   setCss('--ease', MOTION_EASE[m] || MOTION_EASE.smooth);
   var wipeEase =

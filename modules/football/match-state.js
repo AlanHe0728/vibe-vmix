@@ -3,6 +3,8 @@
 const { value, command: clockCommand } = require('../../core/clock');
 const scores = require('../../core/score');
 const timing = require('./timing');
+const { parseFootballTemplate, layoutPrefix } = require('./scoreboard-template');
+const { AppError } = require('../../core/errors');
 function createMatchState({ positions: POSITIONS, roster: { applyRoster, migrateRoster } }) {
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const nonnegative = (v) => (Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0);
@@ -72,6 +74,19 @@ function createMatchState({ positions: POSITIONS, roster: { applyRoster, migrate
   }
   function merge(current, patch, now = Date.now()) {
     const s = migrate(current, now);
+    if (own(patch, 'football_template_import') || own(patch, 'scoreboard_template_import')) {
+      const template = parseFootballTemplate(own(patch, 'football_template_import')
+        ? patch.football_template_import : patch.scoreboard_template_import);
+      template.revision = Math.max(now, nonnegative(s.scoreboard_templates?.[template.id]?.revision) + 1);
+      s.scoreboard_templates = { ...s.scoreboard_templates, [template.id]: template };
+      s.sb_layout = template.id;
+    }
+    if (own(patch, 'sb_layout')) {
+      if (typeof patch.sb_layout !== 'string' ||
+          (patch.sb_layout !== 'classic' && !Object.hasOwn(s.scoreboard_templates || {}, patch.sb_layout)))
+        throw new AppError('未找到该足球包装模板');
+      s.sb_layout = patch.sb_layout;
+    }
     for (const [key, v] of Object.entries(patch)) {
       if (
         [
@@ -84,6 +99,10 @@ function createMatchState({ positions: POSITIONS, roster: { applyRoster, migrate
           'scoreAway_delta',
           'match_break_until',
           'match_timing_suspend',
+          'scoreboard_templates',
+          'scoreboard_template_import',
+          'football_template_import',
+          'sb_layout',
         ].includes(key)
       )
         continue;
@@ -108,11 +127,20 @@ function createMatchState({ positions: POSITIONS, roster: { applyRoster, migrate
     command(s, patch, 'sb_clock', now);
     command(s, patch, 'clock', now);
     timing.reconcile(s, patch, current, now);
-    if (own(patch, 'posreset_tick'))
+    if (own(patch, 'posreset_tick')) {
       for (const [k, [x, y]] of Object.entries(POSITIONS)) {
         s[k + '_pos'] = { x, y };
         s[k + '_scale'] = 1;
       }
+      for (const template of Object.values(s.scoreboard_templates || {})) {
+        for (const layer of Object.keys(POSITIONS)) {
+          const key = layoutPrefix(template, layer);
+          if (key === layer) continue;
+          delete s[key + '_pos'];
+          delete s[key + '_scale'];
+        }
+      }
+    }
     return s;
   }
   return { migrate, merge, value };

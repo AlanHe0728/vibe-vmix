@@ -17,6 +17,7 @@ const directories = [
   'packaging',
   'scripts',
   'examples',
+  'ae-plugin',
 ];
 let count = 0;
 

@@ -17,6 +17,7 @@ body.console-desk{
 html:has(body.console-desk){scroll-padding-top:calc(var(--console-chrome-height,200px) + 16px)}
 .console-desk ::selection{background:#b9d7ef;color:#162c40}
 .console-desk button::before{content:none}
+.console-desk button[hidden]{display:none!important}
 .console-desk .console-chrome{position:sticky;top:0;z-index:20;isolation:isolate;padding-bottom:16px;background:linear-gradient(#fff,#fff) bottom/100% 16px no-repeat;border:0;box-shadow:0 10px 28px #24374b09}
 /* Composite the material behind the controls, never their text. Keeping the
    sticky content out of a backdrop root prevents dropped text tiles on scroll. */

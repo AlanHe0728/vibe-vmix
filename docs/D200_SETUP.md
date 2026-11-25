@@ -1,6 +1,6 @@
 # D200 足球包装按键配置
 
-配置示例使用Ulanzi Studio **3.4.4**、D200 固件 **2.0.3**。按键通过 Ulanzi Studio 的 API Request 插件访问本机足球包装服务器。
+适用当前环境：Ulanzi Studio **3.4.4**、D200 固件 **2.0.3**。按键通过 Ulanzi Studio 的 API Request 插件访问本机足球包装服务器。
 
 ## 1 安装和打开
 

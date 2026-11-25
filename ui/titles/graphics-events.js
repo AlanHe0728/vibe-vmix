@@ -10,7 +10,7 @@ var RST = {
 function rstShow(type) {
   var cfg = RST[type] || RST.kickoff;
   setVar('--rst', field('restart_color', '#00C853'));
-  $('rstMain').textContent = field('restart_text', '').trim() || cfg.label;
+  $('rstMain').textContent = field('restart_text', '').trim() || templateLabel(type, cfg.label);
   $('rstBadge').querySelector('img').src =
     'assets/icons/' + (RST[type] ? type : 'kickoff') + '.svg';
   var team = field('restart_team', '').trim(),
@@ -38,7 +38,7 @@ function cdShow(type) {
   var red = type === 'red';
   setVar('--cardC', red ? '#E53935' : '#FFD400');
   setVar('--cardDk', red ? '#8E0000' : '#B8860B');
-  $('cdType').textContent = red ? '红牌' : '黄牌';
+  $('cdType').textContent = red ? templateLabel('redCard', '红牌') : templateLabel('yellowCard', '黄牌');
   $('cdCn').textContent = red ? 'RED CARD' : 'YELLOW CARD';
   $('cdNum').textContent = field('card_num', '').trim() || '--';
   $('cdName').textContent = field('card_name', '球员姓名');
@@ -73,7 +73,7 @@ function plyShow() {
   var ev = FBPPlayerTitle.get(S),
     e = $('plyEv');
   $('ply').querySelector('.ply-bar').classList.add('has-event');
-  e.textContent = ev;
+  e.textContent = ev === '球员信息' ? templateLabel('player', ev) : ev;
   e.classList.add('show');
   fitBroadcastText();
   showFor('ply', 4500);

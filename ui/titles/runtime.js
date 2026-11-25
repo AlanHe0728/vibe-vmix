@@ -16,17 +16,22 @@
   }
   function poll(apply) {
     var initialized = false,
-      etag = null;
+      etag = null,
+      failures = 0;
     function next() {
       api
         .readState(etag)
         .then(function (result) {
+          failures = 0;
+          document.documentElement.style.visibility = '';
           if (result.notModified || (initialized && result.etag && result.etag === etag)) return;
           apply(result.state, !initialized);
           initialized = true;
           etag = result.etag;
         })
         .catch(function (e) {
+          failures++;
+          if (failures >= 3) document.documentElement.style.visibility = 'hidden';
           console.warn('状态读取失败:', e.message);
         })
         .then(function () {

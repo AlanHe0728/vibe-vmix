@@ -148,6 +148,7 @@ function fetchState() {
             s.sb_logos_show === '1' ||
             s.sb_logos_show === 'true';
       $('sb_logos_show').checked = SAVED_SB_LOGOS;
+      if (window.FBPScoreboardTemplates) FBPScoreboardTemplates.hydrate(s);
       FBPLinks.hydrate(s);
       if (window.FBPBatchSub) FBPBatchSub.hydrate(s);
       FBPEvents.hydrate(s);
@@ -209,7 +210,9 @@ function sendState(patch) {
       Object.keys(patch).forEach(function (k) {
         var v = patch[k];
         summary[k] =
-          typeof v === 'string' && v.length > 300 ? '[上传数据 ' + v.length + ' 字符]' : v;
+          k === 'scoreboard_template_import' || k === 'football_template_import'
+            ? '[足球包装模板]'
+            : typeof v === 'string' && v.length > 300 ? '[上传数据 ' + v.length + ' 字符]' : v;
       });
       log('写入 state: ' + JSON.stringify(summary), true);
       return res;

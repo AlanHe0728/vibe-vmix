@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src http://127.0.0.1:*"
+    />
+    <title>转播包装 · Live Bridge</title>
+    <link rel="stylesheet" href="panel.css" />
+    <script defer src="panel.js"></script>
+  </head>
+  <body>
+    <header><strong>Live Bridge</strong><span>转播包装工作台</span></header>
+    <main>
+      <section>
+        <label
+          >工作台 AE 模块地址<input
+            id="endpoint"
+            value="http://127.0.0.1:8126"
+            spellcheck="false" /></label
+        ><label>配对密钥<input id="token" type="password" spellcheck="false" /></label>
+        <div class="row">
+          <button id="connect">连接</button><button id="disconnect" disabled>断开</button>
+        </div>
+        <p id="status" role="status">未连接</p>
+      </section>
+      <section>
+        <h1 id="comp">当前合成</h1>
+        <p id="info">在 AE 中选中需要播出的合成。</p>
+        <div class="row">
+          <button id="refresh">读取合成</button><button id="expose">标记选中图层为 LIVE</button
+          ><button id="demo">创建直播示例合成</button>
+        </div>
+      </section>
+      <section>
+        <h2>交互画面</h2>
+        <label class="check"><input id="live" type="checkbox" />持续生成当前画面</label
+        ><label class="check"
+          ><input id="advance" type="checkbox" />推进时间轴（实验动画预览）</label
+        >
+        <div class="columns">
+          <label
+            >目标刷新率<select id="fps">
+              <option value="1">1 帧 / 秒</option>
+              <option value="2" selected>2 帧 / 秒</option>
+              <option value="5">5 帧 / 秒</option>
+              <option value="10">10 帧 / 秒</option>
+            </select></label
+          ><label
+            >分辨率<select id="resolution">
+              <option value="1">完整</option>
+              <option value="2" selected>二分之一</option>
+              <option value="4">四分之一</option>
+            </select></label
+          >
+        </div>
+        <p id="metrics">按需渲染，不会堆积未完成的画面。</p>
+        <p class="note">
+          交互画面速度取决于合成复杂度，不保证广播帧率。动画播出建议先生成缓存，由 vMix 原生播放。
+        </p>
+      </section>
+      <section>
+        <h2>本机直播控件</h2>
+        <div id="controls"></div>
+        <p class="note">
+          只暴露 LIVE: 开头的文本图层，以及 LIVE:
+          图层上的滑块、颜色和复选框。编辑具有关键帧或表达式的效果控件前需在 AE 中处理绑定。
+        </p>
+      </section>
+      <section>
+        <h2>动画缓存</h2>
+        <label>AE 输出模块模板<input id="outputModule" value="Lossless with Alpha" /></label
+        ><button id="render">渲染当前工作区并发送到工作台</button>
+        <p class="note">
+          此操作使用 AE 渲染队列，会暂时占用 AE。保留已有队列项的勾选状态。正在播出的旧缓存继续由
+          vMix 播放。
+        </p>
+      </section>
+      <pre id="log" role="log"></pre>
+    </main>
+  </body>
+</html>

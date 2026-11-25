@@ -6,6 +6,110 @@ var EDIT = (function () {
     return false;
   }
 })();
+var WORKSPACE_PREVIEW = new URLSearchParams(location.search).get('workspacePreview') === '1';
+var WORKSPACE_DRAFT = {};
+var WORKSPACE_PRESENTATION = { mode: 'live', only: '', hidden: [] };
+var WORKSPACE_ORIGIN = document.referrer ? new URL(document.referrer).origin : '';
+if (WORKSPACE_PREVIEW) {
+  var workspaceStyle = document.createElement('style');
+  workspaceStyle.textContent =
+    '.workspace-shown{opacity:1!important;clip-path:none!important;visibility:visible!important;transition:none!important}.workspace-hidden{display:none!important}.workspace-placeholder{display:flex;align-items:center;justify-content:center;width:150px;height:120px;background:#f0f5f6;color:#34515a;border:2px dashed #91a9b0;font:26px Microsoft YaHei,sans-serif}.workspace-placeholder[hidden]{display:none}';
+  document.head.append(workspaceStyle);
+}
+function workspaceDecorate(rebuild) {
+  if (!WORKSPACE_PREVIEW) return;
+  var config = WORKSPACE_PRESENTATION,
+    layout = config.mode === 'layout';
+  if (layout && rebuild) {
+    var original = S,
+      editing = EDIT;
+    S = Object.assign({}, S);
+    ['xiH', 'xiA', 'subH', 'subA'].forEach(function (key) {
+      if (!String(S[key + '_players'] || '').trim())
+        S[key + '_players'] = '1 示例球员 (GK)\n10 示例球员 (C)';
+    });
+    try {
+      EDIT = true;
+      rstShow(S.restart_type || 'kickoff');
+      cdShow(S.card_trigger || 'yellow');
+      plyShow();
+      goalShow();
+      subShow();
+      luApplyAll();
+    } finally {
+      EDIT = editing;
+      S = original;
+      Object.keys(AUTO).forEach(function (key) {
+        clearTimeout(AUTO[key]);
+        AUTO[key] = null;
+      });
+      Object.keys(WIPES).forEach(function (key) {
+        WIPES[key].cancel();
+        delete WIPES[key];
+      });
+    }
+  }
+  Object.keys(POS_DEF).forEach(function (id) {
+    var key = id === 'lineup' && luIsAll() ? 'lineup_all' : id;
+    var hidden = (config.only && config.only !== key) || (config.hidden || []).indexOf(key) >= 0;
+    $(id).classList.toggle('workspace-shown', layout && !hidden);
+    $(id).classList.toggle('workspace-hidden', Boolean(hidden));
+  });
+  var placeholder = $('logo').querySelector('.workspace-placeholder');
+  if (!placeholder) {
+    placeholder = document.createElement('span');
+    placeholder.className = 'workspace-placeholder';
+    placeholder.textContent = '赛事 Logo';
+    $('logo').append(placeholder);
+  }
+  placeholder.hidden = !layout || Boolean(S.logo_data);
+  Object.keys(POS_DEF).forEach(function (key) {
+    applyPos(key, key);
+  });
+}
+function workspaceGeometry() {
+  if (!WORKSPACE_PREVIEW || !WORKSPACE_ORIGIN || window.parent === window) return;
+  var boxes = {};
+  Object.keys(POS_DEF).forEach(function (id) {
+    var rect = $(id).getBoundingClientRect();
+    boxes[id === 'lineup' && luIsAll() ? 'lineup_all' : id] = {
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
+    };
+  });
+  parent.postMessage(
+    { type: 'preview-geometry', module: 'football', boxes: boxes },
+    WORKSPACE_ORIGIN,
+  );
+}
+if (WORKSPACE_PREVIEW)
+  window.addEventListener('message', function (event) {
+    if (
+      event.source !== parent ||
+      event.origin !== WORKSPACE_ORIGIN ||
+      event.data?.type !== 'preview-layout' ||
+      event.data.module !== 'football'
+    )
+      return;
+    WORKSPACE_DRAFT = event.data.layout || {};
+    var oldMode = WORKSPACE_PRESENTATION.mode;
+    var changed =
+      JSON.stringify(WORKSPACE_PRESENTATION) !==
+      JSON.stringify(event.data.presentation || { mode: 'live' });
+    WORKSPACE_PRESENTATION = event.data.presentation || { mode: 'live', only: '', hidden: [] };
+    if (oldMode === 'layout' && WORKSPACE_PRESENTATION.mode !== 'layout')
+      OVERLAP.forEach(function (key) {
+        hideGraphic(key, true);
+      });
+    if (changed) applyState(S, false);
+    else workspaceDecorate(false);
+    Object.keys(POS_DEF).forEach(function (key) {
+      applyPos(key, key);
+    });
+    requestAnimationFrame(workspaceGeometry);
+  });
 var POS_DEF = {
   sb: { x: 423, y: 96, s: 1 },
   clk: { x: 960, y: 400, s: 1 },
@@ -35,13 +139,11 @@ function editValueMatches(actual, expected) {
   );
 }
 function saveEdit(id, o) {
-  if (id === 'lineup' && luIsAll()) {
-    var mapped = {};
-    Object.keys(o).forEach(function (k) {
-      mapped[k.replace(/^lineup_/, 'lineup_all_')] = o[k];
-    });
-    o = mapped;
-  }
+  var layer = id === 'lineup' && luIsAll() ? 'lineup_all' : id;
+  var prefix = footballLayoutPrefix(footballTemplate(), layer);
+  o = Object.fromEntries(Object.entries(o).map(function (entry) {
+    return [prefix + entry[0].slice(id.length), entry[1]];
+  }));
   PENDING[id] = o;
   $('saveStatus').textContent = '保存中…';
   return post(o)
@@ -68,15 +170,24 @@ function applyPos(key, id) {
     delete PENDING[id];
   }
   var p = POS_DEF[key];
-  if (key === 'lineup' && luIsAll()) {
-    key = 'lineup_all';
+  var draftKey = key === 'lineup' && luIsAll() ? 'lineup_all' : key;
+  if (draftKey === 'lineup_all')
     p = { x: PACKAGE.positions.lineup_all[0], y: PACKAGE.positions.lineup_all[1], s: 1 };
-  }
-  var st = S[key + '_pos'];
+  var template = footballTemplate();
+  var layer = template?.presentation?.layers[draftKey];
+  var point = layer?.position || (key === 'sb' && template?.position) || p;
+  p = { x: point.x, y: point.y, s: layer?.scale ?? p.s };
+  key = footballLayoutPrefix(template, draftKey);
+  var st = Object.prototype.hasOwnProperty.call(WORKSPACE_DRAFT, draftKey + '_pos')
+    ? WORKSPACE_DRAFT[draftKey + '_pos']
+    : S[key + '_pos'];
   if (st && typeof st === 'object' && isFinite(+st.x) && isFinite(+st.y)) {
     p = { x: +st.x, y: +st.y, s: p.s };
   }
-  var sc = isFinite(+S[key + '_scale']) ? Math.max(0.3, Math.min(3, +S[key + '_scale'])) : p.s;
+  var scaleValue = Object.prototype.hasOwnProperty.call(WORKSPACE_DRAFT, draftKey + '_scale')
+    ? WORKSPACE_DRAFT[draftKey + '_scale']
+    : S[key + '_scale'];
+  var sc = isFinite(+scaleValue) ? Math.max(0.3, Math.min(3, +scaleValue)) : p.s;
   SCALE[id] = sc;
   var el = $(id);
   el.style.left = p.x + 'px';
@@ -268,7 +379,7 @@ function initSlider() {
 function resetSelScale() {
   if (!selectedId) return;
   var id = selectedId,
-    s = POS_DEF[id].s;
+    s = footballTemplate()?.presentation?.layers[id === 'lineup' && luIsAll() ? 'lineup_all' : id]?.scale ?? POS_DEF[id].s;
   SCALE[id] = s;
   DRAG[id] = true;
   $(id).style.transform = 'translate(-50%,-50%) scale(' + s + ')';

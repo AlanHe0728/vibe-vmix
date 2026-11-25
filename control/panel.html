@@ -147,7 +147,20 @@
   </div></details><div id="squadPicker" class="squad-picker"></div></section><section id="view-settings" aria-label="设置" hidden><div class="settings-nav" role="tablist" aria-label="设置分类"><button id="settings-appearance" role="tab" aria-controls="view-appearance" aria-selected="true" onclick="FBPDesk.settings('appearance')">画面设置</button><button id="settings-devices" role="tab" aria-controls="view-devices" aria-selected="false" tabindex="-1" onclick="FBPDesk.settings('devices')">设备连接</button></div><section id="view-appearance" role="tabpanel" aria-labelledby="settings-appearance" tabindex="0" hidden><div class="card-grid appearance-grid"><div class="card theme-card">
     <h2><span class="tag"></span>皮肤与字体
       </h2>
-    <div class="frow"><div class="field"><label class="scoreboard-logo-option"><input id="sb_logos_show" type="checkbox" checked onchange="setScoreboardLogos(this.checked)"><span>比分条显示主客队队徽</span></label></div></div>
+    <div id="scoreboardTemplateSettings" hidden>
+      <div class="frow"><div class="field"><label for="scoreboardLayout">足球包装模板</label><select id="scoreboardLayout" onchange="FBPScoreboardTemplates.select(this.value)"></select></div></div>
+      <div class="btns"><button class="btn" id="importScoreboardTemplate" onclick="document.getElementById('scoreboardTemplateFile').click()">导入足球包装模板</button></div>
+      <input type="file" id="scoreboardTemplateFile" style="display:none" accept=".json,application/json" hidden onchange="FBPScoreboardTemplates.importFile(this)">
+      <p class="field-note" id="scoreboardTemplateStatus" role="status" aria-live="polite"></p>
+      <div id="customScoreboardSettings" hidden>
+        <div id="scoreboardFixtures" hidden>
+          <div class="frow"><div class="field"><label for="scoreboardFixture">场次预设</label><select id="scoreboardFixture"></select></div></div>
+          <div class="btns"><button class="btn" id="applyScoreboardFixture" onclick="FBPScoreboardTemplates.applyFixture()">套用队名和队色</button></div>
+        </div>
+
+      </div>
+    </div>
+    <div id="classicScoreboardSettings"><div class="frow"><div class="field"><label class="scoreboard-logo-option"><input id="sb_logos_show" type="checkbox" checked onchange="setScoreboardLogos(this.checked)"><span>比分条显示主客队队徽</span></label></div></div></div>
     <div class="frow"><div class="field "><label for="theme_skin">皮肤</label><select aria-label="皮肤" id="theme_skin">
         <option value="dark">石墨灰 dark</option>
         <option value="glass">半透灰 glass</option>
@@ -212,7 +225,7 @@
 
       <div class="btns">
         <button class="btn sm red" onclick="hideAll()">隐藏全部常驻图层</button>
-        <button class="btn sm blue" onclick="resetAllPos()"> 重置所有元素位置</button>
+          <button class="btn sm blue" onclick="resetAllPos()"> 在预览中调整位置</button>
         <button class="btn sm green" onclick="editorOpen()">位置与大小编辑器</button>
       </div></div>
 
@@ -266,6 +279,7 @@
 <script src="panel-state.js"></script>
 <script src="panel-preferences.js"></script>
 <script src="panel-scoreboard.js"></script>
+<script src="panel-scoreboard-templates.js"></script>
 <script src="panel-appearance.js"></script>
 <script src="panel-events.js"></script>
 <script src="panel-lineups.js"></script>

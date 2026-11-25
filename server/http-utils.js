@@ -11,7 +11,7 @@ function json(res, body, status = 200) {
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, If-None-Match');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, If-None-Match, If-Match');
   res.setHeader('Access-Control-Expose-Headers', 'ETag');
 }
 
