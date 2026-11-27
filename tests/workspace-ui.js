@@ -69,6 +69,25 @@ async function main() {
       "document.querySelector('#moduleFrame').src.endsWith('/stage/control.html?workspace=1')",
     );
     await cdp.eval(page, "document.getElementById('openSettings').click()");
+    await cdp.eval(page, "document.getElementById('stageConnections').open=true");
+    await cdp.until(
+      page,
+      "document.getElementById('stageSettingsFrame').src.endsWith('/stage/control.html?workspace=1&settings=1')",
+    );
+    const stageSettings = await cdp.page(
+      await cdp.eval(page, "document.getElementById('stageSettingsFrame').src"),
+    );
+    await cdp.until(
+      stageSettings,
+      "document.getElementById('connection').textContent==='本地服务已连接'",
+    );
+    assert.equal(
+      await cdp.eval(
+        stageSettings,
+        "!document.getElementById('connectionTab').hidden && getComputedStyle(document.getElementById('dockedPreview')).display==='none'",
+      ),
+      true,
+    );
     assert.equal(
       await cdp.eval(
         page,
@@ -157,13 +176,75 @@ async function main() {
     await cdp.eval(stage, "document.getElementById('captionTake').click()");
     await cdp.until(graphics, "document.getElementById('captionText').textContent==='第一句歌词'");
     await cdp.eval(stage, "document.getElementById('take').click()");
-    await cdp.until(
-      stage,
-      "document.getElementById('take').textContent==='播出报幕' && document.getElementById('notice').textContent.includes('绑定报幕动画')",
-    );
-    await cdp.eval(stage, "document.getElementById('next').click()");
     await cdp.until(stage, "document.getElementById('liveTitle').textContent==='山河回响'");
     await screenshot(stage, 'stage-show');
+    assert.equal(await cdp.eval(stage, "document.getElementById('next')===null"), true);
+    const originalShow = await fetch(stageOrigin + '/api/v1/state').then((response) =>
+      response.json(),
+    );
+    const extraPrograms = Array.from({ length: 24 }, (_, index) => ({
+      ...originalShow.programs[0],
+      id: 'manual-next-' + index,
+      title: '候选节目 ' + (index + 1),
+    }));
+    const expandedShow = await fetch(stageOrigin + '/api/v1/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ programs: [...originalShow.programs, ...extraPrograms] }),
+    });
+    assert.equal(expandedShow.status, 200);
+    await cdp.until(stage, "document.querySelectorAll('.program-row').length===25");
+    await cdp.eval(stage, "document.querySelectorAll('.program-row')[12].click()");
+    assert.deepEqual(
+      await cdp.eval(
+        stage,
+        "[document.getElementById('liveTitle').textContent,document.getElementById('nextTitle').textContent,document.getElementById('nextProgram').hidden]",
+      ),
+      ['山河回响', '候选节目 12', false],
+    );
+    await cdp.eval(stage, "document.getElementById('take').click()");
+    await cdp.until(stage, "document.getElementById('liveTitle').textContent==='候选节目 12'");
+    assert.equal(
+      (await fetch(stageOrigin + '/api/v1/state').then((response) => response.json())).live.id,
+      extraPrograms[11].id,
+    );
+    await cdp.eval(
+      stage,
+      "document.querySelectorAll('.program-row')[0].click();document.getElementById('take').click()",
+    );
+    await cdp.until(stage, "document.getElementById('liveTitle').textContent==='山河回响'");
+    assert.equal(
+      await cdp.eval(
+        stage,
+        `(() => {
+          const list = document.querySelector('.rundown');
+          const editor = document.querySelector('.program-editor');
+          document.getElementById('programEditPanel').open = true;
+          list.scrollTop = 200;
+          const listOnly = list.scrollTop > 0 && editor.scrollTop === 0;
+          editor.scrollTop = 100;
+          const independent = list.scrollTop === 200 && editor.scrollTop > 0;
+          list.scrollTop = editor.scrollTop = 0;
+          document.getElementById('programEditPanel').open = false;
+          const frame = document.querySelector('#previewWrap iframe');
+          return listOnly && independent &&
+            getComputedStyle(list).overscrollBehaviorY === 'contain' &&
+            getComputedStyle(editor).overscrollBehaviorY === 'contain' &&
+            !document.getElementById('dockedPreview').hidden &&
+            !document.getElementById('sidePreviewToggle') &&
+            getComputedStyle(frame).colorScheme === 'normal' &&
+            getComputedStyle(document.getElementById('previewWrap')).backgroundImage.includes('conic-gradient');
+        })()`,
+      ),
+      true,
+    );
+    const restoreShow = await fetch(stageOrigin + '/api/v1/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ programs: originalShow.programs }),
+    });
+    assert.equal(restoreShow.status, 200);
+    await cdp.until(stage, "document.querySelectorAll('.program-row').length===1");
     await cdp.eval(
       stage,
       "document.getElementById('programTitle').value='未保存的标题';document.getElementById('programTitle').dispatchEvent(new Event('input',{bubbles:true}))",
@@ -183,16 +264,12 @@ async function main() {
       await cdp.eval(stage, "document.getElementById('design').parentElement.id"),
       'stageContent',
     );
-    await cdp.eval(
-      stage,
-      "document.getElementById('sidePreviewToggle').click();document.querySelector('[data-tab=library]').click()",
-    );
     assert.deepEqual(
       await cdp.eval(
         stage,
-        "[document.getElementById('library').parentElement.id,document.getElementById('accent').closest('dialog').id,document.getElementById('dockedPreview').hidden]",
+        "[[...document.querySelectorAll('[data-tab]')].map(button=>button.textContent),document.getElementById('accent').closest('dialog').id,document.getElementById('dockedPreview').hidden]",
       ),
-      ['stageContent', 'captionTemplateDialog', false],
+      [['节目与播出', '晋级与颁奖', '包装与模板'], 'captionTemplateDialog', false],
     );
     const mediaFolder = path.join(directory, 'media');
     fs.mkdirSync(mediaFolder);

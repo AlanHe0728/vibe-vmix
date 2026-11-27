@@ -6,7 +6,10 @@
     <title>预览与布局 · 转播包装工作台</title>
     <script src="/shared/operator-theme.js"></script>
     <link rel="stylesheet" href="/shared/operator-theme.css" />
+    <link rel="stylesheet" href="/shared/preview-surface.css" />
     <link rel="stylesheet" href="preview.css" />
+    <link rel="stylesheet" href="/shared/window-controls.css" />
+    <script defer src="/shared/window-controls.js"></script>
     <script defer src="preview.js"></script>
     <script defer src="preview-tools.js"></script>
   </head>
@@ -54,7 +57,7 @@
               <strong><i class="lamp preview-lamp"></i>PVW <span>预览</span></strong
               ><span id="draftStatus">与播出位置一致</span>
             </div>
-            <div class="screen-wrap" id="pvwWrap">
+            <div class="screen-wrap preview-surface" id="pvwWrap">
               <div class="canvas" id="pvwCanvas"><div class="handles" id="handles"></div></div>
             </div>
           </section>
@@ -62,7 +65,9 @@
             <div class="screen-title">
               <strong><i class="lamp live-lamp"></i>PGM <span>播出</span></strong>
             </div>
-            <div class="screen-wrap" id="pgmWrap"><div class="canvas" id="pgmCanvas"></div></div>
+            <div class="screen-wrap preview-surface" id="pgmWrap">
+              <div class="canvas" id="pgmCanvas"></div>
+            </div>
           </section>
         </div>
       </main>
@@ -85,7 +90,10 @@
           <label id="sizeLabel">缩放<input id="size" type="number" step="0.01" /></label>
           <div id="pixelSizeFields" hidden>
             <div class="coordinate-row">
-              <label><span id="pixelWidthLabel">宽度（px）</span><input id="pixelWidth" type="number" step="any" /></label>
+              <label
+                ><span id="pixelWidthLabel">宽度（px）</span
+                ><input id="pixelWidth" type="number" step="any"
+              /></label>
               <label
                 ><span id="pixelHeightLabel">高度（px）</span
                 ><input id="pixelHeight" type="number" step="any"

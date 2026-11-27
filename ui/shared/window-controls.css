@@ -1,0 +1,79 @@
+.native-window body > header {
+  -webkit-app-region: drag;
+  user-select: none;
+  padding-right: 0;
+}
+.native-window body > header :is(button, input, select, a) {
+  -webkit-app-region: no-drag;
+}
+.native-window[data-operator-theme='dark'] body > header {
+  background: #141316;
+}
+.native-window-controls {
+  display: flex;
+  align-self: stretch;
+  flex: none;
+  margin-left: 8px;
+}
+.native-window .native-window-controls button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 31px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--operator-ink);
+}
+.native-window .native-window-controls button:hover {
+  background: var(--operator-selected);
+}
+.native-window .native-window-controls [data-window-action='close']:hover {
+  background: #c42b35;
+  color: white;
+}
+.native-window-controls span {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+.window-minimize-icon::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 1px;
+  width: 10px;
+  border-top: 1px solid currentColor;
+}
+.window-maximize-icon::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border: 1px solid currentColor;
+}
+[data-maximized='true'] .window-maximize-icon::before {
+  inset: 3px 3px 0 0;
+}
+[data-maximized='true'] .window-maximize-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 3px 3px;
+  border-top: 1px solid currentColor;
+  border-right: 1px solid currentColor;
+}
+.window-close-icon::before,
+.window-close-icon::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: 12px;
+  border-top: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+.window-close-icon::after {
+  transform: rotate(-45deg);
+}

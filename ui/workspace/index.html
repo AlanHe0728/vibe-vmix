@@ -7,6 +7,8 @@
     <script src="/shared/operator-theme.js"></script>
     <link rel="stylesheet" href="/shared/operator-theme.css" />
     <link rel="stylesheet" href="workspace.css" />
+    <link rel="stylesheet" href="/shared/window-controls.css" />
+    <script defer src="/shared/window-controls.js"></script>
     <script defer src="workspace.js"></script>
   </head>
   <body class="operator-ui">
@@ -75,6 +77,14 @@
             <legend>上屏地址</legend>
             <div id="outputAddresses"></div>
           </fieldset>
+          <details id="stageConnections" hidden>
+            <summary>连接与协作</summary>
+            <iframe
+              id="stageSettingsFrame"
+              title="舞台连接与协作设置"
+              allow="clipboard-write"
+            ></iframe>
+          </details>
           <output id="settingsNotice" role="status"></output>
         </div>
         <footer>

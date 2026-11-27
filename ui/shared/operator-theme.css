@@ -44,6 +44,15 @@
   caret-color: var(--operator-accent);
 }
 
+.operator-ui,
+.operator-ui * {
+  scrollbar-width: none;
+}
+.operator-ui::-webkit-scrollbar,
+.operator-ui *::-webkit-scrollbar {
+  display: none;
+}
+
 .operator-ui ::selection {
   color: var(--operator-selection-text);
   background: var(--operator-selection-fill);

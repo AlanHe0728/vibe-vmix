@@ -505,7 +505,36 @@ setupDrop($('font').parentElement, async (item) => {
 });
 
 const previewFrame = document.createElement('iframe');
+previewFrame.setAttribute('allowtransparency', 'true');
 const previewWrap = $('previewWrap');
+function syncPreviewBackground(background) {
+  if (background === undefined) {
+    try {
+      background = JSON.parse(
+        localStorage.getItem('broadcast-preview-tools-v1') || '{}',
+      ).background;
+    } catch (_) {}
+  }
+  previewWrap.dataset.background = ['checker', 'pitch', 'dark', 'light'].includes(background)
+    ? background
+    : 'checker';
+}
+syncPreviewBackground();
+window.addEventListener('storage', (event) => {
+  if (event.key === 'broadcast-preview-tools-v1' || event.key === null) syncPreviewBackground();
+});
+if (window.parent !== window && document.referrer) {
+  const workspaceOrigin = new URL(document.referrer).origin;
+  window.addEventListener('message', (event) => {
+    if (
+      event.source === window.parent &&
+      event.origin === workspaceOrigin &&
+      event.data?.type === 'preview-background'
+    )
+      syncPreviewBackground(event.data.background);
+  });
+  window.parent.postMessage({ type: 'preview-background' }, workspaceOrigin);
+}
 new ResizeObserver(() => {
   const width = previewWrap.getBoundingClientRect().width;
   if (width) previewFrame.style.zoom = width / 1920;
@@ -545,7 +574,6 @@ function playReadyDockAwardPreview() {
 function playDockAwardPreview(cue) {
   dockAwardPlayback = { cue, startedAt: 0 };
   usePackagingSidePreview('award');
-  setSidePreview(true);
   playReadyDockAwardPreview();
   syncAwardEditor();
 }
@@ -581,40 +609,18 @@ window.addEventListener('message', (event) => {
     stopDockAwardPreview();
 });
 
-function setSidePreview(visible) {
-  $('dockedPreview').hidden = !visible;
-  $('sidePreviewToggle').setAttribute('aria-pressed', String(visible));
-  if (visible) syncDockPreview();
-  else {
-    stopDockAwardPreview();
-    awardPreviewReady = false;
-    previewFrameURL = '';
-    previewFrame.remove();
-  }
-}
-$('sidePreviewToggle').onclick = () => {
-  const visible = $('dockedPreview').hidden;
-  setSidePreview(visible);
-  try {
-    localStorage.setItem('stage-side-preview', String(visible));
-  } catch (_) {}
-};
-try {
-  setSidePreview(localStorage.getItem('stage-side-preview') === 'true');
-} catch (_) {}
-
 function syncDockPreview(templateId = '', captionTemplateId) {
-  if ($('dockedPreview').hidden) return;
+  if (settingsView) return;
   const layer = previewLayer.value;
   let url = '/stage/graphics.html?workspacePreview=1';
   let title = '舞台排版预览';
   if (layer === 'award') {
     url = awardPreviewURL;
-    title = '颁奖侧边预览';
+    title = '颁奖预览';
   } else if (layer === 'promotion') {
     const query = new URLSearchParams({ workspacePreview: '1', round: promotionRound ?? '' });
     url = '/stage/promotion.html?' + query;
-    title = '晋级名单侧边预览';
+    title = '晋级名单预览';
   }
   if (previewFrameURL !== url) {
     if (layer !== 'award') stopDockAwardPreview();
@@ -659,3 +665,4 @@ previewFrame.onload = () => {
 };
 $('designForm').addEventListener('input', () => syncDockPreview());
 $('programForm').addEventListener('input', () => syncDockPreview());
+syncDockPreview();

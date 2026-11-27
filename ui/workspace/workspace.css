@@ -288,3 +288,20 @@ iframe {
   color: var(--operator-muted);
   margin-top: 8px;
 }
+#stageConnections {
+  margin-top: 14px;
+}
+#stageConnections summary {
+  cursor: pointer;
+  font-weight: 650;
+  padding-block: 8px;
+}
+#settingsDialog.show-stage-connections {
+  width: min(960px, calc(100% - 32px));
+}
+#stageSettingsFrame {
+  display: block;
+  width: 100%;
+  height: min(65vh, 620px);
+  border: 0;
+}

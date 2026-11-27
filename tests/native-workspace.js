@@ -93,6 +93,13 @@ async function main() {
     assert.equal(
       await cdp.eval(
         sessionId,
+        "document.documentElement.classList.contains('native-window') && document.querySelectorAll('.native-window-controls button').length===3",
+      ),
+      true,
+    );
+    assert.equal(
+      await cdp.eval(
+        sessionId,
         "document.getElementById('moduleFrame').allow.includes('clipboard-write')",
       ),
       true,
@@ -177,7 +184,10 @@ async function main() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sb_clockcmd: 'start' }),
     });
-    const viewport = await cdp.eval(sessionId, '({ ratio: devicePixelRatio, width: innerWidth, height: innerHeight })');
+    const viewport = await cdp.eval(
+      sessionId,
+      '({ ratio: devicePixelRatio, width: innerWidth, height: innerHeight })',
+    );
     const capture = await cdp.send('Page.captureScreenshot', { format: 'png' }, sessionId);
     const png = Buffer.from(capture.data, 'base64');
     assert(Math.abs(png.readUInt32BE(16) - viewport.width * viewport.ratio) <= 2);
@@ -216,8 +226,11 @@ async function main() {
       ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', closeScript],
       { windowsHide: true, stdio: 'ignore' },
     );
-    assert.equal(await new Promise((resolve) => close.on('exit', resolve)), 0,
-      'WebView2 output must match the native window DPI and physical client size');
+    assert.equal(
+      await new Promise((resolve) => close.on('exit', resolve)),
+      0,
+      'WebView2 output must match the native window DPI and physical client size',
+    );
     for (let i = 0; i < 80 && host.exitCode === null; i++) await delay(100);
     assert.notEqual(host.exitCode, null, 'host exits after closing window');
     await assert.rejects(fetch(origin + '/api/workspace'));
@@ -244,8 +257,15 @@ async function main() {
     console.log(
       'PASS native EXE, football separate preview window, module loading, real window close, clock pause and all sockets released',
     );
-    console.log('PASS native rendering at ' + Math.round(viewport.ratio * 100) + '%: ' +
-      png.readUInt32BE(16) + 'x' + png.readUInt32BE(20) + ' physical pixels');
+    console.log(
+      'PASS native rendering at ' +
+        Math.round(viewport.ratio * 100) +
+        '%: ' +
+        png.readUInt32BE(16) +
+        'x' +
+        png.readUInt32BE(20) +
+        ' physical pixels',
+    );
   } finally {
     cdp?.ws.close();
     if (host && host.exitCode === null) host.kill();

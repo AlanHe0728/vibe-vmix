@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -96,12 +97,14 @@ internal sealed class WorkspaceForm : Form {
     private static readonly Size MinimumWindowSize = new Size(640, 450);
     private readonly WebView2 view = new WebView2();
     private readonly bool main;
+    private bool customTitleBar;
     private readonly string destination;
     private readonly Control placementAnchor;
     private readonly Dictionary<string, WorkspaceForm> previewWindows = new Dictionary<string, WorkspaceForm>();
     private readonly Label loading = new Label();
     internal WorkspaceForm(string url, bool isMain, Control anchor = null) {
         main = isMain; destination = url; placementAnchor = anchor;
+        customTitleBar = isMain || (url != null && new Uri(url).AbsolutePath == "/workspace/preview.html");
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
         Text = "转播包装工作台"; Size = InitialWindowSize; MinimumSize = MinimumWindowSize;
@@ -120,8 +123,51 @@ internal sealed class WorkspaceForm : Form {
         };
         Resize += async (sender, args) => {
             if (view.CoreWebView2 == null) return;
+            SendWindowState();
             try { if (WindowState == FormWindowState.Minimized) await view.CoreWebView2.TrySuspendAsync(); else view.CoreWebView2.Resume(); } catch { }
         };
+    }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect { public int Left, Top, Right, Bottom; }
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
+    protected override void WndProc(ref Message message) {
+        if (customTitleBar && message.Msg == 0x0083 && message.WParam != IntPtr.Zero) {
+            // Keep the system resize frame and let the existing web toolbar occupy the caption.
+            var outer = (NativeRect)Marshal.PtrToStructure(message.LParam, typeof(NativeRect));
+            base.WndProc(ref message);
+            var client = (NativeRect)Marshal.PtrToStructure(message.LParam, typeof(NativeRect));
+            client.Top = outer.Top + (WindowState == FormWindowState.Maximized ? client.Left - outer.Left : 1);
+            Marshal.StructureToPtr(client, message.LParam, false);
+            message.Result = IntPtr.Zero;
+            return;
+        }
+        base.WndProc(ref message);
+    }
+    private void SendWindowState() {
+        if (!customTitleBar || view.CoreWebView2 == null) return;
+        try {
+            view.CoreWebView2.PostWebMessageAsJson(Program.Json.Serialize(new {
+                type = "window-state", maximized = WindowState == FormWindowState.Maximized
+            }));
+        } catch (InvalidOperationException) { }
+        catch (COMException) { }
+    }
+    private void ApplyWindowTheme(string theme) {
+        bool dark = theme == "dark";
+        BackColor = dark ? Color.FromArgb(20, 19, 22) : Color.White;
+        view.DefaultBackgroundColor = BackColor;
+        loading.BackColor = BackColor;
+        loading.ForeColor = dark ? Color.White : Color.Black;
+        try {
+            int enabled = dark ? 1 : 0;
+            DwmSetWindowAttribute(Handle, 20, ref enabled, sizeof(int));
+            int caption = ColorTranslator.ToWin32(BackColor);
+            DwmSetWindowAttribute(Handle, 35, ref caption, sizeof(int));
+        } catch (DllNotFoundException) { }
+        catch (EntryPointNotFoundException) { }
     }
     protected override void OnLoad(EventArgs e) {
         base.OnLoad(e);
@@ -147,21 +193,41 @@ internal sealed class WorkspaceForm : Form {
             core.Settings.AreDefaultContextMenusEnabled = false;
             core.Settings.AreDevToolsEnabled = Environment.GetEnvironmentVariable("BROADCAST_DESKTOP_TEST") == "1";
             core.Settings.IsStatusBarEnabled = false; core.Settings.IsPasswordAutosaveEnabled = false; core.Settings.IsGeneralAutofillEnabled = false;
+            if (customTitleBar) {
+                try { core.Settings.IsNonClientRegionSupportEnabled = true; }
+                catch (NotImplementedException) { customTitleBar = false; }
+                catch (COMException) { customTitleBar = false; }
+                if (!customTitleBar) SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, 0x0027);
+                else await core.AddScriptToExecuteOnDocumentCreatedAsync("window.workspaceWindow={customTitleBar:true};");
+            }
             core.NavigationStarting += (sender, args) => { if (args.Uri != "about:blank" && !Program.Local(args.Uri)) args.Cancel = true; };
             core.NewWindowRequested += (sender, args) => { args.Handled = true; if (Program.Local(args.Uri)) { var child = new WorkspaceForm(args.Uri, false); child.Show(this); } };
             core.PermissionRequested += (sender, args) => { args.State = CoreWebView2PermissionState.Deny; };
             core.WebMessageReceived += async (sender, args) => await Message(args);
             core.ProcessFailed += (sender, args) => { loading.Text = "窗口进程已退出，请关闭后重新打开软件。已保存数据保留。"; loading.Show(); loading.BringToFront(); };
-            core.NavigationCompleted += (sender, args) => { loading.Hide(); };
+            core.NavigationCompleted += (sender, args) => { loading.Hide(); SendWindowState(); };
             core.Navigate(destination ?? Program.Origin + "/workspace/index.html");
             if (main) File.WriteAllText(Path.Combine(Program.Data, "active-host.json"), Program.Json.Serialize(new { origin = Program.Origin, hostPid = Process.GetCurrentProcess().Id, servicePid = Program.Service.Id, windowHandle = Handle.ToInt64() }));
         } catch (Exception error) { Program.Fail(error); Close(); }
     }
     private async Task Message(CoreWebView2WebMessageReceivedEventArgs args) {
-        if (!main || !args.Source.StartsWith(Program.Origin + "/workspace/", StringComparison.Ordinal)) return;
+        if (!args.Source.StartsWith(Program.Origin + "/workspace/", StringComparison.Ordinal)) return;
         try {
             var message = Program.Json.Deserialize<Dictionary<string, object>>(args.WebMessageAsJson);
             string type = Convert.ToString(message["type"]);
+            if (type == "window-command" && customTitleBar) {
+                string action = Convert.ToString(message["action"]);
+                if (action == "minimize") WindowState = FormWindowState.Minimized;
+                else if (action == "maximize") WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
+                else if (action == "close") { Close(); return; }
+                SendWindowState();
+                return;
+            }
+            if (type == "window-theme") {
+                ApplyWindowTheme(Convert.ToString(message["theme"]));
+                return;
+            }
+            if (!main) return;
             if (type == "open-preview") {
                 string id = message.ContainsKey("module") ? Convert.ToString(message["module"]) : "all";
                 if (!new List<string> { "all", "stage", "football", "ae-live" }.Contains(id)) return;

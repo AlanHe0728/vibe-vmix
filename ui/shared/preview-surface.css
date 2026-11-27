@@ -1,0 +1,24 @@
+.preview-surface {
+  background: repeating-conic-gradient(#283746 0% 25%, #23313e 0% 50%) 50%/24px 24px;
+}
+.preview-surface[data-background='dark'] {
+  background: #26313b;
+}
+.preview-surface[data-background='light'] {
+  background: #dfe6ed;
+}
+.preview-surface[data-background='pitch'] {
+  background: repeating-linear-gradient(90deg, #126637 0 9%, #106133 9% 18%);
+}
+.preview-surface[data-background='pitch']::before {
+  content: '';
+  position: absolute;
+  inset: 7%;
+  border: 1px solid #ffffff30;
+  background: linear-gradient(
+    90deg,
+    transparent calc(50% - 0.5px),
+    #ffffff30 50%,
+    transparent calc(50% + 0.5px)
+  );
+}

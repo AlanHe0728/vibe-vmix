@@ -6,6 +6,7 @@
     <title>舞台节目包装</title>
     <script src="/shared/operator-theme.js"></script>
     <link rel="stylesheet" href="/shared/operator-theme.css" />
+    <link rel="stylesheet" href="/shared/preview-surface.css" />
     <link rel="stylesheet" href="control.css" />
     <script defer src="/stage-module/captions.js"></script>
     <script defer src="/stage-controls/microkit-controls.js"></script>
@@ -24,19 +25,9 @@
       <strong>舞台节目</strong>
       <nav aria-label="舞台工作区">
         <button data-tab="show" aria-pressed="true">节目与播出</button
-        ><button data-tab="design" aria-pressed="false">包装与模板</button
-        ><button data-tab="library" aria-pressed="false">素材库</button
         ><button data-tab="promotion" aria-pressed="false">晋级与颁奖</button
-        ><button data-tab="connection" aria-pressed="false">连接与协作</button>
+        ><button data-tab="design" aria-pressed="false">包装与模板</button>
       </nav>
-      <button
-        type="button"
-        id="sidePreviewToggle"
-        aria-pressed="false"
-        aria-controls="dockedPreview"
-      >
-        侧边预览
-      </button>
       <span id="connection">正在连接</span><button class="danger" id="hideAll">全部下屏</button>
     </header>
     <div id="notice" role="status" aria-live="polite"></div>
@@ -44,7 +35,7 @@
       <div class="workspace-content" id="stageContent">
         <section id="show" class="tab">
           <div class="show-grid">
-            <section class="rundown">
+            <section class="rundown" aria-label="节目单" tabindex="0">
               <div class="section-heading">
                 <h1>节目单</h1>
                 <button id="addProgram">添加节目</button>
@@ -73,7 +64,7 @@
                 /></label>
               </div>
             </section>
-            <section class="program-editor">
+            <section class="program-editor" aria-label="节目控制" tabindex="0">
               <details id="programEditPanel">
                 <summary>编辑节目<span id="draftState"></span></summary>
                 <form id="programForm">
@@ -132,7 +123,10 @@
                 <div>
                   <span class="eyebrow">当前节目</span><strong id="liveTitle">尚未选择节目</strong>
                 </div>
-                <button class="primary" id="take">播出报幕</button><button id="next">下一个</button>
+                <div id="nextProgram" hidden>
+                  <span class="eyebrow">下一个节目</span><strong id="nextTitle"></strong>
+                </div>
+                <button class="primary" id="take">播出报幕</button>
               </div>
               <section class="caption-desk" aria-labelledby="captionDeskTitle">
                 <div class="section-heading">
@@ -182,7 +176,9 @@
               <h1>晋级名单</h1>
               <div class="actions">
                 <a href="/stage/promotion.html" target="_blank" rel="noopener">打开名单播出页</a>
-                <a id="promotionPreviewLink" target="_blank" rel="noopener" hidden>预览已保存名单</a>
+                <a id="promotionPreviewLink" target="_blank" rel="noopener" hidden
+                  >预览已保存名单</a
+                >
                 <span id="promotionOutputStatus" role="status">正在读取播出状态</span>
                 <button id="promotionShow" class="primary" type="button" disabled>名单上屏</button>
                 <button id="promotionHide" class="danger" type="button" disabled>名单下屏</button>
@@ -273,9 +269,14 @@
                 </fieldset>
                 <div class="stage-media-fields">
                   <label
-                    >核稿参考背景（仅预览）<select id="promotionBackground" data-assets="media"></select
+                    >核稿参考背景（仅预览）<select
+                      id="promotionBackground"
+                      data-assets="media"
+                    ></select
                   ></label>
-                  <button type="button" data-media-import="promotionBackground">导入参考背景</button>
+                  <button type="button" data-media-import="promotionBackground">
+                    导入参考背景
+                  </button>
                 </div>
                 <div class="actions">
                   <button id="promotionSave" class="primary" type="button">保存名单</button>
@@ -297,14 +298,17 @@
             <div class="award-grid">
               <section aria-labelledby="awardListHeading">
                 <h2 id="awardListHeading">奖项</h2>
-                <div id="awardChoices" class="award-choices" role="group" aria-label="选择奖项"></div>
+                <div
+                  id="awardChoices"
+                  class="award-choices"
+                  role="group"
+                  aria-label="选择奖项"
+                ></div>
               </section>
               <form id="awardEditor" aria-labelledby="awardSelectedTitle" hidden>
                 <h2 id="awardSelectedTitle"></h2>
                 <label>从名单选择<select id="awardRosterPicker" disabled></select></label>
-                <label
-                  >获奖人<input id="awardRecipient" maxlength="40" autocomplete="off"
-                /></label>
+                <label>获奖人<input id="awardRecipient" maxlength="40" autocomplete="off" /></label>
                 <label
                   >中间驻留时长（秒）<input
                     id="awardHoldSeconds"
@@ -479,8 +483,8 @@
                 <button id="applyGtLayer" type="submit">更新输入图层</button>
               </form>
               <p class="hint">
-                在素材库添加 GT 后填写对应输入。换用新标题时，先撤下旧标题，再绑定新输入。文字字段以
-                .Text 结尾。
+                填写 vMix 中的 GT 输入。换用新标题时，先撤下旧标题，再绑定新输入。文字字段以 .Text
+                结尾。
               </p>
             </section>
             <section>
@@ -505,9 +509,9 @@
           </div>
         </section>
       </div>
-      <aside id="dockedPreview" class="workspace-preview" aria-label="舞台侧边预览" hidden>
+      <aside id="dockedPreview" class="workspace-preview" aria-label="舞台预览">
         <div class="panel-bar">
-          <h2>侧边预览</h2>
+          <h2>预览</h2>
           <select id="dockPreviewLayer" aria-label="预览图层">
             <option value="caption">字幕条</option>
             <option value="">全部图层</option>
@@ -515,7 +519,7 @@
             <option value="award">颁奖</option>
           </select>
         </div>
-        <div class="preview-wrap" id="previewWrap"></div>
+        <div class="preview-wrap preview-surface" id="previewWrap"></div>
         <div class="dock-broadcast-controls">
           <div
             id="layerControls"

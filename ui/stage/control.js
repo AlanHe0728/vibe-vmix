@@ -3,6 +3,12 @@ document.body.classList.toggle(
   'embedded',
   new URLSearchParams(location.search).get('workspace') === '1',
 );
+const settingsView = new URLSearchParams(location.search).get('settings') === '1';
+document.body.classList.toggle('settings-view', settingsView);
+if (settingsView) {
+  document.getElementById('show').hidden = true;
+  document.getElementById('connectionTab').hidden = false;
+}
 const $ = (id) => document.getElementById(id);
 const followCaption = StageCaptions.createCaptionFollower();
 const fields = [
@@ -65,8 +71,8 @@ async function write(patch) {
   if (writing) throw Error('正在保存，请稍后再操作');
   writing = true;
   try {
-    const structured = ['programs', 'rounds', 'captionTemplates', 'promotions', 'awards'].some((key) =>
-      Object.hasOwn(patch, key),
+    const structured = ['programs', 'rounds', 'captionTemplates', 'promotions', 'awards'].some(
+      (key) => Object.hasOwn(patch, key),
     );
     await api('/api/v1/state', patch, structured && etag ? { 'If-Match': etag } : {});
     etag = '';
@@ -133,11 +139,8 @@ function renderCollaboration() {
   $('layer-caption').setAttribute('aria-pressed', String(live.visible));
   $('applyGtLayer').disabled = !canTake();
   $('captionHide').disabled = !canTake() || !(live.visible || live.uncertain);
-  for (const id of ['take', 'next', 'hideAll'])
-    $(id).disabled =
-      !canTake() ||
-      (id === 'take' && !selected) ||
-      (id === 'next' && !currentRoundPrograms().length);
+  $('take').disabled = !canTake() || !selected;
+  $('hideAll').disabled = !canTake();
   document.querySelectorAll('[data-vmix]').forEach((button) => {
     button.disabled = !canTake() || (native && ['text', 'show'].includes(button.dataset.vmix));
   });
@@ -292,6 +295,11 @@ function renderList() {
     li.append(button);
     $('programList').append(li);
   });
+  const next = state.programs.find((item) => item.id === selected && item.id !== state.live?.id);
+  $('liveTitle').textContent = state.live?.title || '尚未选择节目';
+  $('nextProgram').hidden = !next;
+  $('nextTitle').textContent = next?.title || '';
+  $('take').disabled = !selected || !canTake();
 }
 function fillDesign() {
   for (const key of ['channelAsset', 'eventAsset']) setAssetOption($(key), state[key]);
@@ -322,9 +330,6 @@ function renderState() {
     fillProgram();
   renderList();
   renderCaptions();
-  $('liveTitle').textContent = state.live ? state.live.title : '尚未选择节目';
-  $('take').disabled = !selected;
-  $('next').disabled = !currentRoundPrograms().length;
   for (const key of Object.keys(layerLabels))
     $('layer-' + key).setAttribute('aria-pressed', String(state.layers[key]));
   if (!designDirty) fillDesign();
@@ -353,8 +358,7 @@ document.querySelectorAll('[data-tab]').forEach((button) => {
       .querySelectorAll('[data-tab]')
       .forEach((entry) => entry.setAttribute('aria-pressed', String(entry === button)));
     document.querySelectorAll('.tab').forEach((section) => {
-      const tab = button.dataset.tab === 'connection' ? 'connectionTab' : button.dataset.tab;
-      section.hidden = section.id !== tab;
+      section.hidden = section.id !== button.dataset.tab;
     });
     const packaging = button.dataset.tab === 'promotion';
     usePackagingSidePreview(packaging ? ($('awardDesk').hidden ? 'promotion' : 'award') : '');
@@ -461,14 +465,8 @@ $('deleteProgram').onclick = run(async () => {
 });
 $('take').onclick = run(async () => {
   if (dirty) throw Error('请先保存节目，再播出报幕');
-  if (!state.programs.find((item) => item.id === selected)?.announcementAsset)
-    throw Error('请先在节目资料中绑定报幕动画');
+  if (!selected) throw Error('请在节目单中选择要播出的节目');
   await command('program.take', { id: selected });
-});
-$('next').onclick = run(async () => {
-  if (dirty) throw Error('请先保存当前节目');
-  await command('program.next', { roundId: roundView });
-  selectProgram(state.live.id);
 });
 $('captionPrevious').onclick = run(() => command('caption.previous', { programId: selected }));
 $('captionNext').onclick = run(() => command('caption.next', { programId: selected }));

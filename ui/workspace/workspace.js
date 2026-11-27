@@ -134,12 +134,35 @@ function openPreview(id) {
 }
 byId('openPreview').onclick = () => openPreview();
 const dialog = byId('settingsDialog');
+const stageConnections = byId('stageConnections');
+stageConnections.addEventListener('toggle', () => {
+  dialog.classList.toggle('show-stage-connections', stageConnections.open);
+  if (stageConnections.open && !byId('stageSettingsFrame').getAttribute('src'))
+    byId('stageSettingsFrame').src = stageConnections.dataset.url;
+});
+dialog.addEventListener('close', () => {
+  stageConnections.open = false;
+  byId('stageSettingsFrame').removeAttribute('src');
+});
 const moduleFrame = byId('moduleFrame');
 function syncModuleTheme() {
   if (active) window.operatorTheme.sendTo(moduleFrame.contentWindow, active.url);
 }
 moduleFrame.addEventListener('load', syncModuleTheme);
 window.addEventListener('operator-theme-change', syncModuleTheme);
+function syncModulePreviewBackground() {
+  if (active?.id !== 'stage') return;
+  let background = 'checker';
+  try {
+    background = JSON.parse(localStorage.getItem('broadcast-preview-tools-v1') || '{}').background;
+  } catch (_) {}
+  moduleFrame.contentWindow.postMessage({ type: 'preview-background', background }, active.url);
+}
+moduleFrame.addEventListener('load', syncModulePreviewBackground);
+window.addEventListener('storage', (event) => {
+  if (event.key === 'broadcast-preview-tools-v1' || event.key === null)
+    syncModulePreviewBackground();
+});
 function applySidebar() {
   document
     .querySelector('.app')
@@ -155,6 +178,11 @@ byId('openSettings').onclick = () => {
   byId('settingsNotice').textContent = '';
   byId('sharedVmixPort').value = model.vmixPort ?? '';
   byId('appearance').value = window.operatorTheme.get();
+  const stage = model.modules.find((module) => module.id === 'stage' && module.enabled);
+  stageConnections.hidden = !stage;
+  stageConnections.dataset.url = stage
+    ? stage.url + '/stage/control.html?workspace=1&settings=1'
+    : '';
   const addresses = byId('outputAddresses');
   addresses.replaceChildren();
   const outputs = model.modules
@@ -223,6 +251,10 @@ window.addEventListener('message', (event) => {
     return;
   if (event.data?.type === 'open-preview') {
     openPreview(active.id);
+    return;
+  }
+  if (event.data?.type === 'preview-background') {
+    syncModulePreviewBackground();
     return;
   }
   if (
