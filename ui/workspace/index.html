@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>转播包装工作台</title>
+    <script src="/shared/operator-theme.js"></script>
     <link rel="stylesheet" href="/shared/operator-theme.css" />
     <link rel="stylesheet" href="workspace.css" />
     <script defer src="workspace.js"></script>
@@ -55,6 +56,11 @@
           </fieldset>
           <fieldset>
             <legend>工作区</legend>
+            <label for="appearance">界面外观</label>
+            <select id="appearance">
+              <option value="light">浅色</option>
+              <option value="dark">黑红暗色</option>
+            </select>
             <label for="defaultPreview">打开预览时</label>
             <select id="defaultPreview">
               <option value="dual">双画面</option>

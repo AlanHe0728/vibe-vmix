@@ -1,5 +1,6 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
+let followCaption = StageCaptions.createCaptionFollower();
 let token = sessionStorage.getItem('stage-session') || '';
 let state,
   etag = '',
@@ -32,6 +33,7 @@ function disconnect() {
   etag = '';
   signature = '';
   sessionStorage.removeItem('stage-session');
+  followCaption = StageCaptions.createCaptionFollower();
   $('join').hidden = false;
   $('desk').hidden = true;
   $('connection').textContent = '尚未加入';
@@ -90,13 +92,14 @@ function render() {
   const offset = list.scrollTop;
   const focus = document.activeElement?.dataset?.index;
   list.replaceChildren();
+  const queued = current && prepared?.programId === current.id ? prepared : undefined;
   cues.forEach((line, index) => {
     const entry = document.createElement('li');
     const button = document.createElement('button');
     button.className = 'caption-row';
     button.dataset.index = index;
     const playing = same && live.visible && live.index === index && live.text === line;
-    const waiting = prepared?.programId === current.id && prepared.index === index;
+    const waiting = queued?.index === index;
     button.setAttribute('aria-current', String(playing));
     button.textContent = index + 1 + '　' + line + (playing ? ' · 上屏' : waiting ? ' · 待播' : '');
     button.onclick = run(() => update('prepare', cue(index)));
@@ -104,6 +107,8 @@ function render() {
     list.append(entry);
   });
   list.scrollTop = offset;
+  const liveIndex = same && cues[live.index] === live.text ? live.index : undefined;
+  followCaption(list, current?.id, liveIndex, queued);
   if (focus !== undefined)
     list.querySelector('[data-index="' + focus + '"]')?.focus({ preventScroll: true });
 }

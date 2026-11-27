@@ -137,6 +137,12 @@ function openPreview(id) {
 }
 byId('openPreview').onclick = () => openPreview();
 const dialog = byId('settingsDialog');
+const moduleFrame = byId('moduleFrame');
+function syncModuleTheme() {
+  if (active) window.operatorTheme.sendTo(moduleFrame.contentWindow, active.url);
+}
+moduleFrame.addEventListener('load', syncModuleTheme);
+window.addEventListener('operator-theme-change', syncModuleTheme);
 function applySidebar() {
   document
     .querySelector('.app')
@@ -151,6 +157,7 @@ byId('openSettings').onclick = () => {
   if (!model) return;
   byId('settingsNotice').textContent = '';
   byId('sharedVmixPort').value = model.vmixPort ?? '';
+  byId('appearance').value = window.operatorTheme.get();
   const addresses = byId('outputAddresses');
   addresses.replaceChildren();
   const outputs = model.modules
@@ -202,6 +209,7 @@ byId('settingsForm').onsubmit = async (event) => {
     }
     localStorage.setItem('workspace-preview-default', byId('defaultPreview').value);
     localStorage.setItem('workspace-compact-sidebar', byId('compactSidebar').checked ? '1' : '0');
+    window.operatorTheme.set(byId('appearance').value);
     applySidebar();
     dialog.close();
   } catch (error) {

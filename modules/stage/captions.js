@@ -135,7 +135,31 @@
     );
   }
 
+  function createCaptionFollower() {
+    let previousProgram, previousLive, previousPrepared;
+    return (list, programId, liveIndex, prepared) => {
+      if (!list.clientHeight) return;
+      const changedProgram = previousProgram !== programId;
+      const changedPrepared = previousPrepared !== prepared?.revision;
+      const liveChanged = previousLive !== liveIndex;
+      previousProgram = programId;
+      previousPrepared = prepared?.revision;
+      previousLive = liveIndex;
+
+      let target;
+      if (changedProgram || changedPrepared) target = prepared?.index ?? liveIndex;
+      else if (liveChanged) target = liveIndex;
+      const row = list.children[target];
+      if (row) {
+        const box = list.getBoundingClientRect();
+        const { top, height } = row.getBoundingClientRect();
+        list.scrollTop += top + height / 2 - box.top - list.clientTop - list.clientHeight / 2;
+      } else if (changedProgram) list.scrollTop = 0;
+    };
+  }
+
   const api = {
+    createCaptionFollower,
     lines,
     importLyrics,
     readLyrics,

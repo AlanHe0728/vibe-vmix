@@ -1,4 +1,5 @@
 :root {
+  --operator-color-scheme: light;
   --operator-surface: #fff;
   --operator-chrome: #f5f7fa;
   --operator-ink: #202a35;
@@ -8,9 +9,34 @@
   --operator-line: #c8d0d8;
   --operator-row-line: #e0e5eb;
   --operator-selected: #eaf2fa;
+  --operator-selection-text: #162c40;
+  --operator-selection-fill: #b9d7ef;
   --operator-pill: 999px;
   --operator-field-radius: 12px;
   --operator-shadow: 0 1px 3px #213b541f, 0 3px 7px #213b5417;
+}
+
+:root[data-operator-theme='dark'] {
+  --operator-color-scheme: dark;
+  --operator-surface: #141316;
+  --operator-chrome: #1c191d;
+  --operator-field: #242025;
+  --operator-ink: #f4edf0;
+  --operator-muted: #c1b5bd;
+  --operator-accent: #ff8494;
+  --operator-focus: #ff98a6;
+  --operator-line: #554751;
+  --operator-row-line: #3a3139;
+  --operator-selected: #3b2029;
+  --operator-active: #532532;
+  --operator-selection-text: #fff;
+  --operator-selection-fill: #862d42;
+  --operator-primary-fill: #a3233b;
+  --operator-primary-hover: #b92a43;
+  --operator-danger: #ff8494;
+  --operator-warning: #eac183;
+  --operator-shadow: 0 1px 3px #0005, 0 3px 7px #0003;
+  color-scheme: dark;
 }
 
 :where(.operator-ui) {
@@ -19,9 +45,20 @@
 }
 
 .operator-ui ::selection {
-  color: #162c40;
-  background: #b9d7ef;
+  color: var(--operator-selection-text);
+  background: var(--operator-selection-fill);
 }
+
+:root[data-operator-theme='dark'] .operator-ui .primary {
+  border-color: transparent;
+  background: var(--operator-primary-fill);
+  color: white;
+}
+
+:root[data-operator-theme='dark'] .operator-ui .primary:hover:not(:disabled) {
+  background: var(--operator-primary-hover);
+}
+
 .embedded [data-standalone] {
   display: none !important;
 }

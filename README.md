@@ -7,6 +7,8 @@
 
 完整解压 Windows x64 便携包，运行「转播包装工作台.exe」。启用所需模块，在「设置 → 上屏地址」复制地址，添加为 vMix 的 1920 × 1080 网页输入。
 
+在「设置 → 工作区 → 界面外观」可以选择黑红暗色，保存后应用到工作台、控台和预览工具。
+
 [工作台使用说明](docs/WORKSPACE_2.md) · [足球使用说明](docs/USAGE.md) · [Adobe 插件](ae-plugin/README.md) · [反馈问题](https://github.com/AlanHe0728/vibe-vmix/issues)
 
 ## API 文档

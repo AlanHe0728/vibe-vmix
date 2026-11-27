@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>舞台节目包装</title>
+    <script src="/shared/operator-theme.js"></script>
     <link rel="stylesheet" href="/shared/operator-theme.css" />
     <link rel="stylesheet" href="control.css" />
     <script defer src="/stage-module/captions.js"></script>
@@ -72,59 +73,60 @@
               </div>
             </section>
             <section class="program-editor">
-              <div class="section-heading">
-                <h2>节目资料</h2>
-                <span id="draftState"></span>
-              </div>
-              <form id="programForm">
-                <label
-                  >节目类型<select id="programType">
-                    <option>歌唱</option>
-                    <option>舞蹈</option>
-                    <option>武术</option>
-                    <option>器乐</option>
-                    <option>戏曲</option>
-                    <option>其他</option>
-                  </select></label
-                ><label
-                  >节目名称<input
-                    id="programTitle"
-                    maxlength="100"
-                    required
-                    placeholder="填写节目名称" /></label
-                ><label>表演者 / 演出单位<input id="programPerformer" maxlength="160" /></label
-                ><label>副标题<input id="programSubtitle" maxlength="160" /></label
-                ><label>所属轮次<select id="programRound"></select></label>
-                <details class="program-media" open>
-                  <summary>报幕素材</summary>
-                  <div class="stage-media-fields">
-                    <label
-                      >转场报幕<select id="announcementAsset" data-assets="video"></select
-                    ></label>
-                    <button type="button" data-media-import="announcementAsset">导入报幕</button>
+              <details id="programEditPanel">
+                <summary>编辑节目<span id="draftState"></span></summary>
+                <form id="programForm">
+                  <label
+                    >节目类型<select id="programType">
+                      <option>歌唱</option>
+                      <option>舞蹈</option>
+                      <option>武术</option>
+                      <option>器乐</option>
+                      <option>戏曲</option>
+                      <option>其他</option>
+                    </select></label
+                  ><label
+                    >节目名称<input
+                      id="programTitle"
+                      maxlength="100"
+                      required
+                      placeholder="填写节目名称" /></label
+                  ><label>表演者 / 演出单位<input id="programPerformer" maxlength="160" /></label
+                  ><label>副标题<input id="programSubtitle" maxlength="160" /></label
+                  ><label>所属轮次<select id="programRound"></select></label>
+                  <details class="program-media" open>
+                    <summary>报幕素材</summary>
+                    <div class="stage-media-fields">
+                      <label
+                        >转场报幕<select id="announcementAsset" data-assets="video"></select
+                      ></label>
+                      <button type="button" data-media-import="announcementAsset">导入报幕</button>
+                    </div>
+                  </details>
+                  <label>字幕模板<select id="programCaptionTemplate"></select></label
+                  ><label
+                    >歌词 / 字幕<textarea
+                      id="programCaption"
+                      maxlength="30000"
+                      rows="5"
+                      placeholder="每行输入一句歌词或字幕"
+                      aria-describedby="captionInputHelp"
+                    ></textarea>
+                  </label>
+                  <p id="captionInputHelp" class="hint caption-input-help">
+                    每行一句，最多 500 句。
+                  </p>
+                  <label class="file-button"
+                    >导入歌词<input id="importLyrics" type="file" accept=".lrc,.txt"
+                  /></label>
+                  <div class="actions">
+                    <button type="submit" class="primary">保存节目</button
+                    ><button type="button" id="moveUp">上移</button
+                    ><button type="button" id="moveDown">下移</button
+                    ><button type="button" id="deleteProgram">删除</button>
                   </div>
-                </details>
-                <label>字幕模板<select id="programCaptionTemplate"></select></label
-                ><label
-                  >歌词 / 字幕<textarea
-                    id="programCaption"
-                    maxlength="30000"
-                    rows="5"
-                    placeholder="每行输入一句歌词或字幕"
-                    aria-describedby="captionInputHelp"
-                  ></textarea>
-                </label>
-                <p id="captionInputHelp" class="hint caption-input-help">每行一句，最多 500 句。</p>
-                <label class="file-button"
-                  >导入歌词<input id="importLyrics" type="file" accept=".lrc,.txt"
-                /></label>
-                <div class="actions">
-                  <button type="submit" class="primary">保存节目</button
-                  ><button type="button" id="moveUp">上移</button
-                  ><button type="button" id="moveDown">下移</button
-                  ><button type="button" id="deleteProgram">删除</button>
-                </div>
-              </form>
+                </form>
+              </details>
               <div class="take-area">
                 <div>
                   <span class="eyebrow">当前节目</span><strong id="liveTitle">尚未选择节目</strong>
@@ -152,15 +154,6 @@
                 </div>
                 <ol id="captionList" aria-label="字幕句子"></ol>
               </section>
-            </section>
-            <section class="monitor">
-              <div class="section-heading">
-                <h2>播出画面</h2>
-                <button id="togglePreview">打开预览与布局</button>
-              </div>
-              <h2 class="layer-title">上屏图层</h2>
-              <div id="layerControls" class="layers"></div>
-              <button id="replayAnnouncement" class="wide">重播当前节目报幕</button>
             </section>
           </div>
         </section>
@@ -454,6 +447,18 @@
           </select>
         </div>
         <div class="preview-wrap" id="previewWrap"></div>
+        <div class="dock-broadcast-controls">
+          <div
+            id="layerControls"
+            class="dock-layer-controls"
+            role="group"
+            aria-label="上屏图层"
+          ></div>
+          <div class="dock-actions">
+            <button type="button" id="togglePreview">打开预览与布局</button>
+            <button type="button" id="replayAnnouncement">重播当前节目报幕</button>
+          </div>
+        </div>
       </aside>
     </main>
     <dialog id="stageDesignDialog" class="stage-design-dialog" aria-labelledby="stageDesignTitle">

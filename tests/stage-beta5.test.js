@@ -296,6 +296,38 @@ test('stage layout applies positive sizes beyond the former preview and canvas l
   assert.equal(layout.channelWidth, dimensions.channelWidth);
 });
 
+test('lyric viewport follows cue changes without resetting manual scroll on updates', () => {
+  const follow = require('../modules/stage/captions').createCaptionFollower();
+  const list = {
+    scrollTop: 0,
+    clientHeight: 240,
+    clientTop: 1,
+    getBoundingClientRect: () => ({ top: 100 }),
+    children: Array.from({ length: 50 }, (_, index) => ({
+      getBoundingClientRect: () => ({ top: 101 + index * 40 - list.scrollTop, height: 40 }),
+    })),
+  };
+
+  follow(list, 'song-a', 16);
+  assert.equal(list.scrollTop, 540);
+  list.scrollTop = 40;
+  follow(list, 'song-a', 16);
+  assert.equal(list.scrollTop, 40);
+  follow(list, 'song-a', 16, { index: 24, revision: 1 });
+  assert.equal(list.scrollTop, 860);
+  follow(list, 'song-a', 17, { index: 24, revision: 1 });
+  assert.equal(list.scrollTop, 580);
+
+  list.clientHeight = 0;
+  follow(list, 'song-a', 26);
+  assert.equal(list.scrollTop, 580);
+  list.clientHeight = 240;
+  follow(list, 'song-a', 26);
+  assert.equal(list.scrollTop, 940);
+  follow(list, 'song-b');
+  assert.equal(list.scrollTop, 0);
+});
+
 test('subtitle renderer moves and animates the entire caption while retaining media through exit', () => {
   const elements = new Map(),
     listeners = {},

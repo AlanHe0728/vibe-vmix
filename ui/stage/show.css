@@ -20,6 +20,18 @@
 .round-manager button {
   padding: 5px 9px;
 }
+#programEditPanel > summary {
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+}
+#programEditPanel #draftState {
+  margin-inline-start: 10px;
+  font-weight: normal;
+}
+#programEditPanel > form {
+  margin-top: 14px;
+}
 .program-media {
   margin: 4px 0 14px;
 }
@@ -85,7 +97,7 @@
   display: none;
 }
 #captionTemplateStatus {
-  color: #a72d33;
+  color: var(--operator-danger, #a72d33);
 }
 .caption-template-preview {
   position: relative;
@@ -326,7 +338,7 @@
 }
 .promotion-table-heading {
   padding: 0 6px 7px;
-  color: #526475;
+  color: var(--operator-muted, #526475);
   font-size: 12px;
 }
 .promotion-columns {
@@ -343,7 +355,7 @@
 }
 #promotionOutputStatus,
 #promotionCount {
-  color: #526475;
+  color: var(--operator-muted, #526475);
 }
 @media (max-width: 1080px) {
   .promotion-grid {

@@ -88,3 +88,54 @@ body.preview-desk{
   .preview-desk select::picker(select){background:#fff;backdrop-filter:none;-webkit-backdrop-filter:none}
 }
 @supports not (backdrop-filter:blur(1px)){.preview-controls.preview-desk header::before{background:#f7f9fc}.preview-desk #layoutInspector{background:#fff}}
+
+html[data-operator-theme='dark']:has(body.preview-desk) {
+  background: var(--operator-surface);
+  color-scheme: dark;
+}
+html[data-operator-theme='dark'] .preview-desk {
+  --ink: var(--operator-ink);
+  --dim: var(--operator-muted);
+  --accent: var(--operator-accent);
+  --focus: var(--operator-focus);
+  --section-line: var(--operator-line);
+  --row-line: var(--operator-row-line);
+  --button-shadow: var(--operator-shadow);
+  --button-shadow-raised: var(--operator-shadow);
+  --button-shadow-hover: var(--operator-shadow);
+  --button-shadow-pressed: none;
+}
+html[data-operator-theme='dark'] .preview-desk ::selection {
+  background: var(--operator-selection-fill);
+  color: var(--operator-selection-text);
+}
+html[data-operator-theme='dark'] .preview-controls.preview-desk header::before,
+html[data-operator-theme='dark'] .preview-controls.preview-desk nav,
+html[data-operator-theme='dark'] .preview-desk #workspace {
+  background: var(--operator-chrome);
+}
+html[data-operator-theme='dark'] .preview-desk #layoutInspector {
+  background: var(--operator-surface);
+}
+html[data-operator-theme='dark'] .preview-desk #layoutInspector :is(input:not([type='range']), select),
+html[data-operator-theme='dark'] .preview-desk select::picker(select) {
+  background: var(--operator-field);
+}
+html[data-operator-theme='dark'] .preview-desk :is(button:active, button.selected, nav button.on, select option:checked),
+html[data-operator-theme='dark'] .preview-desk .preview-layer button.selected {
+  background: var(--operator-selected);
+  color: var(--operator-accent);
+}
+html[data-operator-theme='dark'] .preview-desk #layoutInspector input[type='checkbox']:checked {
+  background: var(--operator-primary-fill);
+  border-color: var(--operator-accent);
+}
+html[data-operator-theme='dark'] .preview-desk #banner,
+html[data-operator-theme='dark'] .preview-desk #banner code {
+  background: var(--operator-field);
+  border-color: var(--operator-line);
+  color: var(--operator-warning);
+}
+html[data-operator-theme='dark'] .preview-desk #banner b {
+  color: var(--operator-ink);
+}

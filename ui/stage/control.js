@@ -4,6 +4,7 @@ document.body.classList.toggle(
   new URLSearchParams(location.search).get('workspace') === '1',
 );
 const $ = (id) => document.getElementById(id);
+const followCaption = StageCaptions.createCaptionFollower();
 const fields = [
   'programType',
   'programTitle',
@@ -215,6 +216,8 @@ function renderCaptions() {
   const focused = document.activeElement?.dataset?.captionIndex;
   list.replaceChildren();
   const programId = selected;
+  const prepared = collaboration?.prepared;
+  const queued = item && !dirty && prepared?.programId === programId ? prepared : undefined;
   entries.forEach((line, index) => {
     const li = document.createElement('li');
     const button = document.createElement('button');
@@ -232,16 +235,11 @@ function renderCaptions() {
     content.className = 'caption-row-text';
     content.textContent = line;
     button.append(number, content);
-    const queued = collaboration?.prepared;
-    if (current || (queued?.programId === programId && queued.index === index)) {
+    if (current || queued?.index === index) {
       const status = document.createElement('span');
       status.className = 'caption-row-state';
       status.textContent =
-        current && visible
-          ? '上屏'
-          : queued?.index === index && queued.programId === programId
-            ? '待播'
-            : '已下屏';
+        current && visible ? '上屏' : queued?.index === index ? '待播' : '已下屏';
       button.append(status);
     }
     button.onclick = run(() =>
@@ -251,6 +249,7 @@ function renderCaptions() {
     list.append(li);
   });
   list.scrollTop = scrollTop;
+  followCaption(list, programId, sameLyrics ? active.index : undefined, queued);
   if (focused !== undefined)
     list.querySelector('[data-caption-index="' + focused + '"]')?.focus({ preventScroll: true });
 }
@@ -354,6 +353,7 @@ document.querySelectorAll('[data-tab]').forEach((button) => {
       const tab = button.dataset.tab === 'connection' ? 'connectionTab' : button.dataset.tab;
       section.hidden = section.id !== tab;
     });
+    if (button.dataset.tab === 'show') renderCaptions();
   };
 });
 fields.forEach((id) => $(id).addEventListener('input', markDirty));
@@ -378,6 +378,7 @@ $('addProgram').onclick = run(async () => {
   selected = item.id;
   fillProgram();
   renderList();
+  $('programEditPanel').open = true;
   $('programTitle').focus();
 });
 $('programForm').onsubmit = run(async () => {

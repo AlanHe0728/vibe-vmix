@@ -232,3 +232,84 @@ html:has(body.console-desk){scroll-padding-top:calc(var(--console-chrome-height,
   body.console-desk{background:#fff}.console-desk .console-chrome,.console-desk .desk-flyout{background:#f7f9fc}
   .console-desk .console-chrome::before{background:#f7f9fc}
 }
+
+html[data-operator-theme='dark'] .console-desk {
+  --ink: var(--operator-ink);
+  --dim: var(--operator-muted);
+  --accent: var(--operator-accent);
+  --focus: var(--operator-focus);
+  --section-line: var(--operator-line);
+  --row-line: var(--operator-row-line);
+  --button-shadow: var(--operator-shadow);
+  --button-shadow-raised: var(--operator-shadow);
+  --button-shadow-hover: var(--operator-shadow);
+  --button-shadow-compact: var(--operator-shadow);
+  --button-shadow-pressed: none;
+}
+html[data-operator-theme='dark'] .console-desk ::selection {
+  background: var(--operator-selection-fill);
+  color: var(--operator-selection-text);
+}
+html[data-operator-theme='dark'] .console-desk ::placeholder {
+  color: var(--operator-muted);
+}
+html[data-operator-theme='dark'] .console-desk .console-chrome {
+  background: linear-gradient(var(--operator-surface), var(--operator-surface)) bottom/100% 16px no-repeat;
+}
+html[data-operator-theme='dark'] .console-desk .console-chrome::before,
+html[data-operator-theme='dark'] .console-desk .desk-flyout {
+  background: var(--operator-chrome);
+}
+html[data-operator-theme='dark'] .console-desk .console-chrome::after {
+  background: var(--operator-surface);
+}
+html[data-operator-theme='dark'] .console-desk :is(.panel-nav, .squad-add-form, .asset-pick, .squad-number, .squad-row, .roster-chips > span, .event-stage, .appearance-grid, .devices-grid, .match-config-card) {
+  background: var(--operator-chrome);
+}
+html[data-operator-theme='dark'] .console-desk .tab-indicator path {
+  fill: var(--operator-selected);
+  stroke: var(--operator-line);
+}
+html[data-operator-theme='dark'] .console-desk .tab-indicator:not([data-fluid]) {
+  background: var(--operator-selected);
+  border-color: var(--operator-line);
+}
+html[data-operator-theme='dark'] .console-desk :is(
+  .panel-nav button:hover, .score-edit:hover, .score-edit[aria-expanded='true'],
+  .btn:active, .btn.quiet-button:hover, .btn.quiet-button[aria-expanded='true'],
+  .btn.quiet-button[aria-pressed='true'], .btn.choice-button[aria-pressed='true'],
+  .event-nav button:hover, .event-nav button[aria-selected='true'],
+  .settings-nav button:hover, .settings-nav button[aria-selected='true'],
+  .squad-role-actions .squad-role-toggle:is(:hover, [aria-pressed='true']),
+  .squad-row:is(:hover, [data-selected='true']), select.roster-select.has-value
+) {
+  background: var(--operator-selected);
+  border-color: var(--operator-line);
+}
+html[data-operator-theme='dark'] .console-desk .btn.primary-action {
+  background: var(--operator-primary-fill);
+  color: white;
+}
+html[data-operator-theme='dark'] .console-desk .btn.primary-action:hover:not(:disabled) {
+  background: var(--operator-primary-hover);
+}
+html[data-operator-theme='dark'] .console-desk input[type='checkbox']:checked {
+  background: var(--operator-primary-fill);
+  border-color: var(--operator-accent);
+}
+html[data-operator-theme='dark'] .console-desk :is(select.roster-select.has-value, select option:checked) {
+  color: var(--operator-accent);
+}
+html[data-operator-theme='dark'] .console-desk select::picker(select) {
+  background: var(--operator-field);
+}
+html[data-operator-theme='dark'] .console-desk :is(select.roster-select option, select.roster-select optgroup) {
+  background: var(--operator-field);
+  color: var(--operator-ink);
+}
+html[data-operator-theme='dark'] .console-desk :is(.desk-notice, .sbn) {
+  color: var(--operator-warning);
+}
+html[data-operator-theme='dark'] .console-desk .sbn {
+  background: var(--operator-field);
+}

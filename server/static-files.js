@@ -85,7 +85,7 @@ function operatorTheme(project) {
   return {
     prefix: '/shared/',
     directory: path.join(project, 'ui/shared'),
-    files: ['operator-theme.css'],
+    files: ['operator-theme.css', 'operator-theme.js'],
   };
 }
 
