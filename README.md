@@ -2,8 +2,7 @@
 
 给 vMix 用的转播包装工具。按需加载舞台节目、足球赛事和 AE 直播连接。舞台控台支持分轮节目单、歌词模板、晋级名单和颁奖报幕。名单和颁奖各有独立的透明网页输入。
 
-- 当前版本 2.1.1。
-- 2.1.0 · [GitHub 下载](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v2.1.0) · [Gitee 下载](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v2.1.0)
+- 当前版本 2.1.1 · [GitHub 下载](https://github.com/AlanHe0728/vibe-vmix/releases/tag/v2.1.1) · [Gitee 下载](https://gitee.com/alanhe0728/vibe-vmix/releases/tag/v2.1.1)
 - [历史版本](https://github.com/AlanHe0728/vibe-vmix/releases)
 
 完整解压 Windows x64 便携包，运行「转播包装工作台.exe」。启用所需模块，在「设置 → 上屏地址」复制地址，添加为 vMix 的 1920 × 1080 网页输入。
