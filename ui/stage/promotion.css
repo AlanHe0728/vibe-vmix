@@ -12,21 +12,28 @@
   height: 100%;
   object-fit: contain;
 }
-body.preview {
+#promotionBackdrop.default-reference {
+  background: url('preview-stage.webp') center/contain no-repeat;
+}
+html, body {
   width: 100vw;
   height: 100vh;
-  background: #26313b;
+  background: transparent;
 }
-body.preview #canvas {
+#canvas {
   inset: 50% auto auto 50%;
   transform: translate(-50%, -50%) scale(var(--preview-scale, 1));
 }
 #promotionCard.lu {
   --promotion-scale: 1;
+  text-shadow:
+    0 calc(1px * var(--promotion-scale)) calc(2px * var(--promotion-scale)) rgba(3, 10, 20, .9),
+    0 calc(2px * var(--promotion-scale)) calc(5px * var(--promotion-scale)) rgba(3, 10, 20, .65);
+  transform-origin: top left;
   position: absolute;
-  top: 112px;
+  top: 144px;
   left: 96px;
-  width: 1728px;
+  width: 1136px;
   height: auto;
   padding: 0;
   border-radius: calc(14px * var(--promotion-scale));
@@ -74,7 +81,7 @@ body.preview #canvas {
   align-items: center;
   justify-content: space-between;
   gap: calc(24px * var(--promotion-scale));
-  height: var(--promotion-header-height, 112px);
+  height: var(--promotion-header-height, 96px);
   padding: 0 calc(36px * var(--promotion-scale));
   background: var(--band);
   color: white;
@@ -104,7 +111,7 @@ body.preview #canvas {
   display: grid;
   grid-template-columns: var(--columns);
   gap: calc(18px * var(--promotion-scale));
-  height: var(--promotion-row-height, 53px);
+  height: var(--promotion-row-height, 68px);
   padding-right: calc(8px * var(--promotion-scale));
 }
 .promotion-group .lu-row > * {
@@ -131,4 +138,151 @@ body.preview #canvas {
   color: var(--dim);
   font-size: calc(26px * var(--promotion-scale));
   padding: calc(20px * var(--promotion-scale)) 0 calc(8px * var(--promotion-scale));
+}
+
+/* Built-in crystal strips: the row itself keeps the grid height; the
+   inset background leaves a 12px clear gap between neighbouring strips. */
+#promotionCard.lu:not(.designed-roster) {
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-family: "Roster Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+#promotionCard:not(.designed-roster) .promotion-header {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  padding-left: calc(36px * var(--promotion-scale));
+  background-image: linear-gradient(105deg, rgba(8, 22, 42, .64), rgba(8, 22, 42, .27)),
+    linear-gradient(to top, rgba(220, 200, 154, .60) 1px, transparent 1px);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: left;
+  color: #f6e5bb;
+}
+#promotionCard:not(.designed-roster) .promotion-header h1 {
+  font-family: "Roster Serif", "Songti SC", SimSun, serif;
+  font-size: calc(52px * var(--promotion-scale));
+  font-weight: 600;
+  letter-spacing: .08em;
+}
+#promotionCard:not(.designed-roster) #promotionPage { color: #d8c99f; }
+/* A diagonal highlight on the left of the title never crosses the letters. */
+#promotionCard:not(.designed-roster) .promotion-header::before {
+  content: "";
+  position: absolute;
+  left: calc(10px * var(--promotion-scale));
+  top: 12%;
+  width: calc(12px * var(--promotion-scale));
+  height: 76%;
+  background: linear-gradient(140deg, transparent 10%, #f2d99c 48%, rgba(122, 197, 212, .3) 65%, transparent 95%);
+  transform: skewX(-13deg);
+  pointer-events: none;
+}
+#promotionCard:not(.designed-roster) .promotion-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 22%;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(244, 222, 168, .9), transparent);
+  pointer-events: none;
+}
+#promotionCard:not(.designed-roster) #promotionRows {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+}
+#promotionCard:not(.designed-roster) .lu-row {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  padding-left: calc(20px * var(--promotion-scale));
+  padding-right: calc(20px * var(--promotion-scale));
+}
+#promotionCard:not(.designed-roster) .lu-row:not(.row-heading)::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: calc(6px * var(--promotion-scale)) 0;
+  background: linear-gradient(105deg, rgba(15, 36, 65, .68), rgba(16, 39, 68, .58));
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%);
+  border-left: 2px solid rgba(155, 212, 224, .65);
+  pointer-events: none;
+}
+/* Center the visible header and strips, excluding the last half-gap. */
+#promotionCard:not(.designed-roster) .promotion-group .lu-row:last-child:not(.row-heading) {
+  margin-bottom: calc(-6px * var(--promotion-scale));
+}
+#promotionCard:not(.designed-roster) .lu-row[data-podium="true"]::before {
+  border-left-color: rgba(236, 207, 147, .9);
+  background: linear-gradient(105deg, rgba(46, 43, 53, .68), rgba(16, 39, 68, .58));
+}
+#promotionCard:not(.designed-roster) .lu-row > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#promotionCard:not(.designed-roster) .lu-row:not(.row-heading) .name {
+  color: #e5f2f4;
+  font-size: calc(38px * var(--promotion-scale));
+  font-weight: 600;
+}
+#promotionCard[data-compact="true"]:not(.designed-roster) .lu-row:not(.row-heading) .name {
+  font-size: calc(43px * var(--promotion-scale));
+}
+#promotionCard:not(.designed-roster) .lu-row[data-podium="true"] .name { color: #f6e5bc; }
+#promotionCard:not(.designed-roster) .lu-row:not(.row-heading) .title {
+  color: #c9dce1;
+  font-size: calc(29px * var(--promotion-scale));
+  font-weight: 400;
+}
+#promotionCard:not(.designed-roster) .lu-row:not(.row-heading) .score,
+#promotionCard:not(.designed-roster) .lu-row:not(.row-heading) .rank {
+  color: #b4dce6;
+  font-size: calc(29px * var(--promotion-scale));
+  font-weight: 500;
+}
+#promotionCard:not(.designed-roster) .lu-row[data-podium="true"] .rank { color: #f1d8a1; }
+#promotionCard.lu:not(.designed-roster) .lu-rn {
+  background: transparent;
+  justify-content: flex-start;
+  font-family: "Roster Serif", Georgia, serif;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+#promotionCard:not(.designed-roster) .row-heading > span {
+  color: #9eb8c1;
+  font-size: calc(20px * var(--promotion-scale));
+}
+#promotionCard:not(.designed-roster) .promotion-empty { color: #c9dce1; }
+@keyframes promotion-edge-glow {
+  0%, 100% { opacity: .45; }
+  50% { opacity: 1; }
+}
+#promotionCard.designed-roster.promotion-motion::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 15%;
+  height: calc(2px * var(--promotion-scale));
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(218, 233, 242, .55), transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  #promotionCard.designed-roster.promotion-motion::after,
+  #promotionCard.promotion-motion:not(.designed-roster) .promotion-header::after {
+    animation: promotion-edge-glow 6s ease-in-out infinite;
+  }
+}
+@keyframes promotion-title-lead {
+  from { opacity: 0; transform: translateY(-18px) skewX(-13deg); }
+  to { opacity: 1; transform: translateY(0) skewX(-13deg); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #promotionCard.promotion-intro:not(.designed-roster) .promotion-header::before {
+    animation: promotion-title-lead 560ms cubic-bezier(.16, 1, .3, 1) both;
+  }
 }

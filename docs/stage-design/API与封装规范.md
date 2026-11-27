@@ -1,6 +1,6 @@
 # VibeVmix 舞台设计模板 API 与封装规范
 
-适用于转播包装工作台 2.1.0。AI 和 Adobe 模板制作面板产出同一种 UTF-8 JSON，扩展名为 `.vmix-graphics.json`。一个文件包含构图、实时字段、图层、媒体和动效。歌词文本、选手名单、分数等业务数据由控台提供。
+适用于转播包装工作台 2.1.0 及后续版本。AI 和 Adobe 模板制作面板产出同一种 UTF-8 JSON，扩展名为 `.vmix-graphics.json`。一个文件包含构图、实时字段、图层、媒体和动效。歌词文本、选手名单、分数等业务数据由控台提供。
 
 [JSON Schema](stage-design-v2.schema.json) · [歌词字幕实例](caption-example.vmix-graphics.json) · [晋级名单实例](promotion-example.vmix-graphics.json)
 
@@ -24,7 +24,7 @@
 | `name` | 1 至 64 字符，用于控台显示 |
 | `scene` | `width` 为 64–1920，`height` 为 24–1080。`position.x` 为 0–1920，`position.y` 为 0–1080，表示组件左上角在 1920 × 1080 播出画布中的建议位置。导入后的字幕位置可继续拖动 |
 | `elements` | 1 至 64 个元素，按数组顺序从底到顶。元素的坐标相对于组件左上角，单位为像素，必须完整落在组件内 |
-| `motion` | 可选。包含 `enter` 和 `exit`。字幕用于上屏和下屏。晋级网页持续显示，使用入场最后一帧作为持有状态 |
+| `motion` | 可选。包含 `enter` 和 `exit`。晋级名单的模板底图、标题和选手行随整张名单运动。驻留阶段模板顶边带有一道周期性反光。省略轨道时使用内置进出场动画。舞台参考背景和全局活动 Logo 仅供 PVW 查看 |
 | `roster` | 仅晋级名单使用，定义首行及其重复方式 |
 
 ### 元素
@@ -85,6 +85,7 @@ AE 动效通过二维 `VMIX MOTION` 控制层导出。实时字段使用二维�
 | `GET /api/stage/design-templates/{id}` | 下载完整可迁移 JSON。素材还原为 Data URI，可用于异机导入和 Adobe 采用 PS 底图。读取的 `ETag` 可用于更新时的 `If-Match` |
 | `POST /api/v1/state` | 现有舞台状态接口。活动默认字幕以 `{ "captionTemplateId": "<id>" }` 选用。晋级模板在对应轮次的 `promotions` 条目中设置 `designId` 后保存，名单原有字段一并保留。提交数组前读取最新状态并带上 `If-Match` |
 | `GET /api/stage/promotion-preview?layout=1&round={id}` | 获取所选轮次的已保存名单、布局与设计元数据，用于 PVW |
+| `POST /api/v1/state`（名单播出） | 传入 `{ "promotionRoundId": "<轮次 ID>", "promotionVisible": true }` 将已保存的该轮名单上屏。传入 `{ "promotionVisible": false }` 令整页下屏。PVW 可独立查看已保存的轮次 |
 | `GET /api/stage/promotion?layout=1` | 获取独立名单输出的当前页、布局与设计元数据。上屏网页仍为 `/stage/promotion.html` |
 
 PowerShell 示例，从本规范所在目录运行：
@@ -111,10 +112,10 @@ $stageState = $stateResponse.Content | ConvertFrom-Json
 $roster = $stageState.promotions | Where-Object { $_.id -eq $roundId }
 if (!$roster) { throw '请先保存该轮晋级名单' }
 $roster | Add-Member -NotePropertyName designId -NotePropertyValue 'stage-cobalt-promotion' -Force
-$patch = @{ promotions = @($stageState.promotions); promotionRoundId = $roundId } | ConvertTo-Json -Depth 20
+$patch = @{ promotions = @($stageState.promotions) } | ConvertTo-Json -Depth 20
 Invoke-RestMethod "$stageOrigin/api/v1/state" -Method Post -Headers @{ 'If-Match' = [string]$stateResponse.Headers.ETag } -ContentType 'application/json; charset=utf-8' -Body $patch
 ```
 
-其中歌词的 `index` 从 0 开始。晋级输出在名单保存后持续更新，切换输入仍由 vMix 处理。
+其中歌词的 `index` 从 0 开始。晋级名单保存后，可在控台选择该轮并上屏。
 
 Schema 校验用于检查结构和字段类型。服务还会检查图层是否越界、字段是否重复、名单首行范围、关键帧顺序、媒体签名和包大小。实际导入以校验 API 的结果为准。

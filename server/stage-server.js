@@ -38,12 +38,13 @@ function designEtag(design) {
   return '"stage-design-' + design.id + '-' + design.revision + '"';
 }
 
-function promotionResponse(state, live) {
+function promotionResponse(state, live, preview = false) {
   const design = promotionDesign(state, live);
   return {
     live,
     layout: promotionLayout(state),
-    ...(design && { design, eventLogo: state.eventAsset }),
+    ...(state.style.motion === false && { motion: false }),
+    ...(design && { design, ...(preview && { eventLogo: state.eventAsset }) }),
   };
 }
 
@@ -53,6 +54,7 @@ function createStageServer({
   vmixFetch = fetch,
   sharedVmixPort = () => null,
   promotionNow = () => performance.now(),
+  now = Date.now,
 }) {
   const library = createAssetLibrary(path.join(dataDirectory, 'assets'));
   const designDirectory = path.join(dataDirectory, 'design-assets');
@@ -74,18 +76,26 @@ function createStageServer({
   let promotionKey = '';
   let promotionStartedAt = 0;
   function currentPromotion(state) {
-    const roster = state.promotions.find(({ id }) => id === state.promotionRoundId);
+    const roster =
+      state.promotionOnAir ?? state.promotions.find(({ id }) => id === state.promotionRoundId);
     const live = roster ? promotionSnapshot(roster) : null;
+    if (!live) return null;
+    live.background = '';
+    live.backgroundVisible = false;
+    if (!state.promotionVisible) {
+      live.listVisible = false;
+      return live;
+    }
     const design = promotionDesign(state, live);
-    const { pageCount, pageSize } = promotionGrid(live?.entries.length || 0, state.style, design);
-    // Share one page clock across vMix and all PGM viewers. PVW stays on page one for layout.
-    const key = JSON.stringify([live, pageSize, design?.revision]);
+    const { pageCount, pageSize } = promotionGrid(live.entries.length, state.style, design, live.columns);
+    // Share one page clock across PGM viewers and start at page one on each take.
+    const key = JSON.stringify([state.promotionCue, pageSize, design?.revision]);
     const now = promotionNow();
     if (key !== promotionKey) {
       promotionKey = key;
       promotionStartedAt = now;
     }
-    if (live && pageCount > 1)
+    if (pageCount > 1)
       live.page = Math.floor((now - promotionStartedAt) / promotionPageMs) % pageCount;
     return live;
   }
@@ -97,6 +107,8 @@ function createStageServer({
     'program.take',
     'program.next',
     'all.hide',
+    'award.take',
+    'award.hide',
   ]);
   let application,
     busy = false,
@@ -344,6 +356,7 @@ function createStageServer({
   }
   const server = createServer({
     module: stage,
+    now,
     stateFile: path.join(dataDirectory, 'state.json'),
     mounts: [
       operatorTheme(project),
@@ -387,7 +400,11 @@ function createStageServer({
       const command = pathname.match(/^\/api\/v1\/commands\/(.+)$/)?.[1];
       if (playCommands.has(command)) {
         method(req, 'POST');
-        const status = await play(command, await readObject(req, 8192, true));
+        const payload = await readObject(req, 8192, true);
+        if (command === 'award.take' && req.headers['if-match'] &&
+          req.headers['if-match'] !== application.snapshot().etag)
+          throw new AppError('颁奖设置已在其他窗口更新，请检查后重试', 409);
+        const status = await play(command, payload);
         json(res, { ok: true, command, status });
         return true;
       }
@@ -458,6 +475,13 @@ function createStageServer({
           else await collaborate(payload.action, payload);
         }
         json(res, { ok: true, ...collaboration('host') });
+      } else if (pathname === '/api/stage/award') {
+        method(req, 'GET');
+        const cue = application.status().awardOnAir;
+        sendSnapshot(req, res, {
+          body: JSON.stringify({ cue }),
+          etag: cue ? '"award-' + cue.startedAt + '-' + cue.exitAt + '"' : '"award-off"',
+        });
       } else if (pathname === '/api/stage/promotion-preview') {
         method(req, 'GET');
         const state = application.read();
@@ -473,7 +497,9 @@ function createStageServer({
           const roundId = params.get('round') ?? defaultRound;
           const draft = state.promotions.find(({ id }) => id === roundId);
           const live = draft ? promotionSnapshot(draft) : null;
-          const body = JSON.stringify(params.has('layout') ? promotionResponse(state, live) : live);
+          const body = JSON.stringify(
+            params.has('layout') ? promotionResponse(state, live, true) : live,
+          );
           sendSnapshot(req, res, {
             body,
             etag: '"' + createHash('sha256').update(body).digest('hex') + '"',

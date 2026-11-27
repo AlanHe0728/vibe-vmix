@@ -1,0 +1,18 @@
+/* Adobe Source Han regional releases for Simplified Chinese. SIL OFL 1.1 in packaging/licenses.
+   https://github.com/adobe-fonts/source-han-sans/releases/tag/2.005R
+   https://github.com/adobe-fonts/source-han-serif/releases/tag/2.003R */
+@font-face {
+  font-family: 'Roster Sans';
+  src: url('fonts/SourceHanSansCN-VF.ttf.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 250 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Roster Serif';
+  src: url('fonts/SourceHanSerifCN-VF.ttf.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 250 900;
+  font-display: swap;
+}

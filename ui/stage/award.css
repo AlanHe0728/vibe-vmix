@@ -1,0 +1,8 @@
+.award-layer { position: absolute; inset: 0; pointer-events: none; }
+.award-panel { position: absolute; left: 70px; top: 790px; width: 470px; height: 210px; }
+.award-plate { position: absolute; inset: 0; width: 470px; height: 210px; }
+.award-recipient {
+  position: absolute; left: 146px; top: 86px; width: 270px;
+  color: #fff8e8; font-family: 'Roster Serif', serif; font-weight: 700;
+  line-height: 1.22; white-space: nowrap;
+}

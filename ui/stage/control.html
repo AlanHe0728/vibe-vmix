@@ -15,6 +15,7 @@
     <script defer src="design-control.js"></script>
     <script defer src="show-control.js"></script>
     <script defer src="promotion-control.js"></script>
+    <script defer src="award-control.js"></script>
     <script defer src="control.js"></script>
     <script defer src="panels.js"></script>
   </head>
@@ -25,7 +26,7 @@
         <button data-tab="show" aria-pressed="true">节目与播出</button
         ><button data-tab="design" aria-pressed="false">包装与模板</button
         ><button data-tab="library" aria-pressed="false">素材库</button
-        ><button data-tab="promotion" aria-pressed="false">晋级名单</button
+        ><button data-tab="promotion" aria-pressed="false">晋级与颁奖</button
         ><button data-tab="connection" aria-pressed="false">连接与协作</button>
       </nav>
       <button
@@ -158,10 +159,34 @@
           </div>
         </section>
         <section id="promotion" class="tab" hidden>
-          <div class="promotion-desk">
+          <nav class="stage-packaging-modes" aria-label="名单与颁奖操作">
+            <button
+              type="button"
+              data-packaging-mode="promotion"
+              aria-controls="promotionDesk"
+              aria-pressed="true"
+            >
+              晋级名单
+            </button>
+            <button
+              type="button"
+              data-packaging-mode="award"
+              aria-controls="awardDesk"
+              aria-pressed="false"
+            >
+              颁奖
+            </button>
+          </nav>
+          <div id="promotionDesk" class="promotion-desk">
             <div class="section-heading">
               <h1>晋级名单</h1>
-              <span id="promotionOutputStatus"></span>
+              <div class="actions">
+                <a href="/stage/promotion.html" target="_blank" rel="noopener">打开名单播出页</a>
+                <a id="promotionPreviewLink" target="_blank" rel="noopener" hidden>预览已保存名单</a>
+                <span id="promotionOutputStatus" role="status">正在读取播出状态</span>
+                <button id="promotionShow" class="primary" type="button" disabled>名单上屏</button>
+                <button id="promotionHide" class="danger" type="button" disabled>名单下屏</button>
+              </div>
             </div>
             <div class="promotion-grid">
               <section class="promotion-roster">
@@ -248,14 +273,56 @@
                 </fieldset>
                 <div class="stage-media-fields">
                   <label
-                    >背景素材<select id="promotionBackground" data-assets="media"></select
+                    >核稿参考背景（仅预览）<select id="promotionBackground" data-assets="media"></select
                   ></label>
-                  <button type="button" data-media-import="promotionBackground">导入背景</button>
+                  <button type="button" data-media-import="promotionBackground">导入参考背景</button>
                 </div>
                 <div class="actions">
                   <button id="promotionSave" class="primary" type="button">保存名单</button>
                 </div>
               </section>
+            </div>
+          </div>
+          <div id="awardDesk" class="promotion-desk" hidden>
+            <div class="section-heading">
+              <h1>颁奖</h1>
+              <div class="actions">
+                <a href="/stage/award.html" target="_blank" rel="noopener">打开颁奖播出页</a>
+                <span id="awardOutputStatus" class="award-output-status" role="status"
+                  >正在读取播出状态</span
+                >
+                <button id="awardHide" class="danger" type="button" disabled>提前下屏</button>
+              </div>
+            </div>
+            <div class="award-grid">
+              <section aria-labelledby="awardListHeading">
+                <h2 id="awardListHeading">奖项</h2>
+                <div id="awardChoices" class="award-choices" role="group" aria-label="选择奖项"></div>
+              </section>
+              <form id="awardEditor" aria-labelledby="awardSelectedTitle" hidden>
+                <h2 id="awardSelectedTitle"></h2>
+                <label>从名单选择<select id="awardRosterPicker" disabled></select></label>
+                <label
+                  >获奖人<input id="awardRecipient" maxlength="40" autocomplete="off"
+                /></label>
+                <label
+                  >中间驻留时长（秒）<input
+                    id="awardHoldSeconds"
+                    type="number"
+                    min="0.1"
+                    max="3600"
+                    step="any"
+                    required
+                /></label>
+                <div class="actions">
+                  <button id="awardSave" type="submit" disabled>保存</button>
+                  <button id="awardRestore" type="button" hidden>恢复已保存设置</button>
+                  <button id="awardPreview" type="button" disabled>预演</button>
+                  <button id="awardStopPreview" type="button" disabled>结束预演</button>
+                  <button id="awardTake" class="primary" type="button" disabled>颁奖上屏</button>
+                </div>
+                <p id="awardEditorStatus" class="hint" role="status"></p>
+              </form>
             </div>
           </div>
         </section>
@@ -444,6 +511,8 @@
           <select id="dockPreviewLayer" aria-label="预览图层">
             <option value="caption">字幕条</option>
             <option value="">全部图层</option>
+            <option value="promotion">晋级名单</option>
+            <option value="award">颁奖</option>
           </select>
         </div>
         <div class="preview-wrap" id="previewWrap"></div>

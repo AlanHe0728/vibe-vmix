@@ -2,16 +2,13 @@
 const byId = (id) => document.getElementById(id);
 let model, active, lastSelected;
 function output(module) {
-  return (
-    module.url +
-    (module.id === 'stage'
-      ? '/stage/graphics.html'
-      : module.id === 'stage-promotion'
-        ? '/stage/promotion.html'
-        : module.id === 'ae-live'
-          ? '/ae/graphics.html'
-          : '/titles/graphics.html')
-  );
+  const pages = {
+    stage: '/stage/graphics.html',
+    'stage-promotion': '/stage/promotion.html',
+    'stage-award': '/stage/award.html',
+    'ae-live': '/ae/graphics.html',
+  };
+  return module.url + (pages[module.id] || '/titles/graphics.html');
 }
 async function request(payload) {
   const response = await fetch(
@@ -164,7 +161,11 @@ byId('openSettings').onclick = () => {
     .filter((item) => item.enabled)
     .flatMap((module) =>
       module.id === 'stage'
-        ? [module, { id: 'stage-promotion', name: '晋级名单', url: module.url }]
+        ? [
+            module,
+            { id: 'stage-promotion', name: '晋级名单', url: module.url },
+            { id: 'stage-award', name: '颁奖报幕', url: module.url },
+          ]
         : [module],
     );
   for (const module of outputs) {

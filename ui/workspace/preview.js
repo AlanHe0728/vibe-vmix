@@ -20,7 +20,7 @@ const definitions = {
   ],
   'stage-promotion': [
     ['list', '名单层'],
-    ['background', '背景层'],
+    ['background', '参考背景（仅预览）'],
   ],
   'ae-live': [['frame', 'AE 画面']],
 };
@@ -69,8 +69,12 @@ async function api(url, data) {
 function dirty(id) {
   return Object.keys(draft[id] || {}).length > 0;
 }
-function anyDirty() {
-  return Object.keys(draft).some(dirty);
+function referenceOnly(ids) {
+  return (
+    ids.length === 1 &&
+    ids[0] === 'stage-promotion' &&
+    Object.keys(draft['stage-promotion']).every((key) => key.startsWith('promotionBackground'))
+  );
 }
 function activeModules() {
   return tab === 'all' ? modules : previewTabs().filter((item) => item.id === tab);
@@ -109,10 +113,10 @@ function currentElement() {
   return id && key ? { id, key, fields: fieldKeys(id, key) } : null;
 }
 function coordinate(element) {
-  const { id, fields } = element;
-  return fields.position
-    ? layoutValue(id, fields.position)
-    : { x: layoutValue(id, fields.x), y: layoutValue(id, fields.y) };
+  const { id, key, fields } = element;
+  if (fields.position) return layoutValue(id, fields.position);
+  const y = layoutValue(id, fields.y);
+  return { x: layoutValue(id, fields.x), y: y ?? boxes[id]?.[key]?.y ?? 0 };
 }
 function setDraft(id, key, value) {
   setDraftFields(id, { [key]: value });
@@ -141,9 +145,11 @@ function sendDraft(id) {
     );
 }
 function updateActions() {
-  const pending = anyDirty();
+  const ids = layoutOrder.filter(dirty);
+  const pending = ids.length > 0;
   $('pending').hidden = !pending;
   $('draftStatus').textContent = pending ? '调整尚未应用' : '与播出位置一致';
+  $('apply').textContent = referenceOnly(ids) ? '应用到预监' : '应用到播出';
   $('apply').disabled = !pending || busy;
   $('reset').disabled = !pending || busy;
 }
@@ -203,11 +209,15 @@ function limits(element) {
 function fillControls() {
   const element = currentElement(),
     enabled = Boolean(element && base[element.id]) && view !== 'pgm' && !busy;
+  const promotionList = element?.fields.y === 'promotionListY';
+  $('y').placeholder = promotionList ? '自动居中' : '';
+  $('y').title = promotionList ? '留空使用自动竖向居中，输入数值固定 Y' : '';
   for (const id of ['x', 'y', 'size']) $(id).disabled = !enabled;
   $('element').disabled = !element || busy;
   $('pixelSizeFields').hidden = !flexibleSize(element);
   if (flexibleSize(element)) {
     const size = pixelSize(element);
+    $('pixelWidthLabel').textContent = promotionList ? '基准宽度（px）' : '宽度（px）';
     $('pixelHeightLabel').textContent =
       element.id === 'stage-promotion' && element.key === 'list' ? '可用高度（px）' : '高度（px）';
     for (const [id, key] of [
@@ -258,7 +268,10 @@ function fillControls() {
   const point = coordinate(element),
     range = limits(element);
   for (const axis of ['x', 'y']) {
-    $(axis).value = Math.round(point[axis]);
+    $(axis).value =
+      promotionList && axis === 'y' && layoutValue(element.id, element.fields.y) === null
+        ? ''
+        : Math.round(point[axis]);
     $(axis).min = range['min' + axis.toUpperCase()];
     $(axis).max = range['max' + axis.toUpperCase()];
   }
@@ -272,16 +285,21 @@ function fillControls() {
   updateActions();
   window.previewTools?.sync();
 }
-function setPoint(point) {
+function setPoint(point, fixY = false) {
   if (busy) return;
   const element = currentElement();
   if (!element || !base[element.id]) return;
   const range = limits(element);
+  const keepAutoY =
+    element.fields.y === 'promotionListY' &&
+    layoutValue(element.id, element.fields.y) === null &&
+    !fixY &&
+    Math.abs(point.y - coordinate(element).y) < 0.5;
   point = window.previewTools?.snap(point) || point;
   const x = Math.round(Math.max(range.minX, Math.min(range.maxX, point.x)));
   const y = Math.round(Math.max(range.minY, Math.min(range.maxY, point.y)));
   if (element.fields.position) setDraft(element.id, element.fields.position, { x, y });
-  else setDraftFields(element.id, { [element.fields.x]: x, [element.fields.y]: y });
+  else setDraftFields(element.id, { [element.fields.x]: x, [element.fields.y]: keepAutoY ? null : y });
   fillControls();
   drawHandle();
 }
@@ -622,11 +640,17 @@ $('element').onchange = () => {
 };
 for (const axis of ['x', 'y'])
   $(axis).onchange = () => {
+    const input = $(axis);
+    if (input.validity.badInput) return fillControls();
     const element = currentElement(),
       point = element && coordinate(element),
-      value = Number($(axis).value);
-    if (point && Number.isFinite(value) && $(axis).value !== '')
-      setPoint({ ...point, [axis]: value });
+      value = Number(input.value);
+    if (!busy && axis === 'y' && element?.fields.y === 'promotionListY' && input.value === '') {
+      setDraft(element.id, element.fields.y, null);
+      fillControls();
+      drawHandle();
+    } else if (point && Number.isFinite(value) && input.value !== '')
+      setPoint({ ...point, [axis]: value }, axis === 'y');
     else fillControls();
   };
 $('size').onchange = () => {
@@ -675,12 +699,14 @@ $('reset').onclick = async () => {
   drawHandle();
 };
 $('apply').onclick = async () => {
+  const ids = layoutOrder.filter(dirty);
+  const onlyPreview = referenceOnly(ids);
   busy = true;
   fillControls();
   drawHandle();
   $('notice').textContent = '正在应用…';
   try {
-    for (const id of layoutOrder.filter(dirty)) {
+    for (const id of ids) {
       const values = draft[id],
         prior = Object.fromEntries(Object.keys(values).map((key) => [key, base[id][key]]));
       const result = await api('/api/workspace/layout/' + id, {
@@ -693,7 +719,7 @@ $('apply').onclick = async () => {
       delete draft[id];
       sendDraft(id);
     }
-    $('notice').textContent = '已应用到播出画面。';
+    $('notice').textContent = onlyPreview ? '已应用到预监画面。' : '已应用到播出画面。';
   } catch (error) {
     $('notice').textContent = error.message + '；未成功的调整仍保留在 PVW。';
   } finally {

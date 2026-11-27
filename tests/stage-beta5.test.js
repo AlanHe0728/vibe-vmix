@@ -65,6 +65,58 @@ const call = (server, command, payload = {}) =>
   request(server, '/api/v1/commands/' + command, payload);
 const media = 'a'.repeat(32) + '.alpha.mp4';
 
+test('awards time the hold independently, protect on-air text and clear expired cues', async (t) => {
+  let now = 100_000;
+  const { server, dataDirectory } = setup(t, { now: () => now });
+  const pgm = async () => (await request(server, '/api/stage/award')).json().cue;
+  const getState = async () => (await request(server, '/api/v1/state')).json();
+  const state = await getState();
+  assert.deepEqual(state.awards.map((award) => [award.title, award.recipient, award.holdSeconds]), [
+    ['冠军', '', 10], ['亚军', '', 10], ['季军', '', 10], ['最佳人气歌手', '', 10],
+    ['诗韵深秋奖', '', 10], ['诗韵深秋奖', '', 10],
+  ]);
+  const take = (patch = {}) => call(server, 'award.take', { awardId: 'champion', ...patch });
+  assert.equal(await pgm(), null);
+  assert.equal((await take()).status, 400);
+  assert.equal((await take({ recipient: '甲', holdSeconds: 0 })).status, 400);
+  assert.equal((await take({ recipient: ' 甲 ' })).status, 200);
+  const snapshot = await pgm();
+  assert.equal(snapshot.recipient, '甲');
+  assert.equal(snapshot.startedAt, now);
+  assert.equal(snapshot.holdSeconds, 10);
+  state.awards[0].recipient = '乙';
+  assert.equal((await request(server, '/api/v1/state', { awards: state.awards })).status, 200);
+  assert.equal((await take()).status, 400);
+  now += 13_999;
+  assert.deepEqual(await pgm(), snapshot);
+  now++;
+  assert.equal(await pgm(), null);
+  assert.equal((await take({ holdSeconds: 0.25 })).status, 200);
+  assert.equal((await pgm()).recipient, '乙');
+  now += 4249;
+  assert.ok(await pgm());
+  now++;
+  assert.equal(await pgm(), null);
+  assert.equal((await take({ holdSeconds: 20 })).status, 200);
+  now += 180;
+  assert.equal((await call(server, 'award.hide')).status, 200);
+  assert.equal((await pgm()).exitAt, now);
+  now += 500;
+  assert.equal((await call(server, 'award.hide')).status, 200);
+  now += 300;
+  assert.equal(await pgm(), null);
+  const stale = { 'if-match': '"stale"' };
+  const rejected = await request(server, '/api/v1/commands/award.take', { awardId: 'champion' }, stale);
+  assert.equal(rejected.status, 409);
+  assert.equal(await pgm(), null);
+  assert.equal((await take()).status, 200);
+  const restarted = createStageServer({ dataDirectory });
+  t.after(() => restarted.close());
+  assert.equal(restarted.workspaceState().awardOnAir, null);
+  assert.equal(restarted.workspaceState().awards[0].holdSeconds, 20);
+});
+
+
 test('legacy logo assets consolidate into a global layer that persists across programs', async (t) => {
   const { dataDirectory } = setup(t);
   const { createStageModule } = require('../modules/stage');
@@ -511,7 +563,7 @@ test('the same image player mounts compatible frames for a stinger, lyrics and t
   }
 });
 
-test('the saved promotion roster is always available with ranks, score ties and zero', async (t) => {
+test('the saved promotion roster preserves ranks, score ties and zero in PVW and PGM', async (t) => {
   const { server } = setup(t);
   const entries = Array.from({ length: 27 }, (_, i) => ({
     id: 'p' + i,
@@ -539,6 +591,8 @@ test('the saved promotion roster is always available with ranks, score ties and 
     defaultRound: '',
   });
   assert.equal((await request(server, preview + '?round=')).json().entries[0].id, 'p1');
+  assert.equal((await live()).json().listVisible, false);
+  assert.equal((await request(server, '/api/v1/state', { promotionVisible: true })).status, 200);
   const output = await live();
   assert.deepEqual(
     output
@@ -562,15 +616,16 @@ test('the saved promotion roster is always available with ranks, score ties and 
     304,
   );
   assert.equal((await save({ ...draft, title: '更新名单', sort: 'manual' })).status, 200);
-  assert.equal((await live()).json().title, '更新名单');
+  assert.equal((await live()).json().title, '晋级');
   assert.equal((await request(server, preview)).json().title, '更新名单');
-  assert.equal((await live()).json().entries[0].id, 'p0');
+  assert.equal((await request(server, preview)).json().entries[0].id, 'p0');
 
   const beforeHide = (await live()).json();
   assert.equal((await call(server, 'all.hide')).status, 200);
   assert.deepEqual((await live()).json(), beforeHide);
   assert.equal(beforeHide.listVisible, true);
-  assert.equal(beforeHide.backgroundVisible, true);
+  assert.equal(beforeHide.backgroundVisible, false);
+  assert.equal(beforeHide.background, '');
   for (const obsolete of ['promotion.take', 'promotion.layers', 'promotion.page'])
     assert.equal((await call(server, obsolete)).status, 404);
   for (const url of [
@@ -581,6 +636,188 @@ test('the saved promotion roster is always available with ranks, score ties and 
     '/stage-controls/vendor/xlsx.full.min.js',
   ])
     assert.equal((await request(server, url)).status, 200, url);
+});
+
+test('promotion output publishes only the on-air roster and preserves it across saves and restarts', async (t) => {
+  const { server, dataDirectory } = setup(t);
+  const list = {
+    id: 'final',
+    title: '总决赛晋级',
+    background: media,
+    sort: 'manual',
+    columns: { rank: true, name: true, title: true, score: false },
+    entries: [{ id: 'first', name: '选手一', title: '歌曲', rank: 1, selected: true }],
+  };
+  const write = (patch) => request(server, '/api/v1/state', patch);
+  const output = '/api/stage/promotion?layout=1';
+  const preview = '/api/stage/promotion-preview?layout=1&round=final';
+  assert.equal((await request(server, '/api/v1/state')).json().promotionVisible, false);
+  assert.equal((await write({ promotionVisible: true })).status, 400);
+  assert.equal((await write({ promotionVisible: false })).status, 200);
+  assert.equal((await request(server, output)).json().live, null);
+  assert.equal(
+    (await write({ rounds: [{ id: 'final', name: '总决赛' }], promotions: [list] })).status,
+    200,
+  );
+  assert.equal((await request(server, output)).json().live.listVisible, false);
+  assert.equal((await request(server, output)).json().live.backgroundVisible, false);
+  assert.equal((await request(server, output)).json().live.background, '');
+  assert.equal((await request(server, preview)).json().live.listVisible, true);
+  assert.equal((await write({ promotionVisible: true })).status, 200);
+  const shown = await request(server, output);
+  assert.equal(shown.json().live.listVisible, true);
+  assert.equal(shown.json().live.backgroundVisible, false);
+  assert.equal(shown.json().live.background, '');
+  assert.equal(shown.json().motion, undefined);
+  assert.equal((await write({ promotionVisible: 'false' })).status, 400);
+
+  assert.equal((await write({ promotionVisible: false })).status, 200);
+  const hidden = await request(server, output, undefined, { 'If-None-Match': shown.headers.etag });
+  assert.equal(hidden.status, 200);
+  assert.deepEqual(hidden.json().live, {
+    ...shown.json().live,
+    listVisible: false,
+  });
+  assert.deepEqual((await request(server, preview)).json(), {
+    ...shown.json(),
+    live: { ...shown.json().live, background: media, backgroundVisible: true },
+  });
+
+  assert.equal((await write({ style: { motion: false } })).status, 200);
+  assert.equal((await request(server, output)).json().motion, false);
+  const updated = { ...list, title: '更新后的名单', background: 'b'.repeat(32) + '.png' };
+  const earlier = { ...list, id: 'earlier', title: '初赛晋级' };
+  assert.equal(
+    (
+      await write({
+        rounds: [{ id: 'final', name: '总决赛' }, { id: 'earlier', name: '初赛' }],
+        promotions: [updated, earlier],
+      })
+    ).status,
+    200,
+  );
+  const restarted = createStageServer({ dataDirectory });
+  try {
+    const restored = (await request(restarted, output)).json().live;
+    assert.equal(restored.listVisible, false);
+    assert.equal(restored.title, '更新后的名单');
+    assert.equal(restored.backgroundVisible, false);
+  } finally {
+    restarted.close();
+  }
+
+  assert.equal(
+    (await write({ promotionRoundId: 'earlier', promotionVisible: true })).status,
+    200,
+  );
+  assert.equal((await request(server, output)).json().live.title, earlier.title);
+  const revisedEarlier = { ...earlier, title: '预备的初赛名单' };
+  assert.equal((await write({ promotions: [updated, revisedEarlier] })).status, 200);
+  assert.equal((await write({ promotionRoundId: 'final' })).status, 200);
+  assert.equal((await write({ promotionRoundId: 'final', promotionVisible: true })).status, 400);
+  assert.equal((await request(server, output)).json().live.title, earlier.title);
+  assert.equal((await request(server, preview)).json().live.title, updated.title);
+  const restartedOnAir = createStageServer({ dataDirectory });
+  try {
+    const live = (await request(restartedOnAir, output)).json().live;
+    assert.equal(live.listVisible, true);
+    assert.equal(live.backgroundVisible, false);
+    assert.equal(live.background, '');
+    assert.equal(live.id, 'earlier');
+    assert.equal(live.title, earlier.title);
+    const setOutput = (patch) => request(restartedOnAir, '/api/v1/state', patch);
+    assert.equal((await setOutput({ promotionVisible: false })).status, 200);
+    assert.equal(
+      (await setOutput({ promotionRoundId: 'final', promotionVisible: true })).status,
+      200,
+    );
+    const next = (await request(restartedOnAir, output)).json().live;
+    assert.equal(next.title, updated.title);
+    assert.equal(next.background, '');
+    assert.equal((await request(restartedOnAir, preview)).json().live.background, updated.background);
+  } finally {
+    restartedOnAir.close();
+  }
+});
+
+test('promotion staggers whole rows after the header, exits bottom-first and resumes interrupted strips', () => {
+  const elements = new Map();
+  const plays = [];
+  function element(id) {
+    if (!elements.has(id)) {
+      elements.set(id, {
+        hidden: true,
+        dataset: {},
+        querySelectorAll: () => [],
+        style: { setProperty() {} },
+        classList: { toggle() {}, remove() {} },
+        append() {},
+        replaceChildren() {},
+        getAnimations: () => [],
+        children: [],
+        animate(frames, timing) {
+          const animation = { id, frames, timing, cancel() { this.canceled = true; } };
+          plays.push(animation);
+          return animation;
+        },
+      });
+    }
+    return elements.get(id);
+  }
+  const grid = require('../modules/stage/promotion-layout');
+  const context = vm.createContext({
+    URLSearchParams,
+    innerWidth: 1920,
+    innerHeight: 1080,
+    location: { search: '' },
+    window: { addEventListener() {} },
+    document: { querySelector: element, body: element('body'), getElementById: element, createElement: () => ({}) },
+    StageMedia: { mount: () => assert.fail('PGM must never mount reference media') },
+    FBPMotionScene: { attach: () => ({ load() {}, setVisible() {} }) },
+    StagePromotionLayout: grid,
+    matchMedia: () => ({ matches: false, addEventListener() {} }),
+    fetch: () => new Promise(() => {}),
+    getComputedStyle: () => ({ opacity: '0.42', transform: 'matrix(1, 0, 0, 1, 0, 4)', clipPath: 'inset(0px 0px 315px)' }),
+    snapshot: { columns: {}, entries: [], page: 0, listVisible: true, backgroundVisible: true, background: 'backdrop.png' },
+  });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../ui/stage/promotion.js'), 'utf8'), context);
+  const render = (changes) => vm.runInContext(changes + '; render()', context);
+  const card = element('promotionCard');
+  const group = element('group');
+  group.querySelectorAll = () => Array.from({ length: 6 }, (_, i) => element('row-' + i));
+  element('promotionRows').children = [group];
+  const latest = (id) => plays.filter((play) => play.id === id).at(-1);
+  card.offsetHeight = 625;
+  render('layout = StagePromotionLayout.defaults; live = null');
+  assert.equal(card.hidden, true);
+  render('live = snapshot');
+  assert.equal(card.hidden, false);
+  assert.equal(card.style.top, '227.5px');
+  assert.equal(latest('.promotion-header').timing.delay, 0);
+  const enterFirst = latest('row-0');
+  const enterLast = latest('row-5');
+  assert.equal(enterFirst.timing.delay, 330);
+  assert.equal(enterLast.timing.delay - enterFirst.timing.delay, 5 * 72);
+  assert.equal(enterLast.frames[0].opacity, 0);
+  assert.equal(enterLast.frames[0].clipPath, undefined);
+  enterLast.onfinish();
+  render('live.listVisible = live.backgroundVisible = false');
+  const exit = latest('.promotion-header');
+  assert.equal(latest('row-5').timing.delay, 0);
+  assert.equal(latest('row-0').timing.delay, 5 * 32);
+  assert.equal(latest('row-0').frames.at(-1).opacity, 0);
+  assert.equal(card.hidden, false);
+  render('live.listVisible = live.backgroundVisible = true');
+  assert.equal(exit.canceled, true);
+  assert.equal(latest('row-3').frames[0].opacity, '0.42');
+  exit.onfinish();
+  assert.equal(card.hidden, false);
+  const playCount = plays.length;
+  render('live.listVisible = true');
+  assert.equal(plays.length, playCount);
+  render('live.listVisible = false; motion = false');
+  assert.equal(card.hidden, true);
+  assert.equal(plays.length, playCount);
 });
 
 test('promotion positions and sizes save independently from the roster and update both outputs', async (t) => {
@@ -596,9 +833,9 @@ test('promotion positions and sizes save independently from the roster and updat
   const route = '/api/workspace/layout/stage-promotion';
   const base = {
     promotionListX: 96,
-    promotionListY: 112,
-    promotionListWidth: 1728,
-    promotionListHeight: 854,
+    promotionListY: null,
+    promotionListWidth: 1136,
+    promotionListHeight: 792,
     promotionBackgroundX: 0,
     promotionBackgroundY: 0,
     promotionBackgroundWidth: 1920,
@@ -635,6 +872,37 @@ test('promotion positions and sizes save independently from the roster and updat
     ).status,
     400,
   );
+  const fixedY = draft.promotionListY;
+  for (const invalidY of [345.5, 1081, '345']) {
+    assert.equal(
+      (
+        await request(server, route, {
+          base: { promotionListY: fixedY },
+          draft: { promotionListY: invalidY },
+        })
+      ).status,
+      400,
+    );
+  }
+  assert.equal(
+    (
+      await request(server, route, {
+        base: { promotionBackgroundY: 0 },
+        draft: { promotionBackgroundY: null },
+      })
+    ).status,
+    400,
+  );
+  const centered = { ...draft, promotionListY: null };
+  assert.deepEqual(
+    (
+      await request(server, route, {
+        base: { promotionListY: fixedY },
+        draft: { promotionListY: null },
+      })
+    ).json().layout,
+    centered,
+  );
   const verification = createStageServer({ dataDirectory: path.join(dataDirectory, 'stage') });
   try {
     for (const endpoint of ['promotion', 'promotion-preview'])
@@ -642,11 +910,90 @@ test('promotion positions and sizes save independently from the roster and updat
         (await request(verification, '/api/stage/' + endpoint + '?layout=1')).json(),
         {
           live: null,
-          layout: draft,
+          layout: centered,
         },
       );
   } finally {
     verification.close();
+  }
+});
+
+test('only the old default promotion boxes migrate to automatic vertical centering', async (t) => {
+  const { server, dataDirectory } = setup(t);
+  const oldBox = {
+    promotionListX: 96,
+    promotionListY: 112,
+    promotionListWidth: 1728,
+    promotionListHeight: 854,
+  };
+  const newBox = {
+    promotionListX: 96,
+    promotionListY: null,
+    promotionListWidth: 1136,
+    promotionListHeight: 792,
+  };
+  const previousBox = { ...newBox, promotionListY: 144 };
+  const previousManualBox = { ...previousBox, promotionListY: 140 };
+  const backgroundX = -15;
+  const state = server.workspaceState();
+  const stateFile = path.join(dataDirectory, 'state.json');
+  const storedDesign = {
+    ...require('../modules/stage/design').stageDesign({
+      ...require('../docs/stage-design/promotion-example.vmix-graphics.json'),
+      scene: { width: 1728, height: 854, position: { x: 96, y: 112 } },
+    }),
+    revision: 1,
+  };
+  const manualBox = { ...oldBox, promotionListX: 110 };
+  const output = '/api/stage/promotion?layout=1';
+
+  for (const [version, style, design, expected] of [
+    [2, oldBox, [], newBox],
+    [2, manualBox, [], manualBox],
+    [2, oldBox, [storedDesign], oldBox],
+    [3, previousBox, [], newBox],
+    [3, previousManualBox, [], previousManualBox],
+    [3, oldBox, [], oldBox],
+  ]) {
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        ...state,
+        version,
+        style: { ...state.style, ...style, promotionBackgroundX: backgroundX },
+        stageDesigns: design,
+      }),
+    );
+    const restarted = createStageServer({ dataDirectory });
+    try {
+      const { layout } = (await request(restarted, output)).json();
+      assert.deepEqual(layout, {
+        ...expected,
+        promotionBackgroundX: backgroundX,
+        promotionBackgroundY: 0,
+        promotionBackgroundWidth: 1920,
+        promotionBackgroundHeight: 1080,
+      });
+    } finally {
+      restarted.close();
+    }
+  }
+
+  assert.equal((await request(server, '/api/v1/state', { style: oldBox })).status, 200);
+  const restarted = createStageServer({ dataDirectory });
+  try {
+    const { layout } = (await request(restarted, output)).json();
+    for (const [key, value] of Object.entries(oldBox)) assert.equal(layout[key], value);
+    assert.equal((await request(restarted, '/api/v1/state', { eventName: '歌会' })).status, 200);
+  } finally {
+    restarted.close();
+  }
+  const restartedAgain = createStageServer({ dataDirectory });
+  try {
+    const { layout } = (await request(restartedAgain, output)).json();
+    for (const [key, value] of Object.entries(oldBox)) assert.equal(layout[key], value);
+  } finally {
+    restartedAgain.close();
   }
 });
 
@@ -656,9 +1003,20 @@ test('promotion viewers share automatic pagination as the layout and round chang
   const { grid } = require('../modules/stage/promotion-layout');
   const width = { promotionListWidth: 1000 };
   const compact = { ...width, promotionListHeight: 400 };
-  assert.equal(grid(26).pageSize, 24);
-  assert.equal(grid(26, width).pageSize, 12);
-  assert.equal(grid(26, compact).pageSize, 3);
+  const { listWidth } = require('../modules/stage/promotion-layout');
+  assert.equal(listWidth({}, null, { rank: true, name: true, title: true, score: true }), 1136);
+  assert.equal(listWidth({}, null, { rank: true, name: true }), 812);
+  assert.equal(listWidth({}, null, { name: true }), 688);
+  assert.equal(grid(26, { promotionListWidth: 1500 }, null, { name: true }).pageSize, 8);
+  const defaultGrid = grid(26);
+  assert.equal(defaultGrid.headerHeight, 96);
+  assert.equal(defaultGrid.rowHeight, 68);
+  assert.equal(defaultGrid.rowsPerGroup, 8);
+  assert.equal(defaultGrid.pageSize, 8);
+  assert.equal(grid(6).pageCount, 1);
+  assert.equal(grid(26, width).pageSize, 8);
+  assert.equal(grid(26, compact).pageSize, 2);
+  assert.equal(grid(26, { promotionListWidth: 1500 }).pageSize, 16);
   const entries = Array.from({ length: 26 }, (_, index) => ({
     id: 'p' + index,
     name: '选手 ' + index,
@@ -690,12 +1048,15 @@ test('promotion viewers share automatic pagination as the layout and round chang
   assert.equal((await save({ promotionRoundId: 'unknown' })).status, 400);
   const output = '/api/stage/promotion?layout=1';
   const live = async (instance = server) => (await request(instance, output)).json().live;
+  assert.equal((await save({ promotionVisible: true })).status, 200);
   assert.equal((await live()).id, '');
   assert.equal((await live()).page, 0);
   now = 8000;
   assert.equal((await live()).page, 1);
   assert.equal((await live()).page, 1);
   now = 16000;
+  assert.equal((await live()).page, 2);
+  now = 32000;
   assert.equal((await live()).page, 0);
 
   assert.equal((await save({ style: compact })).status, 200);
@@ -704,7 +1065,14 @@ test('promotion viewers share automatic pagination as the layout and round chang
   assert.equal((await live()).page, 8);
   assert.equal((await request(server, '/api/stage/promotion-preview')).json().page, 0);
 
-  assert.equal((await save({ promotionRoundId: 'second', promotions })).status, 200);
+  assert.equal((await save({ promotionVisible: false })).status, 200);
+  assert.equal((await save({ promotionVisible: true })).status, 200);
+  assert.equal((await live()).page, 0);
+  assert.equal((await save({ promotionVisible: false })).status, 200);
+  assert.equal(
+    (await save({ promotionRoundId: 'second', promotionVisible: true })).status,
+    200,
+  );
   assert.equal((await live()).title, '第二轮晋级');
   assert.equal((await live()).page, 0);
   assert.equal((await save({ promotions: [...promotions].reverse() })).status, 200);
@@ -716,18 +1084,35 @@ test('promotion viewers share automatic pagination as the layout and round chang
   const stateFile = path.join(dataDirectory, 'state.json');
   const legacy = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
   delete legacy.promotionRoundId;
+  delete legacy.promotionVisible;
+  delete legacy.promotionOnAir;
+  delete legacy.promotionCue;
   legacy.promotions.reverse();
   legacy.promotionLive = { ...(await live()), title: '旧快照', listVisible: false };
-  fs.writeFileSync(stateFile, JSON.stringify(legacy));
-  const restarted = createStageServer({ dataDirectory });
-  try {
-    const { live: restored, layout } = (await request(restarted, output)).json();
-    assert.equal(restored.id, 'second');
-    assert.equal(restored.title, '第二轮晋级');
-    assert.equal(restored.listVisible, true);
-    assert.equal(layout.promotionListHeight, 400);
-  } finally {
-    restarted.close();
+  for (const { visible, legacyVisible, expected } of [
+    { visible: undefined, legacyVisible: false, expected: false },
+    { visible: undefined, legacyVisible: true, expected: true },
+    { visible: false, legacyVisible: true, expected: false },
+    { visible: true, legacyVisible: false, expected: true },
+  ]) {
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        ...legacy,
+        promotionVisible: visible,
+        promotionLive: { ...legacy.promotionLive, listVisible: legacyVisible },
+      }),
+    );
+    const restarted = createStageServer({ dataDirectory });
+    try {
+      const { live: restored, layout } = (await request(restarted, output)).json();
+      assert.equal(restored.id, 'second');
+      assert.equal(restored.title, '第二轮晋级');
+      assert.equal(restored.listVisible, expected);
+      assert.equal(layout.promotionListHeight, 400);
+    } finally {
+      restarted.close();
+    }
   }
 });
 
@@ -835,10 +1220,14 @@ test('stage design packages validate, round-trip media and drive both stage outp
       .status,
     400,
   );
-  assert.equal((await request(server, '/api/v1/state', { promotions: [roster] })).status, 200);
+  assert.equal(
+    (await request(server, '/api/v1/state', { promotions: [roster], eventAsset: media })).status,
+    200,
+  );
   const result = (await request(server, '/api/stage/promotion?layout=1')).json();
   assert.equal(result.design.id, promotion.id);
   assert.equal(result.live.entries[0].score, 100);
+  assert.equal(Object.hasOwn(result, 'eventLogo'), false);
   const before = require('../modules/stage/promotion-layout').grid(
     25,
     result.layout,
@@ -850,10 +1239,9 @@ test('stage design packages validate, round-trip media and drive both stage outp
     result.design,
   );
   assert(narrow.pageCount > before.pageCount);
-  assert.equal(
-    (await request(server, '/api/stage/promotion-preview?layout=1&round=')).json().design.id,
-    promotion.id,
-  );
+  const preview = (await request(server, '/api/stage/promotion-preview?layout=1&round=')).json();
+  assert.equal(preview.design.id, promotion.id);
+  assert.equal(preview.eventLogo, media);
   assert.equal((await call(server, 'all.hide')).status, 200);
   assert.equal(
     (await request(server, '/api/stage/promotion?layout=1')).json().design.id,

@@ -139,6 +139,7 @@ function createWorkspaceServer({
       if (JSON.stringify(current[key]) !== JSON.stringify(base[key]))
         throw new AppError('播出位置已在其他窗口修改，请恢复播出位置后重新调整', 409);
       const value = draft[key];
+      if (id === 'stage-promotion' && key === 'promotionListY' && value === null) continue;
       if (id === 'football' && key.endsWith('_pos')) {
         if (
           !value ||
@@ -202,7 +203,7 @@ function createWorkspaceServer({
       })),
       loaded: [...loaded.keys()],
       vmixPort,
-      version: '2.1.0',
+      version: '2.1.1',
     };
   }
   function validate(ids) {

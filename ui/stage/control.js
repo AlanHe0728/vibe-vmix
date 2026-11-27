@@ -65,7 +65,7 @@ async function write(patch) {
   if (writing) throw Error('正在保存，请稍后再操作');
   writing = true;
   try {
-    const structured = ['programs', 'rounds', 'captionTemplates', 'promotions'].some((key) =>
+    const structured = ['programs', 'rounds', 'captionTemplates', 'promotions', 'awards'].some((key) =>
       Object.hasOwn(patch, key),
     );
     await api('/api/v1/state', patch, structured && etag ? { 'If-Match': etag } : {});
@@ -75,8 +75,8 @@ async function write(patch) {
     writing = false;
   }
 }
-async function command(id, payload = {}) {
-  await api('/api/v1/commands/' + id, payload);
+async function command(id, payload = {}, headers = {}) {
+  await api('/api/v1/commands/' + id, payload, headers);
   await Promise.all([read(), readCollaboration()]);
 }
 const collaborationURL = '/api/stage/collaboration';
@@ -141,6 +141,7 @@ function renderCollaboration() {
   document.querySelectorAll('[data-vmix]').forEach((button) => {
     button.disabled = !canTake() || (native && ['text', 'show'].includes(button.dataset.vmix));
   });
+  if (state) syncAwards();
 }
 function run(action) {
   return async (event) => {
@@ -310,6 +311,7 @@ function fillDesign() {
 function renderState() {
   syncShowControls();
   syncPromotion();
+  syncAwardRoster();
   if (!selected || !currentRoundPrograms().some((item) => item.id === selected)) {
     if (!dirty) selected = currentRoundPrograms()[0]?.id || '';
     if (!dirty) fillProgram();
@@ -328,6 +330,7 @@ function renderState() {
   if (!designDirty) fillDesign();
   syncDockPreview();
   if (collaboration) renderCollaboration();
+  else syncAwards();
 }
 for (const [key, title] of Object.entries(layerLabels)) {
   const button = document.createElement('button');
@@ -353,6 +356,8 @@ document.querySelectorAll('[data-tab]').forEach((button) => {
       const tab = button.dataset.tab === 'connection' ? 'connectionTab' : button.dataset.tab;
       section.hidden = section.id !== tab;
     });
+    const packaging = button.dataset.tab === 'promotion';
+    usePackagingSidePreview(packaging ? ($('awardDesk').hidden ? 'promotion' : 'award') : '');
     if (button.dataset.tab === 'show') renderCaptions();
   };
 });
@@ -764,8 +769,13 @@ async function poll() {
 async function init() {
   installShowControls();
   installPromotion();
+  installAwards();
   templates = (await api('/api/stage/templates')).templates;
   await read();
+  if (['#promotion', '#award'].includes(location.hash)) {
+    document.querySelector('[data-tab="promotion"]').click();
+    if (location.hash === '#award') switchStagePackaging('award');
+  }
   await loadAssets();
   window.FBPWidgets.init();
   syncPalette();

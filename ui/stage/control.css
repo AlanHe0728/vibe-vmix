@@ -674,7 +674,7 @@ pre:empty {
 #dockedPreview .preview-wrap {
   border-radius: 0;
   width: 100%;
-  background: conic-gradient(#273747 25%, #1f2d3b 0 50%, #273747 0 75%, #1f2d3b 0) 0 / 16px 16px;
+  background: #1f2d3b url('preview-stage.webp') center / contain no-repeat;
 }
 .dock-broadcast-controls {
   display: grid;

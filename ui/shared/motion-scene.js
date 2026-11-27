@@ -113,7 +113,7 @@
     return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722 > 0.4 ? '#102f2c' : '#fff';
   }
 
-  function attach(host) {
+  function attach(host, { staticArtwork = false } = {}) {
     var template,
       key,
       root,
@@ -216,7 +216,9 @@
         });
       }
       var track = show ? template.enter : template.exit;
-      var final = keyframe(track.frames[track.frames.length - 1]);
+      var final = staticArtwork
+        ? { transform: 'none', opacity: 1 }
+        : keyframe(track.frames[track.frames.length - 1]);
       function finish() {
         root.style.transform = final.transform;
         root.style.opacity = final.opacity;
@@ -226,7 +228,11 @@
             item.pause();
           });
       }
-      if (animate === false || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if (
+        staticArtwork ||
+        animate === false ||
+        matchMedia('(prefers-reduced-motion: reduce)').matches
+      ) {
         finish();
         running = null;
         return;
@@ -246,5 +252,5 @@
     }
     return { load: load, update: update, setVisible: setVisible };
   }
-  window.FBPMotionScene = { attach: attach, stageScene: stageScene };
+  window.FBPMotionScene = { attach: attach, stageScene: stageScene, keyframe: keyframe };
 })(window);

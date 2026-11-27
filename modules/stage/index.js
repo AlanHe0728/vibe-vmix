@@ -3,6 +3,7 @@ const { templates } = require('./templates');
 const { format: motionFormat, parseMotionTemplate } = require('../../core/motion-template');
 const { lines, forProgram } = require('./captions');
 const promotionLayout = require('./promotion-layout');
+const { defaultAwards, normalizeAwards, takeAward, hideAward, advanceAward } = require('./awards');
 const { stageDesign } = require('./design');
 const {
   text,
@@ -18,6 +19,33 @@ const {
 const types = ['歌唱', '舞蹈', '武术', '器乐', '戏曲', '其他'];
 const layerNames = ['channel', 'event', 'lower', 'caption'];
 const own = (object, key) => Object.hasOwn(object, key);
+const stateVersion = 4;
+
+function migratePromotionBox(style, designs, version) {
+  const {
+    promotionListX: x,
+    promotionListY: y,
+    promotionListWidth: width,
+    promotionListHeight: height,
+  } = style;
+  const previous = version === 3 ? [144, 1136, 792] : [112, 1728, 854];
+  if (x !== 96 || y !== previous[0] || width !== previous[1] || height !== previous[2]) return style;
+  // Applying a design's scene used the same style fields as the built-in layout.
+  const authoredBox =
+    Array.isArray(designs) &&
+    designs.some(
+      (design) =>
+        design?.slot === 'promotion' &&
+        Math.round(design.scene?.position?.x) === x &&
+        Math.round(design.scene?.position?.y) === y &&
+        design.scene.width === width &&
+        design.scene.height === height,
+    );
+  if (authoredBox) return style;
+  const { promotionListY, promotionListWidth, promotionListHeight } = promotionLayout.defaults;
+  return { ...style, promotionListY, promotionListWidth, promotionListHeight };
+}
+
 function number(value, min, max) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max)
     throw Error('数值超出范围');
@@ -75,7 +103,7 @@ function savedCaption(value) {
 function createStageModule() {
   function defaults() {
     return {
-      version: 2,
+      version: stateVersion,
       eventName: '',
       channelName: '',
       channelAsset: '',
@@ -90,6 +118,11 @@ function createStageModule() {
       captionTemplateId: '',
       promotions: [],
       promotionRoundId: null,
+      promotionVisible: false,
+      promotionOnAir: null,
+      promotionCue: 0,
+      awards: defaultAwards(),
+      awardOnAir: null,
       live: null,
       captionLive: null,
       layers: Object.fromEntries(layerNames.map((key) => [key, false])),
@@ -147,6 +180,8 @@ function createStageModule() {
       'captionTemplateId',
       'promotions',
       'promotionRoundId',
+      'promotionVisible',
+      'awards',
       'layers',
       'style',
       'vmix',
@@ -181,12 +216,29 @@ function createStageModule() {
       next.captionTemplates = uniqueList(patch.captionTemplates, 100, captionTemplate);
     if (own(patch, 'captionTemplateId')) next.captionTemplateId = id(patch.captionTemplateId, true);
     if (own(patch, 'promotions')) next.promotions = uniqueList(patch.promotions, 101, promotion);
+    if (own(patch, 'awards')) next.awards = normalizeAwards(patch.awards);
     if (own(patch, 'promotionRoundId') && patch.promotionRoundId !== null) {
       next.promotionRoundId = id(patch.promotionRoundId, true);
       if (!next.promotions.some(({ id }) => id === next.promotionRoundId))
         throw Error('找不到已保存的晋级轮次');
     } else if (!next.promotions.some(({ id }) => id === next.promotionRoundId)) {
       next.promotionRoundId = next.promotions[0]?.id ?? null;
+    }
+    if (own(patch, 'promotionVisible')) {
+      if (typeof patch.promotionVisible !== 'boolean') throw Error('名单显隐状态无效');
+      if (!patch.promotionVisible) {
+        next.promotionVisible = false;
+        next.promotionOnAir = null;
+      } else if (current.promotionOnAir) {
+        if (own(patch, 'promotionRoundId') && next.promotionRoundId !== current.promotionOnAir.id)
+          throw Error('请先将当前名单下屏');
+      } else {
+        const saved = next.promotions.find(({ id }) => id === next.promotionRoundId);
+        if (!saved) throw Error('请先保存该轮次名单');
+        next.promotionVisible = true;
+        next.promotionOnAir = saved;
+        next.promotionCue += 1;
+      }
     }
     if (own(patch, 'stageDesigns'))
       next.stageDesigns = uniqueList(patch.stageDesigns, 60, (design) => stageDesign(design, true));
@@ -195,7 +247,9 @@ function createStageModule() {
       next.captionTemplates.some(
         ({ designId }) => designId && designs.get(designId) !== 'caption',
       ) ||
-      next.promotions.some(({ designId }) => designId && designs.get(designId) !== 'promotion')
+      [...next.promotions, next.promotionOnAir].some(
+        (roster) => roster?.designId && designs.get(roster.designId) !== 'promotion',
+      )
     )
       throw Error('找不到对应的舞台设计模板');
     const rounds = new Set(next.rounds.map((item) => item.id));
@@ -255,7 +309,8 @@ function createStageModule() {
       number(style.captionY, 0, 1020);
       for (const prefix of ['promotionList', 'promotionBackground']) {
         integer(style[prefix + 'X'], -1920, 1920);
-        integer(style[prefix + 'Y'], -1080, 1080);
+        if (prefix !== 'promotionList' || style.promotionListY !== null)
+          integer(style[prefix + 'Y'], -1080, 1080);
         number(style[prefix + 'Width'], Number.MIN_VALUE, Infinity);
         number(style[prefix + 'Height'], Number.MIN_VALUE, Infinity);
       }
@@ -337,6 +392,8 @@ function createStageModule() {
     return takeCaption(state, item, index);
   }
   const actions = [
+    command('award.take', '播出颁奖报幕', takeAward),
+    command('award.hide', '颁奖下屏', hideAward),
     command('program.take', '播出报幕', (state, payload, now) => {
       keys(payload, ['id']);
       const item = state.programs.find((entry) => entry.id === payload.id);
@@ -371,6 +428,7 @@ function createStageModule() {
     }),
     command('all.hide', '全部下屏', (state) => ({
       ...state,
+      awardOnAir: null,
       layers: Object.fromEntries(layerNames.map((key) => [key, false])),
       transition: cueTransition(state, 0, '', 0),
     })),
@@ -396,6 +454,7 @@ function createStageModule() {
       'caption-cues',
       'transition',
       'promotion',
+      'awards',
       'asset-library',
       'vmix-gt',
     ],
@@ -411,12 +470,16 @@ function createStageModule() {
         motionLower,
         motionLowerEnabled,
         promotionLive,
+        promotionVisible,
+        promotionOnAir,
+        promotionCue,
+        awardOnAir,
         sloganLive,
         sponsorAsset,
         sponsorName,
         ...editable
       } = saved;
-      if (version !== 2) {
+      if (![2, 3, stateVersion].includes(version)) {
         const { sponsor, slogan, ...layers } = editable.layers || {};
         const { sponsorX, sponsorY, ...style } = editable.style || {};
         const legacy =
@@ -437,6 +500,8 @@ function createStageModule() {
         editable.layers = { ...layers, event: Boolean(layers.event || sponsor || slogan) };
         editable.style = style;
       }
+      if (version !== stateVersion && editable.style)
+        editable.style = migratePromotionBox(editable.style, editable.stageDesigns, version);
       const state = reduce(base, editable);
       if (motionLower) {
         state.motionLower = {
@@ -468,6 +533,15 @@ function createStageModule() {
         state.promotions.some(({ id }) => id === promotionLive?.id)
       )
         state.promotionRoundId = promotionLive.id;
+      if (own(saved, 'promotionVisible') && typeof promotionVisible !== 'boolean')
+        throw Error('名单显隐状态无效');
+      if (promotionVisible ?? (promotionLive?.listVisible === true)) {
+        state.promotionOnAir = promotionOnAir
+          ? promotion(promotionOnAir)
+          : state.promotions.find(({ id }) => id === state.promotionRoundId) ?? null;
+        state.promotionVisible = state.promotionOnAir !== null;
+      }
+      state.promotionCue = Number.isSafeInteger(promotionCue) ? promotionCue : 0;
       if (captionLive != null) state.captionLive = savedCaption(captionLive);
       else if (
         !own(saved, 'captionLive') &&
@@ -499,7 +573,10 @@ function createStageModule() {
       layers: state.layers,
       templateId: state.templateId,
       promotionRoundId: state.promotionRoundId,
+      promotionVisible: state.promotionVisible,
+      awardOnAir: state.awardOnAir,
     }),
+    advance: advanceAward,
     commands: actions.map(({ id, label }) => ({
       id,
       label,

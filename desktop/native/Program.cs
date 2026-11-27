@@ -13,8 +13,8 @@ using Microsoft.Web.WebView2.WinForms;
 
 [assembly: System.Reflection.AssemblyTitle("转播包装工作台")]
 [assembly: System.Reflection.AssemblyProduct("转播包装工作台")]
-[assembly: System.Reflection.AssemblyVersion("2.1.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersion("2.1.0")]
+[assembly: System.Reflection.AssemblyVersion("2.1.1.0")]
+[assembly: System.Reflection.AssemblyInformationalVersion("2.1.1")]
 [assembly: System.Runtime.Versioning.TargetFramework(".NETFramework,Version=v4.7.2")]
 
 internal static class Program {

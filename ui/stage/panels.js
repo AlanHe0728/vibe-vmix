@@ -505,21 +505,92 @@ setupDrop($('font').parentElement, async (item) => {
 });
 
 const previewFrame = document.createElement('iframe');
-previewFrame.title = '舞台排版预览';
 const previewWrap = $('previewWrap');
 new ResizeObserver(() => {
   const width = previewWrap.getBoundingClientRect().width;
   if (width) previewFrame.style.zoom = width / 1920;
 }).observe(previewWrap);
 const previewLayer = $('dockPreviewLayer');
-previewLayer.onchange = () => syncDockPreview();
+const awardPreviewURL = '/stage/award.html?workspacePreview=1';
+let previewFrameURL = '';
+let awardPreviewReady = false;
+let graphicsPreviewLayer = previewLayer.value;
+let dockAwardStill = null;
+let dockAwardPlayback = null;
+previewLayer.onchange = () => {
+  if (previewLayer.value === '' || previewLayer.value === 'caption')
+    graphicsPreviewLayer = previewLayer.value;
+  syncDockPreview();
+};
+
+function postDockAwardPreview(type, cue) {
+  if (!awardPreviewReady || previewFrameURL !== awardPreviewURL) return;
+  previewFrame.contentWindow.postMessage({ type, cue }, location.origin);
+}
+
+function updateDockAwardPreview(cue) {
+  if (JSON.stringify(dockAwardStill) === JSON.stringify(cue)) return;
+  dockAwardStill = cue;
+  if (!dockAwardPlayback) postDockAwardPreview('award-still', cue);
+}
+
+function playReadyDockAwardPreview() {
+  if (!awardPreviewReady || !dockAwardPlayback || dockAwardPlayback.startedAt) return;
+  const startedAt = Date.now();
+  dockAwardPlayback.startedAt = startedAt;
+  postDockAwardPreview('award-preview', { ...dockAwardPlayback.cue, startedAt, exitAt: 0 });
+  syncAwardEditor();
+}
+
+function playDockAwardPreview(cue) {
+  dockAwardPlayback = { cue, startedAt: 0 };
+  usePackagingSidePreview('award');
+  setSidePreview(true);
+  playReadyDockAwardPreview();
+  syncAwardEditor();
+}
+
+function stopDockAwardPreview() {
+  if (!dockAwardPlayback) return;
+  dockAwardPlayback = null;
+  postDockAwardPreview('award-preview', null);
+  syncAwardEditor();
+}
+
+function usePackagingSidePreview(mode) {
+  previewLayer.value = mode || graphicsPreviewLayer;
+  syncDockPreview();
+}
+
+window.addEventListener('message', (event) => {
+  if (
+    previewFrameURL !== awardPreviewURL ||
+    event.origin !== location.origin ||
+    event.source !== previewFrame.contentWindow
+  )
+    return;
+  if (event.data?.type === 'award-preview-ready') {
+    awardPreviewReady = true;
+    if (dockAwardPlayback) playReadyDockAwardPreview();
+    else postDockAwardPreview('award-still', dockAwardStill);
+  }
+  if (
+    event.data?.type === 'award-preview-ended' &&
+    dockAwardPlayback?.startedAt === event.data.startedAt
+  )
+    stopDockAwardPreview();
+});
+
 function setSidePreview(visible) {
   $('dockedPreview').hidden = !visible;
   $('sidePreviewToggle').setAttribute('aria-pressed', String(visible));
-  if (visible && !previewFrame.isConnected) {
-    previewFrame.src = '/stage/graphics.html?workspacePreview=1';
-    previewWrap.append(previewFrame);
-  } else if (!visible) previewFrame.remove();
+  if (visible) syncDockPreview();
+  else {
+    stopDockAwardPreview();
+    awardPreviewReady = false;
+    previewFrameURL = '';
+    previewFrame.remove();
+  }
 }
 $('sidePreviewToggle').onclick = () => {
   const visible = $('dockedPreview').hidden;
@@ -533,7 +604,27 @@ try {
 } catch (_) {}
 
 function syncDockPreview(templateId = '', captionTemplateId) {
-  if (!previewFrame.isConnected) return;
+  if ($('dockedPreview').hidden) return;
+  const layer = previewLayer.value;
+  let url = '/stage/graphics.html?workspacePreview=1';
+  let title = '舞台排版预览';
+  if (layer === 'award') {
+    url = awardPreviewURL;
+    title = '颁奖侧边预览';
+  } else if (layer === 'promotion') {
+    const query = new URLSearchParams({ workspacePreview: '1', round: promotionRound ?? '' });
+    url = '/stage/promotion.html?' + query;
+    title = '晋级名单侧边预览';
+  }
+  if (previewFrameURL !== url) {
+    if (layer !== 'award') stopDockAwardPreview();
+    awardPreviewReady = false;
+    previewFrameURL = url;
+    previewFrame.title = title;
+    previewFrame.src = url;
+    if (!previewFrame.isConnected) previewWrap.append(previewFrame);
+  }
+  if (layer === 'award' || layer === 'promotion') return;
   const branding = {};
   for (const key of ['channelAsset', 'eventAsset']) branding[key] = $(key).value;
   const item = state?.programs.find((entry) => entry.id === selected);

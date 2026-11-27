@@ -128,6 +128,23 @@ function loadPromotionDraft() {
   renderPromotionEntries();
   updatePromotionCount();
   syncPromotionDesign();
+  syncPromotionOutput();
+  syncDockPreview();
+}
+
+function syncPromotionOutput() {
+  const saved = savedPromotion();
+  const onAir = state.promotionOnAir;
+  $('promotionOutputStatus').textContent = onAir
+    ? `已上屏 · ${onAir.title || '晋级名单'}`
+    : '已下屏' + (saved ? '' : ' · 保存当前轮次名单后可上屏');
+  $('promotionShow').disabled = Boolean(onAir) || !saved;
+  $('promotionHide').disabled = !onAir;
+  const preview = $('promotionPreviewLink');
+  preview.hidden = !saved;
+  if (saved)
+    preview.href =
+      '/stage/promotion.html?' + new URLSearchParams({ workspacePreview: '1', round: saved.id });
 }
 
 function syncPromotion() {
@@ -143,9 +160,10 @@ function syncPromotion() {
     (!promotionDirty && promotionBaseline !== JSON.stringify(savedPromotion()))
   )
     loadPromotionDraft();
-  else syncPromotionDesign();
-  const output = state.promotions.find(({ id }) => id === state.promotionRoundId);
-  $('promotionOutputStatus').textContent = output ? `网页显示 · ${output.title || '晋级名单'}` : '';
+  else {
+    syncPromotionDesign();
+    syncPromotionOutput();
+  }
 }
 
 function importPromotionRows(rows) {
@@ -252,11 +270,8 @@ async function savePromotion() {
     throw Error('名单已在其他窗口更新，请先恢复已保存名单');
   const draft = structuredClone(promotionDraft);
   const revision = promotionRevision;
-  if (promotionDirty || !savedPromotion() || state.promotionRoundId !== draft.id) {
-    await write({
-      promotions: [...state.promotions.filter((entry) => entry.id !== draft.id), draft],
-      promotionRoundId: draft.id,
-    });
+  if (promotionDirty || !savedPromotion()) {
+    await write({ promotions: [...state.promotions.filter((entry) => entry.id !== draft.id), draft] });
     promotionBaseline = JSON.stringify(savedPromotion());
     if (revision === promotionRevision) loadPromotionDraft();
   }
@@ -471,4 +486,8 @@ function installPromotion() {
     await savePromotion();
     notice('名单已保存');
   });
+  $('promotionShow').onclick = run(() =>
+    write({ promotionRoundId: promotionRound, promotionVisible: true }),
+  );
+  $('promotionHide').onclick = run(() => write({ promotionVisible: false }));
 }
