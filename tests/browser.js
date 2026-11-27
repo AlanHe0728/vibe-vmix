@@ -20,7 +20,8 @@ class CDP {
     const {sessionId}=await this.send('Target.attachToTarget',{targetId,flatten:true});
     await this.send('Runtime.enable',{},sessionId);await this.send('Network.enable',{},sessionId);await this.send('Page.enable',{},sessionId);
     await this.send('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false},sessionId);
-    await this.send('Page.navigate',{url},sessionId);return sessionId;
+    await this.send('Page.navigate',{url},sessionId);
+    await this.until(sessionId,"location.href!=='about:blank' && document.readyState==='complete'");return sessionId;
   }
   async eval(sessionId,expression){const r=await this.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true},sessionId);
     if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value;

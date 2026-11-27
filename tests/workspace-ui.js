@@ -428,7 +428,7 @@ async function main() {
     );
     await cdp.until(
       preview,
-      "document.querySelectorAll('#tabs button').length===4 && document.querySelectorAll('.canvas iframe').length===2",
+      "document.querySelectorAll('#tabs button').length===5 && document.querySelectorAll('.canvas iframe').length===2",
     );
     for (const [physicalWidth, physicalHeight, scale] of [
       [3440, 1440, 1],
@@ -563,27 +563,27 @@ async function main() {
     await fetch(stageOrigin + '/api/v1/state', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ layers: { sponsor: false } }),
+      body: JSON.stringify({ layers: { caption: false } }),
     });
     const untouchedStage = await fetch(stageOrigin + '/api/v1/state').then((response) =>
       response.json(),
     );
     await cdp.eval(
       preview,
-      'document.querySelector(\'#categoryTabs [data-element="stage:sponsor"]\').click()',
+      'document.querySelector(\'#categoryTabs [data-element="stage:caption"]\').click()',
     );
     await delay(400);
     assert.equal(
       await frameValue(
         '/stage/graphics.html?workspacePreview=1',
-        "document.getElementById('sponsor').classList.contains('visible')",
+        "document.getElementById('caption').classList.contains('visible')",
       ),
       true,
     );
     assert.equal(
       await frameValue(
         stageOrigin + '/stage/graphics.html',
-        "document.getElementById('sponsor').classList.contains('visible')",
+        "document.getElementById('caption').classList.contains('visible')",
         true,
       ),
       false,
@@ -605,13 +605,13 @@ async function main() {
     );
     await cdp.eval(
       preview,
-      'document.querySelector(\'#layerList input[aria-label="预览中显示舞台节目赞助商"]\').click()',
+      'document.querySelector(\'#layerList input[aria-label="预览中显示舞台节目字幕条"]\').click()',
     );
     await delay(300);
     assert.equal(
       await frameValue(
         '/stage/graphics.html?workspacePreview=1',
-        "document.getElementById('sponsor').classList.contains('visible')",
+        "document.getElementById('caption').classList.contains('visible')",
       ),
       false,
     );
